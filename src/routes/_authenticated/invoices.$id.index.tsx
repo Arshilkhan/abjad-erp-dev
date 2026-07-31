@@ -265,17 +265,26 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
           </tr>
         </thead>
         <tbody>
-          {items.map((it) => (
+          {items.map((it) => {
+            const rejected = Number(it.rejected_quantity ?? 0);
+            const billedQty = rejected > 0 ? Number(it.quantity) - rejected : Number(it.quantity);
+            return (
             <tr key={it.id}>
               <td className={`${cellBorder} p-1 text-center`}>{it.sr_no}</td>
               <td className={`${cellBorder} p-1 text-center`}>{it.hsn_code ?? ""}</td>
-              <td className={`${cellBorder} p-1`}>{it.description}</td>
-              <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(it.quantity).toFixed(0).padStart(2, "0")}</td>
+              <td className={`${cellBorder} p-1`}>
+                {it.description}
+                {rejected > 0 && (
+                  <span className="text-[10px] italic"> (Delivered {Number(it.quantity)}, rejected {rejected})</span>
+                )}
+              </td>
+              <td className={`${cellBorder} p-1 text-right tabular-nums`}>{billedQty.toFixed(0).padStart(2, "0")}</td>
               <td className={`${cellBorder} p-1 text-center`}>{it.uom ?? "NOS"}</td>
               <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(it.unit_rate).toFixed(2)}</td>
               <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(it.total_amount).toFixed(2)}</td>
             </tr>
-          ))}
+            );
+          })}
           {/* filler rows */}
           {Array.from({ length: Math.max(0, 8 - items.length) }).map((_, i) => (
             <tr key={`f${i}`}>
