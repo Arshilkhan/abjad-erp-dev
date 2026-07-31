@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 
 export interface TypeaheadOption {
@@ -37,6 +38,9 @@ export function TypeaheadInput({
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
@@ -56,6 +60,25 @@ export function TypeaheadInput({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+
+  // Track the input position so the dropdown can render in a portal,
+  // escaping any parent with overflow hidden/auto (e.g. the line-items table).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, filtered.length]);
 
   const pick = (opt: TypeaheadOption) => {
     onSelect(opt);
@@ -91,8 +114,11 @@ export function TypeaheadInput({
           else if (e.key === "Escape") setOpen(false);
         }}
       />
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full max-h-64 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+      {mounted && open && filtered.length > 0 && rect && createPortal(
+        <ul
+          style={{ position: "fixed", top: rect.top, left: rect.left, width: Math.max(rect.width, 220) }}
+          className="z-[100] max-h-64 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+        >
           {filtered.map((o, i) => (
             <li
               key={o.id}
@@ -104,7 +130,8 @@ export function TypeaheadInput({
               {o.sublabel && <div className="text-xs text-muted-foreground">{o.sublabel}</div>}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   );
