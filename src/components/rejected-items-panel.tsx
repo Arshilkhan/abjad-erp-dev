@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { formatINR } from "@/lib/format";
+import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { toast } from "sonner";
 
@@ -101,16 +101,25 @@ export function RejectedItemsPanel({
       return toast.error(error.message);
     }
 
-    // Update invoice_items rejected/accepted quantities
+    // Update invoice_items rejected/accepted quantities and recompute line values
+    const newRejectedByItem: Record<string, number> = { ...rejectedByItem };
     for (const [itemId, d] of entries) {
-      const item = items.find((i) => i.id === itemId);
-      if (!item) continue;
-      const already = rejectedByItem[itemId] ?? 0;
-      const newRejected = already + Number(d.qty);
+      newRejectedByItem[itemId] = (newRejectedByItem[itemId] ?? 0) + Number(d.qty);
+    }
+    for (const item of items) {
+      const newRejected = newRejectedByItem[item.id] ?? 0;
+      const accepted = Number(item.quantity) - newRejected;
+      const gross = accepted * Number(item.unit_rate);
+      const discountAmount = (gross * Number(item.discount_pct ?? 0)) / 100;
+      const net = gross - discountAmount;
+      const taxAmount = (net * Number(item.tax_pct ?? 0)) / 100;
       await (supabase.from("invoice_items") as any).update({
         rejected_quantity: newRejected,
-        accepted_quantity: Number(item.quantity) - newRejected,
-      }).eq("id", itemId);
+        accepted_quantity: accepted,
+        discount_amount: discountAmount,
+        tax_amount: taxAmount,
+        total_amount: net + taxAmount,
+      }).eq("id", item.id);
     }
 
     // Create customer credit entry
@@ -145,10 +154,36 @@ export function RejectedItemsPanel({
       `${entries.length} item(s) rejected, deduction ${formatINR(totalDeduction)}`,
       { deduction: totalDeduction, count: entries.length });
 
-    // Adjust invoice grand_total
-    const newGrand = Number(invoice.grand_total) - totalDeduction;
-    await (supabase.from("invoices") as any).update({ grand_total: newGrand }).eq("id", invoiceId);
-    await logInvoiceEvent(invoiceId, "adjustment", `Grand total reduced by ${formatINR(totalDeduction)}`, { newGrand });
+    // Recompute the whole invoice from accepted quantities so line items,
+    // net value, sub total and taxes stay consistent with the grand total.
+    const originalItemDiscounts = items.reduce((s, i) => s + Number(i.discount_amount ?? 0), 0);
+    const extraDiscount = Number(invoice.discount_amount ?? 0) - originalItemDiscounts;
+    let netValue = 0, taxTotal = 0, itemDiscounts = 0;
+    for (const item of items) {
+      const accepted = Number(item.quantity) - (newRejectedByItem[item.id] ?? 0);
+      const gross = accepted * Number(item.unit_rate);
+      const discountAmount = (gross * Number(item.discount_pct ?? 0)) / 100;
+      const net = gross - discountAmount;
+      itemDiscounts += discountAmount;
+      netValue += net;
+      taxTotal += (net * Number(item.tax_pct ?? 0)) / 100;
+    }
+    const charges = Number(invoice.freight ?? 0) + Number(invoice.packing_charges ?? 0) + Number(invoice.other_charges ?? 0);
+    const newSubtotal = netValue + charges - extraDiscount;
+    const preRound = newSubtotal + taxTotal;
+    const newGrand = Math.round(preRound);
+    await (supabase.from("invoices") as any).update({
+      net_value: netValue,
+      discount_amount: itemDiscounts + extraDiscount,
+      subtotal: newSubtotal,
+      sgst_amount: invoice.is_igst ? 0 : taxTotal / 2,
+      cgst_amount: invoice.is_igst ? 0 : taxTotal / 2,
+      igst_amount: invoice.is_igst ? taxTotal : 0,
+      round_off: newGrand - preRound,
+      grand_total: newGrand,
+      amount_in_words: amountInWords(newGrand),
+    }).eq("id", invoiceId);
+    await logInvoiceEvent(invoiceId, "adjustment", `Invoice recalculated after rejection, reduced by ${formatINR(totalDeduction)}`, { newGrand });
 
     setSaving(false);
     setDrafts({});
