@@ -41,7 +41,57 @@ function InvoiceDetail() {
         supabase.from("company_profile").select("*").limit(1).maybeSingle(),
       ]);
       if (inv.error) throw inv.error;
-      return { invoice: inv.data, items: items.data ?? [], company: company.data };
+      const rows = (items.data ?? []) as any[];
+      const invoice = inv.data as any;
+
+      // Self-heal stored snapshots for invoices whose rejections were saved
+      // before totals were recalculated (only grand_total was adjusted then).
+      if (invoice && rows.some((it) => Number(it.rejected_quantity ?? 0) > 0)) {
+        let netValue = 0, itemDiscounts = 0, taxTotal = 0;
+        for (const it of rows) {
+          const accepted = Number(it.quantity) - Number(it.rejected_quantity ?? 0);
+          const gross = accepted * Number(it.unit_rate);
+          const discount = (gross * Number(it.discount_pct ?? 0)) / 100;
+          const net = gross - discount;
+          const tax = (net * Number(it.tax_pct ?? 0)) / 100;
+          netValue += net; itemDiscounts += discount; taxTotal += tax;
+          const lineTotal = net + tax;
+          if (Math.abs(Number(it.total_amount ?? 0) - lineTotal) > 0.01) {
+            await supabase.from("invoice_items").update({
+              accepted_quantity: accepted,
+              discount_amount: discount,
+              tax_amount: tax,
+              total_amount: lineTotal,
+            }).eq("id", it.id);
+            it.accepted_quantity = accepted;
+            it.discount_amount = discount;
+            it.tax_amount = tax;
+            it.total_amount = lineTotal;
+          }
+        }
+        const charges = Number(invoice.freight ?? 0) + Number(invoice.packing_charges ?? 0) + Number(invoice.other_charges ?? 0);
+        const subtotal = netValue + charges;
+        const preRound = subtotal + taxTotal;
+        const grand = Math.round(preRound);
+        const next = {
+          net_value: netValue,
+          discount_amount: itemDiscounts,
+          subtotal,
+          sgst_amount: invoice.is_igst ? 0 : taxTotal / 2,
+          cgst_amount: invoice.is_igst ? 0 : taxTotal / 2,
+          igst_amount: invoice.is_igst ? taxTotal : 0,
+          round_off: grand - preRound,
+          grand_total: grand,
+          amount_in_words: amountInWords(grand),
+        };
+        if (Math.abs(Number(invoice.subtotal ?? 0) - subtotal) > 0.01 ||
+            Math.abs(Number(invoice.grand_total ?? 0) - grand) > 0.01) {
+          await supabase.from("invoices").update(next).eq("id", id);
+          Object.assign(invoice, next);
+        }
+      }
+
+      return { invoice, items: rows, company: company.data };
     },
   });
 
