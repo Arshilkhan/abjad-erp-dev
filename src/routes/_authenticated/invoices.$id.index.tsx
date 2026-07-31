@@ -172,6 +172,40 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
   const label = "font-bold text-[11px]";
   const val = "text-[11px]";
 
+  // Totals are always derived from the accepted (delivered minus rejected)
+  // quantities so the invoice stays internally consistent, including for
+  // rejections recorded before totals were recalculated on save.
+  const lineTotals: Record<string, number> = {};
+  let netValue = 0;
+  let itemDiscounts = 0;
+  let taxTotal = 0;
+  for (const it of items) {
+    const accepted = Number(it.quantity) - Number(it.rejected_quantity ?? 0);
+    const gross = accepted * Number(it.unit_rate);
+    const discount = (gross * Number(it.discount_pct ?? 0)) / 100;
+    const net = gross - discount;
+    const tax = (net * Number(it.tax_pct ?? 0)) / 100;
+    lineTotals[it.id] = net + tax;
+    netValue += net;
+    itemDiscounts += discount;
+    taxTotal += tax;
+  }
+  const charges =
+    Number(invoice.freight ?? 0) + Number(invoice.packing_charges ?? 0) + Number(invoice.other_charges ?? 0);
+  const subtotal = netValue + charges;
+  const preRound = subtotal + taxTotal;
+  const grandTotal = Math.round(preRound);
+  const totals = {
+    netValue,
+    discount: itemDiscounts,
+    subtotal,
+    sgst: invoice.is_igst ? 0 : taxTotal / 2,
+    cgst: invoice.is_igst ? 0 : taxTotal / 2,
+    igst: invoice.is_igst ? taxTotal : 0,
+    roundOff: grandTotal - preRound,
+    grandTotal,
+  };
+
   return (
     <div className="font-serif text-black" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
       {/* HEADER */}
@@ -281,7 +315,7 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
               <td className={`${cellBorder} p-1 text-right tabular-nums`}>{billedQty.toFixed(0).padStart(2, "0")}</td>
               <td className={`${cellBorder} p-1 text-center`}>{it.uom ?? "NOS"}</td>
               <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(it.unit_rate).toFixed(2)}</td>
-              <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(it.total_amount).toFixed(2)}</td>
+              <td className={`${cellBorder} p-1 text-right tabular-nums`}>{(lineTotals[it.id] ?? Number(it.total_amount)).toFixed(2)}</td>
             </tr>
             );
           })}
@@ -313,11 +347,11 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
               </div>
             </td>
             <td className={`${cellBorder} p-1 ${label}`} colSpan={2}>Net Value (Rs.)</td>
-            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.net_value).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.netValue.toFixed(2)}</td>
           </tr>
           <tr>
             <td className={`${cellBorder} p-1`} colSpan={2}>Discount</td>
-            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.discount_amount).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.discount.toFixed(2)}</td>
           </tr>
           <tr>
             <td className={`${cellBorder} p-1`} colSpan={2}>Freight</td>
@@ -329,19 +363,19 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
           </tr>
           <tr>
             <td className={`${cellBorder} p-1`} colSpan={2}>Sub Total</td>
-            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.subtotal).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.subtotal.toFixed(2)}</td>
           </tr>
           {!invoice.is_igst ? (
             <>
               <tr>
                 <td className={`${cellBorder} p-1 w-[35%]`}>SGST</td>
                 <td className={`${cellBorder} p-1 text-center w-[10%]`}>{items[0]?.tax_pct ? `${Number(items[0].tax_pct)/2}%` : ""}</td>
-                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.sgst_amount).toFixed(2)}</td>
+                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.sgst.toFixed(2)}</td>
               </tr>
               <tr>
                 <td className={`${cellBorder} p-1`}>CGST</td>
                 <td className={`${cellBorder} p-1 text-center`}>{items[0]?.tax_pct ? `${Number(items[0].tax_pct)/2}%` : ""}</td>
-                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.cgst_amount).toFixed(2)}</td>
+                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.cgst.toFixed(2)}</td>
               </tr>
               <tr>
                 <td className={`${cellBorder} p-1`}>IGST</td>
@@ -364,28 +398,28 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
               <tr>
                 <td className={`${cellBorder} p-1`}>IGST</td>
                 <td className={`${cellBorder} p-1 text-center`}>{items[0]?.tax_pct ? `${items[0].tax_pct}%` : ""}</td>
-                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.igst_amount).toFixed(2)}</td>
+                <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.igst.toFixed(2)}</td>
               </tr>
             </>
           )}
           <tr>
             <td className={`${cellBorder} p-1`} colSpan={2}>Sub Total</td>
-            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{(Number(invoice.subtotal) + Number(invoice.sgst_amount) + Number(invoice.cgst_amount) + Number(invoice.igst_amount)).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{(totals.subtotal + totals.sgst + totals.cgst + totals.igst).toFixed(2)}</td>
           </tr>
           <tr>
             <td className={`${cellBorder} p-1`} colSpan={2}>Round Off</td>
-            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{Number(invoice.round_off).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.roundOff.toFixed(2)}</td>
           </tr>
           <tr className="bg-gray-100">
             <td className={`${cellBorder} p-1 font-bold`} colSpan={2}>Grand Total (Rs)</td>
-            <td className={`${cellBorder} p-1 text-right font-bold tabular-nums`}>{Number(invoice.grand_total).toFixed(2)}</td>
+            <td className={`${cellBorder} p-1 text-right font-bold tabular-nums`}>{totals.grandTotal.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
 
       {/* IN WORDS */}
       <div className={`${cellBorder} border-t-0 p-1 text-[11px] italic`}>
-        In Words. {invoice.amount_in_words ?? amountInWords(Number(invoice.grand_total))}
+        In Words. {amountInWords(totals.grandTotal)}
       </div>
 
       {/* FOOTER META + SIGNATURE */}
