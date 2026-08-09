@@ -46,7 +46,7 @@ function useDashboardData(fyStart: number) {
         supabase.from("customers").select("id", { count: "exact", head: true }),
         supabase.from("products").select("stock_quantity, purchase_price"),
         supabase.from("invoices").select("id", { count: "exact", head: true }).eq("invoice_type", "quotation").eq("status", "sent"),
-        supabase.from("invoices").select("id, invoice_number, customer_name_snapshot, grand_total, status, invoice_date").order("created_at", { ascending: false }).limit(6),
+        supabase.from("invoices").select("id, invoice_number, customer_name_snapshot, grand_total, status, invoice_date").order("created_at", { ascending: false }).limit(5),
         supabase.from("invoices").select("invoice_date, grand_total, status").gte("invoice_date", fyFrom).lt("invoice_date", fyTo).neq("status", "cancelled"),
       ]);
 
