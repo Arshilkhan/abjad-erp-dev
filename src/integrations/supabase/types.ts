@@ -14,16 +14,662 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      company_profile: {
+        Row: {
+          address: string | null
+          alt_mobile: string | null
+          bank_account: string | null
+          bank_branch: string | null
+          bank_branch_code: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          city: string | null
+          created_at: string
+          currency: string | null
+          declaration: string | null
+          email: string | null
+          financial_year: string | null
+          gst_number: string | null
+          id: string
+          invoice_prefix: string | null
+          logo_url: string | null
+          mobile: string | null
+          name: string
+          pan_number: string | null
+          pincode: string | null
+          po_prefix: string | null
+          quotation_prefix: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          alt_mobile?: string | null
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_branch_code?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          city?: string | null
+          created_at?: string
+          currency?: string | null
+          declaration?: string | null
+          email?: string | null
+          financial_year?: string | null
+          gst_number?: string | null
+          id?: string
+          invoice_prefix?: string | null
+          logo_url?: string | null
+          mobile?: string | null
+          name?: string
+          pan_number?: string | null
+          pincode?: string | null
+          po_prefix?: string | null
+          quotation_prefix?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          alt_mobile?: string | null
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_branch_code?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          city?: string | null
+          created_at?: string
+          currency?: string | null
+          declaration?: string | null
+          email?: string | null
+          financial_year?: string | null
+          gst_number?: string | null
+          id?: string
+          invoice_prefix?: string | null
+          logo_url?: string | null
+          mobile?: string | null
+          name?: string
+          pan_number?: string | null
+          pincode?: string | null
+          po_prefix?: string | null
+          quotation_prefix?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          billing_address: string | null
+          company_name: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          credit_limit: number | null
+          customer_name: string
+          email: string | null
+          gst_number: string | null
+          id: string
+          mobile: string | null
+          notes: string | null
+          pan_number: string | null
+          payment_terms: string | null
+          place_of_supply: string | null
+          shipping_address: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: string | null
+          company_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_limit?: number | null
+          customer_name: string
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile?: string | null
+          notes?: string | null
+          pan_number?: string | null
+          payment_terms?: string | null
+          place_of_supply?: string | null
+          shipping_address?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: string | null
+          company_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_limit?: number | null
+          customer_name?: string
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile?: string | null
+          notes?: string | null
+          pan_number?: string | null
+          payment_terms?: string | null
+          place_of_supply?: string | null
+          shipping_address?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          description: string
+          discount_amount: number | null
+          discount_pct: number | null
+          hsn_code: string | null
+          id: string
+          invoice_id: string
+          product_id: string | null
+          quantity: number
+          sr_no: number
+          tax_amount: number | null
+          tax_pct: number | null
+          total_amount: number
+          unit_rate: number
+          uom: string | null
+        }
+        Insert: {
+          description: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          quantity?: number
+          sr_no: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Update: {
+          description?: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          quantity?: number
+          sr_no?: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_settings: {
+        Row: {
+          id: string
+          mandatory_challan_number: boolean | null
+          mandatory_contact_person: boolean | null
+          mandatory_delivery: boolean | null
+          mandatory_discount: boolean | null
+          mandatory_freight: boolean | null
+          mandatory_gst_number: boolean | null
+          mandatory_packing_charges: boolean | null
+          mandatory_pan_number: boolean | null
+          mandatory_po_number: boolean | null
+          show_bank_details: boolean | null
+          show_challan_number: boolean | null
+          show_company_seal: boolean | null
+          show_contact_person: boolean | null
+          show_declaration: boolean | null
+          show_delivery: boolean | null
+          show_discount: boolean | null
+          show_freight: boolean | null
+          show_gst_arn: boolean | null
+          show_gst_number: boolean | null
+          show_packing_charges: boolean | null
+          show_pan_number: boolean | null
+          show_po_number: boolean | null
+          show_signature: boolean | null
+          show_work_order: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          mandatory_challan_number?: boolean | null
+          mandatory_contact_person?: boolean | null
+          mandatory_delivery?: boolean | null
+          mandatory_discount?: boolean | null
+          mandatory_freight?: boolean | null
+          mandatory_gst_number?: boolean | null
+          mandatory_packing_charges?: boolean | null
+          mandatory_pan_number?: boolean | null
+          mandatory_po_number?: boolean | null
+          show_bank_details?: boolean | null
+          show_challan_number?: boolean | null
+          show_company_seal?: boolean | null
+          show_contact_person?: boolean | null
+          show_declaration?: boolean | null
+          show_delivery?: boolean | null
+          show_discount?: boolean | null
+          show_freight?: boolean | null
+          show_gst_arn?: boolean | null
+          show_gst_number?: boolean | null
+          show_packing_charges?: boolean | null
+          show_pan_number?: boolean | null
+          show_po_number?: boolean | null
+          show_signature?: boolean | null
+          show_work_order?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          mandatory_challan_number?: boolean | null
+          mandatory_contact_person?: boolean | null
+          mandatory_delivery?: boolean | null
+          mandatory_discount?: boolean | null
+          mandatory_freight?: boolean | null
+          mandatory_gst_number?: boolean | null
+          mandatory_packing_charges?: boolean | null
+          mandatory_pan_number?: boolean | null
+          mandatory_po_number?: boolean | null
+          show_bank_details?: boolean | null
+          show_challan_number?: boolean | null
+          show_company_seal?: boolean | null
+          show_contact_person?: boolean | null
+          show_declaration?: boolean | null
+          show_delivery?: boolean | null
+          show_discount?: boolean | null
+          show_freight?: boolean | null
+          show_gst_arn?: boolean | null
+          show_gst_number?: boolean | null
+          show_packing_charges?: boolean | null
+          show_pan_number?: boolean | null
+          show_po_number?: boolean | null
+          show_signature?: boolean | null
+          show_work_order?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount_in_words: string | null
+          amount_paid: number | null
+          cgst_amount: number | null
+          challan_date: string | null
+          challan_number: string | null
+          contact_mobile: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          customer_address_snapshot: string | null
+          customer_gst_snapshot: string | null
+          customer_id: string | null
+          customer_name_snapshot: string | null
+          delivery_mode: string | null
+          discount_amount: number | null
+          freight: number | null
+          grand_total: number | null
+          gst_arn: string | null
+          id: string
+          igst_amount: number | null
+          invoice_date: string
+          invoice_number: string
+          invoice_type: Database["public"]["Enums"]["invoice_type"]
+          is_igst: boolean | null
+          net_value: number | null
+          notes: string | null
+          other_charges: number | null
+          packing_charges: number | null
+          payment_terms: string | null
+          place_of_supply: string | null
+          po_date: string | null
+          po_number: string | null
+          round_off: number | null
+          sgst_amount: number | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number | null
+          updated_at: string
+          work_order_number: string | null
+        }
+        Insert: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Update: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          dimensions: string | null
+          drawing_number: string | null
+          gst_percentage: number | null
+          hsn_code: string | null
+          id: string
+          image_url: string | null
+          material: string | null
+          maximum_stock: number | null
+          minimum_stock: number | null
+          product_code: string | null
+          product_name: string
+          purchase_price: number | null
+          selling_price: number | null
+          stock_quantity: number | null
+          unit: string | null
+          updated_at: string
+          weight: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          drawing_number?: string | null
+          gst_percentage?: number | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          material?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          product_code?: string | null
+          product_name: string
+          purchase_price?: number | null
+          selling_price?: number | null
+          stock_quantity?: number | null
+          unit?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          dimensions?: string | null
+          drawing_number?: string | null
+          gst_percentage?: number | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          material?: string | null
+          maximum_stock?: number | null
+          minimum_stock?: number | null
+          product_code?: string | null
+          product_name?: string
+          purchase_price?: number | null
+          selling_price?: number | null
+          stock_quantity?: number | null
+          unit?: string | null
+          updated_at?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          notes: string | null
+          product_id: string
+          quantity: number
+          reference: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          notes?: string | null
+          product_id: string
+          quantity: number
+          reference?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "accountant"
+        | "sales_executive"
+        | "viewer"
+      invoice_status: "draft" | "sent" | "paid" | "partial" | "cancelled"
+      invoice_type:
+        | "tax_invoice"
+        | "proforma"
+        | "quotation"
+        | "purchase_order"
+        | "delivery_challan"
+        | "credit_note"
+        | "debit_note"
+      stock_movement_type:
+        | "stock_in"
+        | "stock_out"
+        | "consumption"
+        | "manufacturing"
+        | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +796,31 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "super_admin",
+        "admin",
+        "accountant",
+        "sales_executive",
+        "viewer",
+      ],
+      invoice_status: ["draft", "sent", "paid", "partial", "cancelled"],
+      invoice_type: [
+        "tax_invoice",
+        "proforma",
+        "quotation",
+        "purchase_order",
+        "delivery_challan",
+        "credit_note",
+        "debit_note",
+      ],
+      stock_movement_type: [
+        "stock_in",
+        "stock_out",
+        "consumption",
+        "manufacturing",
+        "adjustment",
+      ],
+    },
   },
 } as const
