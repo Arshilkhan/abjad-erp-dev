@@ -104,6 +104,67 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_credits: {
+        Row: {
+          created_at: string
+          credit_amount: number
+          customer_id: string | null
+          id: string
+          notes: string | null
+          source_invoice_id: string | null
+          source_rejection_id: string | null
+          status: string
+          updated_at: string
+          used_amount: number
+        }
+        Insert: {
+          created_at?: string
+          credit_amount?: number
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          source_invoice_id?: string | null
+          source_rejection_id?: string | null
+          status?: string
+          updated_at?: string
+          used_amount?: number
+        }
+        Update: {
+          created_at?: string
+          credit_amount?: number
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          source_invoice_id?: string | null
+          source_rejection_id?: string | null
+          status?: string
+          updated_at?: string
+          used_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_source_invoice_id_fkey"
+            columns: ["source_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_source_rejection_id_fkey"
+            columns: ["source_rejection_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_rejections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           billing_address: string | null
@@ -170,8 +231,92 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_configuration: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          is_editable: boolean
+          is_mandatory: boolean
+          is_read_only: boolean
+          is_visible: boolean
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          is_editable?: boolean
+          is_mandatory?: boolean
+          is_read_only?: boolean
+          is_visible?: boolean
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          is_editable?: boolean
+          is_mandatory?: boolean
+          is_read_only?: boolean
+          is_visible?: boolean
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_history: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          invoice_id: string
+          metadata: Json | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          invoice_id: string
+          metadata?: Json | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          invoice_id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_history_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
+          accepted_quantity: number | null
           description: string
           discount_amount: number | null
           discount_pct: number | null
@@ -180,6 +325,7 @@ export type Database = {
           invoice_id: string
           product_id: string | null
           quantity: number
+          rejected_quantity: number
           sr_no: number
           tax_amount: number | null
           tax_pct: number | null
@@ -188,6 +334,7 @@ export type Database = {
           uom: string | null
         }
         Insert: {
+          accepted_quantity?: number | null
           description: string
           discount_amount?: number | null
           discount_pct?: number | null
@@ -196,6 +343,7 @@ export type Database = {
           invoice_id: string
           product_id?: string | null
           quantity?: number
+          rejected_quantity?: number
           sr_no: number
           tax_amount?: number | null
           tax_pct?: number | null
@@ -204,6 +352,7 @@ export type Database = {
           uom?: string | null
         }
         Update: {
+          accepted_quantity?: number | null
           description?: string
           discount_amount?: number | null
           discount_pct?: number | null
@@ -212,6 +361,7 @@ export type Database = {
           invoice_id?: string
           product_id?: string | null
           quantity?: number
+          rejected_quantity?: number
           sr_no?: number
           tax_amount?: number | null
           tax_pct?: number | null
@@ -232,6 +382,72 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_rejections: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          disposition: string
+          gst_deduction: number
+          id: string
+          invoice_id: string
+          invoice_item_id: string
+          reason_notes: string | null
+          rejected_quantity: number
+          rejected_value: number
+          rejection_reason: string
+          tax_pct: number
+          total_deduction: number
+          unit_rate: number
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          disposition?: string
+          gst_deduction?: number
+          id?: string
+          invoice_id: string
+          invoice_item_id: string
+          reason_notes?: string | null
+          rejected_quantity: number
+          rejected_value?: number
+          rejection_reason: string
+          tax_pct?: number
+          total_deduction?: number
+          unit_rate?: number
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          disposition?: string
+          gst_deduction?: number
+          id?: string
+          invoice_id?: string
+          invoice_item_id?: string
+          reason_notes?: string | null
+          rejected_quantity?: number
+          rejected_value?: number
+          rejection_reason?: string
+          tax_pct?: number
+          total_deduction?: number
+          unit_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_rejections_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_rejections_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
             referencedColumns: ["id"]
           },
         ]
@@ -327,6 +543,9 @@ export type Database = {
         Row: {
           amount_in_words: string | null
           amount_paid: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           cgst_amount: number | null
           challan_date: string | null
           challan_number: string | null
@@ -338,6 +557,7 @@ export type Database = {
           customer_gst_snapshot: string | null
           customer_id: string | null
           customer_name_snapshot: string | null
+          delivery_charges: number
           delivery_mode: string | null
           discount_amount: number | null
           freight: number | null
@@ -345,10 +565,12 @@ export type Database = {
           gst_arn: string | null
           id: string
           igst_amount: number | null
+          import_source: string | null
           invoice_date: string
           invoice_number: string
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           is_igst: boolean | null
+          is_imported: boolean
           net_value: number | null
           notes: string | null
           other_charges: number | null
@@ -361,12 +583,16 @@ export type Database = {
           sgst_amount: number | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number | null
+          transportation_charges: number
           updated_at: string
           work_order_number: string | null
         }
         Insert: {
           amount_in_words?: string | null
           amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           cgst_amount?: number | null
           challan_date?: string | null
           challan_number?: string | null
@@ -378,6 +604,7 @@ export type Database = {
           customer_gst_snapshot?: string | null
           customer_id?: string | null
           customer_name_snapshot?: string | null
+          delivery_charges?: number
           delivery_mode?: string | null
           discount_amount?: number | null
           freight?: number | null
@@ -385,10 +612,12 @@ export type Database = {
           gst_arn?: string | null
           id?: string
           igst_amount?: number | null
+          import_source?: string | null
           invoice_date?: string
           invoice_number: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
+          is_imported?: boolean
           net_value?: number | null
           notes?: string | null
           other_charges?: number | null
@@ -401,12 +630,16 @@ export type Database = {
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
+          transportation_charges?: number
           updated_at?: string
           work_order_number?: string | null
         }
         Update: {
           amount_in_words?: string | null
           amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           cgst_amount?: number | null
           challan_date?: string | null
           challan_number?: string | null
@@ -418,6 +651,7 @@ export type Database = {
           customer_gst_snapshot?: string | null
           customer_id?: string | null
           customer_name_snapshot?: string | null
+          delivery_charges?: number
           delivery_mode?: string | null
           discount_amount?: number | null
           freight?: number | null
@@ -425,10 +659,12 @@ export type Database = {
           gst_arn?: string | null
           id?: string
           igst_amount?: number | null
+          import_source?: string | null
           invoice_date?: string
           invoice_number?: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
+          is_imported?: boolean
           net_value?: number | null
           notes?: string | null
           other_charges?: number | null
@@ -441,6 +677,7 @@ export type Database = {
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
+          transportation_charges?: number
           updated_at?: string
           work_order_number?: string | null
         }
@@ -768,6 +1005,67 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rejected_inventory: {
+        Row: {
+          created_at: string
+          description: string | null
+          disposition: string
+          id: string
+          invoice_id: string | null
+          product_id: string | null
+          quantity: number
+          reason: string | null
+          rejection_id: string | null
+          uom: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          disposition?: string
+          id?: string
+          invoice_id?: string | null
+          product_id?: string | null
+          quantity?: number
+          reason?: string | null
+          rejection_id?: string | null
+          uom?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          disposition?: string
+          id?: string
+          invoice_id?: string | null
+          product_id?: string | null
+          quantity?: number
+          reason?: string | null
+          rejection_id?: string | null
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejected_inventory_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_inventory_rejection_id_fkey"
+            columns: ["rejection_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_rejections"
             referencedColumns: ["id"]
           },
         ]
