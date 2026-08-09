@@ -27,11 +27,20 @@ function AuthPage() {
 
   useEffect(() => { if (!loading && user) nav({ to: "/dashboard" }); }, [user, loading, nav]);
 
+  const describe = (error: unknown) => {
+    const err = error as { message?: string; status?: number } | null;
+    const msg = err?.message?.trim();
+    if (!msg || msg === "{}" || /fetch|network|failed to fetch/i.test(msg) || (err?.status ?? 0) >= 500) {
+      return "Can't reach the server right now. Please try again in a moment.";
+    }
+    return msg;
+  };
+
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(describe(error));
     toast.success("Signed in");
     nav({ to: "/dashboard" });
   };
@@ -46,7 +55,7 @@ function AuthPage() {
       },
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(describe(error));
     toast.success("Account created");
     nav({ to: "/dashboard" });
   };
@@ -57,7 +66,7 @@ function AuthPage() {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toast.error(describe(error));
     toast.success("Password reset link sent. Check your email.");
     setShowForgot(false);
   };
