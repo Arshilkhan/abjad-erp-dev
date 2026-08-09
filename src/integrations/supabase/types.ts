@@ -454,6 +454,53 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          mode: string
+          notes: string | null
+          payment_date: string
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -573,6 +620,158 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          description: string
+          hsn_code: string | null
+          id: string
+          product_id: string | null
+          purchase_order_id: string
+          quantity: number
+          sr_no: number
+          tax_amount: number
+          tax_pct: number
+          total_amount: number
+          unit_rate: number
+          uom: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          hsn_code?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_order_id: string
+          quantity?: number
+          sr_no?: number
+          tax_amount?: number
+          tax_pct?: number
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          hsn_code?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_order_id?: string
+          quantity?: number
+          sr_no?: number
+          tax_amount?: number
+          tax_pct?: number
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          cgst_amount: number
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          expected_date: string | null
+          freight: number
+          grand_total: number
+          id: string
+          igst_amount: number
+          is_igst: boolean
+          net_value: number
+          notes: string | null
+          packing_charges: number
+          po_date: string
+          po_number: string
+          round_off: number
+          sgst_amount: number
+          status: string
+          sub_total: number
+          updated_at: string
+          vendor_address_snapshot: string | null
+          vendor_gst_snapshot: string | null
+          vendor_id: string | null
+          vendor_name_snapshot: string | null
+        }
+        Insert: {
+          cgst_amount?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          expected_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          igst_amount?: number
+          is_igst?: boolean
+          net_value?: number
+          notes?: string | null
+          packing_charges?: number
+          po_date?: string
+          po_number: string
+          round_off?: number
+          sgst_amount?: number
+          status?: string
+          sub_total?: number
+          updated_at?: string
+          vendor_address_snapshot?: string | null
+          vendor_gst_snapshot?: string | null
+          vendor_id?: string | null
+          vendor_name_snapshot?: string | null
+        }
+        Update: {
+          cgst_amount?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          expected_date?: string | null
+          freight?: number
+          grand_total?: number
+          id?: string
+          igst_amount?: number
+          is_igst?: boolean
+          net_value?: number
+          notes?: string | null
+          packing_charges?: number
+          po_date?: string
+          po_number?: string
+          round_off?: number
+          sgst_amount?: number
+          status?: string
+          sub_total?: number
+          updated_at?: string
+          vendor_address_snapshot?: string | null
+          vendor_gst_snapshot?: string | null
+          vendor_id?: string | null
+          vendor_name_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           created_at: string
@@ -632,6 +831,78 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          bank_account: string | null
+          bank_ifsc: string | null
+          bank_name: string | null
+          city: string | null
+          company_name: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gst_number: string | null
+          id: string
+          mobile: string | null
+          notes: string | null
+          pan_number: string | null
+          payment_terms: string | null
+          pincode: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          address?: string | null
+          bank_account?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile?: string | null
+          notes?: string | null
+          pan_number?: string | null
+          payment_terms?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          address?: string | null
+          bank_account?: string | null
+          bank_ifsc?: string | null
+          bank_name?: string | null
+          city?: string | null
+          company_name?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile?: string | null
+          notes?: string | null
+          pan_number?: string | null
+          payment_terms?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+          vendor_name?: string
         }
         Relationships: []
       }
