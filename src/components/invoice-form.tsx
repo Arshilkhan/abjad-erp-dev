@@ -15,6 +15,7 @@ import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
+import { useInvoiceConfig } from "@/lib/invoice-config";
 
 interface LineItem {
   sr_no: number;
