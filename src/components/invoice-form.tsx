@@ -59,6 +59,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [freight, setFreight] = useState(0);
   const [packing, setPacking] = useState(0);
   const [otherCharges, setOtherCharges] = useState(0);
+  const [transportCharges, setTransportCharges] = useState(0);
+  const [deliveryCharges, setDeliveryCharges] = useState(0);
   const [discountExtra, setDiscountExtra] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
@@ -114,6 +116,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setFreight(Number(inv.freight ?? 0));
     setPacking(Number(inv.packing_charges ?? 0));
     setOtherCharges(Number(inv.other_charges ?? 0));
+    setTransportCharges(Number((inv as any).transportation_charges ?? 0));
+    setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
     setContactPerson(inv.contact_person ?? "");
@@ -151,12 +155,19 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const c = computeItem(it);
       net += c.net; tax += c.tax_amount; disc += c.discount_amount;
     }
-    const subtotal = net + Number(freight || 0) + Number(packing || 0) + Number(otherCharges || 0) - Number(discountExtra || 0);
+    const subtotal =
+      net +
+      Number(freight || 0) +
+      Number(packing || 0) +
+      Number(otherCharges || 0) +
+      Number(transportCharges || 0) +
+      Number(deliveryCharges || 0) -
+      Number(discountExtra || 0);
     const preRound = subtotal + tax;
     const grand = Math.round(preRound);
     const round_off = grand - preRound;
     return { net, tax, disc, subtotal, grand, round_off };
-  }, [items, freight, packing, otherCharges, discountExtra]);
+  }, [items, freight, packing, otherCharges, transportCharges, deliveryCharges, discountExtra]);
 
   const setItem = (idx: number, patch: Partial<LineItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
