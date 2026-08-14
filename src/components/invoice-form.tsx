@@ -15,6 +15,7 @@ import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
+import { useInvoiceConfig } from "@/lib/invoice-config";
 
 interface LineItem {
   sr_no: number;
@@ -59,6 +60,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [freight, setFreight] = useState(0);
   const [packing, setPacking] = useState(0);
   const [otherCharges, setOtherCharges] = useState(0);
+  const [transportCharges, setTransportCharges] = useState(0);
+  const [deliveryCharges, setDeliveryCharges] = useState(0);
   const [discountExtra, setDiscountExtra] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
@@ -80,6 +83,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     queryKey: ["invoice-settings"],
     queryFn: async () => (await supabase.from("invoice_settings").select("*").limit(1).maybeSingle()).data,
   });
+  const { cfg } = useInvoiceConfig();
   const { data: company } = useQuery({
     queryKey: ["company"],
     queryFn: async () => (await supabase.from("company_profile").select("state_code").limit(1).maybeSingle()).data,
@@ -114,6 +118,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setFreight(Number(inv.freight ?? 0));
     setPacking(Number(inv.packing_charges ?? 0));
     setOtherCharges(Number(inv.other_charges ?? 0));
+    setTransportCharges(Number((inv as any).transportation_charges ?? 0));
+    setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
     setContactPerson(inv.contact_person ?? "");
@@ -151,12 +157,19 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const c = computeItem(it);
       net += c.net; tax += c.tax_amount; disc += c.discount_amount;
     }
-    const subtotal = net + Number(freight || 0) + Number(packing || 0) + Number(otherCharges || 0) - Number(discountExtra || 0);
+    const subtotal =
+      net +
+      Number(freight || 0) +
+      Number(packing || 0) +
+      Number(otherCharges || 0) +
+      Number(transportCharges || 0) +
+      Number(deliveryCharges || 0) -
+      Number(discountExtra || 0);
     const preRound = subtotal + tax;
     const grand = Math.round(preRound);
     const round_off = grand - preRound;
     return { net, tax, disc, subtotal, grand, round_off };
-  }, [items, freight, packing, otherCharges, discountExtra]);
+  }, [items, freight, packing, otherCharges, transportCharges, deliveryCharges, discountExtra]);
 
   const setItem = (idx: number, patch: Partial<LineItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -186,8 +199,15 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (settings?.mandatory_gst_number && !customer.gst_number) throw new Error("Customer GST Number is mandatory");
       if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
       if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
-      if (settings?.mandatory_freight && !freight) throw new Error("Freight is mandatory");
-      if (settings?.mandatory_packing_charges && !packing) throw new Error("Packing charges are mandatory");
+      const requireCharge = (key: string, val: number) => {
+        const c = cfg(key);
+        if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
+      };
+      requireCharge("freight_charges", freight);
+      requireCharge("packing_charges", packing);
+      requireCharge("other_charges", otherCharges);
+      requireCharge("transportation_charges", transportCharges);
+      requireCharge("delivery_charges", deliveryCharges);
       if (items.length === 0) throw new Error("Add at least one item");
 
       const sgst_amount = isIGST ? 0 : totals.tax / 2;
@@ -210,6 +230,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         freight: Number(freight || 0),
         packing_charges: Number(packing || 0),
         other_charges: Number(otherCharges || 0),
+        transportation_charges: Number(transportCharges || 0),
+        delivery_charges: Number(deliveryCharges || 0),
         subtotal: totals.subtotal,
         sgst_amount, cgst_amount, igst_amount,
         round_off: totals.round_off,
@@ -493,22 +515,11 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 <Input className="h-8 w-32 text-right" type="number" value={discountExtra} onChange={(e) => setDiscountExtra(Number(e.target.value))} />
               </div>
             )}
-            {(settings?.show_freight || isEdit) && (
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Freight{settings?.mandatory_freight && " *"}</Label>
-                <Input className="h-8 w-32 text-right" type="number" value={freight} onChange={(e) => setFreight(Number(e.target.value))} />
-              </div>
-            )}
-            {(settings?.show_packing_charges || isEdit) && (
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Packing & Forwarding</Label>
-                <Input className="h-8 w-32 text-right" type="number" value={packing} onChange={(e) => setPacking(Number(e.target.value))} />
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Other Charges</Label>
-              <Input className="h-8 w-32 text-right" type="number" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} />
-            </div>
+            <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
+            <ChargeRow config={cfg("transportation_charges")} fallbackLabel="Transportation Charges" value={transportCharges} onChange={setTransportCharges} />
+            <ChargeRow config={cfg("delivery_charges")} fallbackLabel="Delivery Charges" value={deliveryCharges} onChange={setDeliveryCharges} />
+            <ChargeRow config={cfg("packing_charges")} fallbackLabel="Packing & Forwarding" value={packing} onChange={setPacking} />
+            <ChargeRow config={cfg("other_charges")} fallbackLabel="Other Charges" value={otherCharges} onChange={setOtherCharges} />
             <div className="border-t pt-2">
               <Row label="Subtotal" value={formatINR(totals.subtotal)} />
               {isIGST ? (
@@ -538,6 +549,36 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between py-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="tabular-nums font-medium">{value}</span>
+    </div>
+  );
+}
+
+function ChargeRow({
+  config,
+  fallbackLabel,
+  value,
+  onChange,
+}: {
+  config: { visible: boolean; mandatory: boolean; readOnly: boolean; label: string };
+  fallbackLabel: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  if (!config.visible) return null;
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs text-muted-foreground">
+        {config.label || fallbackLabel}
+        {config.mandatory && " *"}
+      </Label>
+      <Input
+        className="h-8 w-32 text-right"
+        type="number"
+        value={value}
+        readOnly={config.readOnly}
+        disabled={config.readOnly}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
     </div>
   );
 }
