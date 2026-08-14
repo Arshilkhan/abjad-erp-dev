@@ -515,22 +515,11 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 <Input className="h-8 w-32 text-right" type="number" value={discountExtra} onChange={(e) => setDiscountExtra(Number(e.target.value))} />
               </div>
             )}
-            {(settings?.show_freight || isEdit) && (
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Freight{settings?.mandatory_freight && " *"}</Label>
-                <Input className="h-8 w-32 text-right" type="number" value={freight} onChange={(e) => setFreight(Number(e.target.value))} />
-              </div>
-            )}
-            {(settings?.show_packing_charges || isEdit) && (
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Packing & Forwarding</Label>
-                <Input className="h-8 w-32 text-right" type="number" value={packing} onChange={(e) => setPacking(Number(e.target.value))} />
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Other Charges</Label>
-              <Input className="h-8 w-32 text-right" type="number" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} />
-            </div>
+            <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
+            <ChargeRow config={cfg("transportation_charges")} fallbackLabel="Transportation Charges" value={transportCharges} onChange={setTransportCharges} />
+            <ChargeRow config={cfg("delivery_charges")} fallbackLabel="Delivery Charges" value={deliveryCharges} onChange={setDeliveryCharges} />
+            <ChargeRow config={cfg("packing_charges")} fallbackLabel="Packing & Forwarding" value={packing} onChange={setPacking} />
+            <ChargeRow config={cfg("other_charges")} fallbackLabel="Other Charges" value={otherCharges} onChange={setOtherCharges} />
             <div className="border-t pt-2">
               <Row label="Subtotal" value={formatINR(totals.subtotal)} />
               {isIGST ? (
@@ -560,6 +549,36 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between py-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="tabular-nums font-medium">{value}</span>
+    </div>
+  );
+}
+
+function ChargeRow({
+  config,
+  fallbackLabel,
+  value,
+  onChange,
+}: {
+  config: { visible: boolean; mandatory: boolean; readOnly: boolean; label: string };
+  fallbackLabel: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  if (!config.visible) return null;
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs text-muted-foreground">
+        {config.label || fallbackLabel}
+        {config.mandatory && " *"}
+      </Label>
+      <Input
+        className="h-8 w-32 text-right"
+        type="number"
+        value={value}
+        readOnly={config.readOnly}
+        disabled={config.readOnly}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
     </div>
   );
 }
