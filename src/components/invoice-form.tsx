@@ -82,6 +82,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     queryKey: ["invoice-settings"],
     queryFn: async () => (await supabase.from("invoice_settings").select("*").limit(1).maybeSingle()).data,
   });
+  const { cfg } = useInvoiceConfig();
   const { data: company } = useQuery({
     queryKey: ["company"],
     queryFn: async () => (await supabase.from("company_profile").select("state_code").limit(1).maybeSingle()).data,
