@@ -197,8 +197,15 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (settings?.mandatory_gst_number && !customer.gst_number) throw new Error("Customer GST Number is mandatory");
       if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
       if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
-      if (settings?.mandatory_freight && !freight) throw new Error("Freight is mandatory");
-      if (settings?.mandatory_packing_charges && !packing) throw new Error("Packing charges are mandatory");
+      const requireCharge = (key: string, val: number) => {
+        const c = cfg(key);
+        if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
+      };
+      requireCharge("freight_charges", freight);
+      requireCharge("packing_charges", packing);
+      requireCharge("other_charges", otherCharges);
+      requireCharge("transportation_charges", transportCharges);
+      requireCharge("delivery_charges", deliveryCharges);
       if (items.length === 0) throw new Error("Add at least one item");
 
       const sgst_amount = isIGST ? 0 : totals.tax / 2;
@@ -221,6 +228,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         freight: Number(freight || 0),
         packing_charges: Number(packing || 0),
         other_charges: Number(otherCharges || 0),
+        transportation_charges: Number(transportCharges || 0),
+        delivery_charges: Number(deliveryCharges || 0),
         subtotal: totals.subtotal,
         sgst_amount, cgst_amount, igst_amount,
         round_off: totals.round_off,
