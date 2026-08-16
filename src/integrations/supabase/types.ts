@@ -548,6 +548,7 @@ export type Database = {
           cancelled_by: string | null
           cgst_amount: number | null
           challan_date: string | null
+          challan_dates: string[]
           challan_number: string | null
           contact_mobile: string | null
           contact_person: string | null
@@ -595,6 +596,7 @@ export type Database = {
           cancelled_by?: string | null
           cgst_amount?: number | null
           challan_date?: string | null
+          challan_dates?: string[]
           challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
@@ -642,6 +644,7 @@ export type Database = {
           cancelled_by?: string | null
           cgst_amount?: number | null
           challan_date?: string | null
+          challan_dates?: string[]
           challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
