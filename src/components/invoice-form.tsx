@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -46,10 +46,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const nav = useNavigate();
   const { user } = useAuth();
   const isEdit = !!editId;
+  const qc = useQueryClient();
 
   const [items, setItems] = useState<LineItem[]>([emptyItem(1)]);
   const [customerId, setCustomerId] = useState<string>("");
   const [customerText, setCustomerText] = useState<string>("");
+  const [custCompany, setCustCompany] = useState("");
+  const [custContact, setCustContact] = useState("");
+  const [custMobile, setCustMobile] = useState("");
+  const [custEmail, setCustEmail] = useState("");
+  const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
   const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
   const [poNumber, setPoNumber] = useState("");
@@ -73,7 +79,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
-    queryFn: async () => (await supabase.from("customers").select("id, customer_name, company_name, gst_number, billing_address, state, state_code")).data ?? [],
+    queryFn: async () => (await supabase.from("customers").select("id, customer_name, company_name, gst_number, billing_address, state, state_code, contact_person, mobile, email")).data ?? [],
   });
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
@@ -151,6 +157,18 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const customer = customers.find((c: any) => c.id === customerId);
   const isIGST = !!(customer?.state_code && company?.state_code && customer.state_code !== company.state_code);
 
+  // Fill the customer detail fields whenever an existing customer is selected
+  // (also covers edit-mode hydration once the customer list arrives).
+  useEffect(() => {
+    if (!customer) return;
+    setCustomerText(customer.customer_name || customer.company_name || "");
+    setCustCompany(customer.company_name ?? "");
+    setCustContact((customer as any).contact_person ?? "");
+    setCustMobile((customer as any).mobile ?? "");
+    setCustEmail((customer as any).email ?? "");
+    setCustGst(customer.gst_number ?? "");
+  }, [customerId, customer]);
+
   const totals = useMemo(() => {
     let net = 0, tax = 0, disc = 0;
     for (const it of items) {
@@ -195,8 +213,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   const save = useMutation({
     mutationFn: async (status: "draft" | "sent") => {
-      if (!customer) throw new Error("Please select a customer");
-      if (settings?.mandatory_gst_number && !customer.gst_number) throw new Error("Customer GST Number is mandatory");
+      const nameTyped = customerText.trim();
+      if (!nameTyped) throw new Error("Please enter a customer name");
+      if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
       if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
       if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
       const requireCharge = (key: string, val: number) => {
@@ -210,20 +229,91 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       requireCharge("delivery_charges", deliveryCharges);
       if (items.length === 0) throw new Error("Add at least one item");
 
+      // Resolve the customer: use the selected one, match an existing record by
+      // name, or create a brand-new customer from the typed details.
+      let cust: any =
+        customer ??
+        customers.find(
+          (c: any) =>
+            (c.customer_name ?? "").toLowerCase() === nameTyped.toLowerCase() ||
+            (c.company_name ?? "").toLowerCase() === nameTyped.toLowerCase(),
+        );
+      if (cust) {
+        const patch: any = {};
+        if (custCompany.trim() && custCompany !== (cust.company_name ?? "")) patch.company_name = custCompany.trim();
+        if (custContact.trim() && custContact !== (cust.contact_person ?? "")) patch.contact_person = custContact.trim();
+        if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
+        if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
+        if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
+        if (Object.keys(patch).length) {
+          const { data, error } = await supabase.from("customers").update(patch).eq("id", cust.id).select().single();
+          if (error) throw error;
+          cust = data;
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("customers")
+          .insert({
+            customer_name: nameTyped,
+            company_name: custCompany.trim() || null,
+            contact_person: custContact.trim() || null,
+            mobile: custMobile.trim() || null,
+            email: custEmail.trim() || null,
+            gst_number: custGst.trim() || null,
+            created_by: user?.id ?? null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        cust = data;
+        setCustomerId(cust.id);
+      }
+
+      // Create any products that were typed in but don't exist yet.
+      const resolvedItems: LineItem[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i]!;
+        const typed = (productTexts[i] ?? "").trim();
+        if (it.product_id || !typed) {
+          resolvedItems.push({ ...it, description: it.description || typed });
+          continue;
+        }
+        const match = products.find((p: any) => (p.product_name ?? "").toLowerCase() === typed.toLowerCase());
+        if (match) {
+          resolvedItems.push({ ...it, product_id: match.id, description: it.description || typed });
+          continue;
+        }
+        const { data: newProd, error: pErr } = await supabase
+          .from("products")
+          .insert({
+            product_name: typed,
+            hsn_code: it.hsn_code || null,
+            description: it.description || null,
+            unit: it.uom || null,
+            selling_price: Number(it.unit_rate) || 0,
+            gst_percentage: Number(it.tax_pct) || 0,
+            stock_quantity: Number(it.quantity) || 0,
+          })
+          .select()
+          .single();
+        if (pErr) throw pErr;
+        resolvedItems.push({ ...it, product_id: newProd.id, description: it.description || typed });
+      }
+
       const sgst_amount = isIGST ? 0 : totals.tax / 2;
       const cgst_amount = isIGST ? 0 : totals.tax / 2;
       const igst_amount = isIGST ? totals.tax : 0;
 
       const payload: any = {
         invoice_type: invoiceType as any, invoice_date: invoiceDate,
-        customer_id: customer.id,
-        customer_name_snapshot: customer.company_name || customer.customer_name,
-        customer_gst_snapshot: customer.gst_number,
-        customer_address_snapshot: customer.billing_address,
+        customer_id: cust.id,
+        customer_name_snapshot: cust.company_name || cust.customer_name,
+        customer_gst_snapshot: cust.gst_number,
+        customer_address_snapshot: cust.billing_address,
         po_number: poNumber || null, po_date: poDate || null,
         challan_number: challanNumber || null, challan_date: challanDate || null,
         work_order_number: workOrder || null,
-        place_of_supply: customer.state ?? null,
+        place_of_supply: cust.state ?? null,
         is_igst: isIGST,
         net_value: totals.net,
         discount_amount: totals.disc + Number(discountExtra || 0),
@@ -239,7 +329,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
         payment_terms: paymentTerms || null,
-        contact_person: contactPerson || null,
+        contact_person: contactPerson || custContact || null,
         contact_mobile: contactMobile || null,
         notes: notes || null,
         status,
@@ -267,7 +357,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         invId = inv.id; invNumber = inv.invoice_number;
       }
 
-      const rows = items.map((it) => {
+      const rows = resolvedItems.map((it) => {
         const c = computeItem(it);
         return {
           invoice_id: invId, sr_no: it.sr_no, product_id: it.product_id,
@@ -283,6 +373,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       return { id: invId, invoice_number: invNumber };
     },
     onSuccess: async (inv) => {
+      qc.invalidateQueries({ queryKey: ["customers-list"] });
+      qc.invalidateQueries({ queryKey: ["products-list"] });
       if (isEdit) {
         await logInvoiceEvent(inv.id, "edited", "Invoice edited");
       } else if (importMode) {
@@ -321,23 +413,41 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           <CardHeader><CardTitle className="text-base">Invoice Details</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Customer *</Label>
+              <Label className="text-xs">Customer Name *</Label>
               <TypeaheadInput
                 value={customerText}
                 onChange={(v) => { setCustomerText(v); if (customerId) setCustomerId(""); }}
                 options={customers.map((c: any) => ({
                   id: c.id,
-                  label: c.company_name || c.customer_name,
-                  sublabel: c.gst_number ?? c.customer_name ?? "",
+                  label: c.customer_name || c.company_name,
+                  sublabel: [c.company_name, c.gst_number].filter(Boolean).join(" • "),
                 }))}
                 onSelect={(opt) => { setCustomerId(opt.id); setCustomerText(opt.label); }}
-                onMissing={(text) => {
-                  if (window.confirm(`Customer "${text}" not found. Add a new customer now?`)) {
-                    nav({ to: "/customers" });
-                  }
-                }}
-                placeholder="Type customer name…"
+                placeholder="Type a customer name — new names are saved automatically"
               />
+              {!customerId && customerText.trim() && (
+                <p className="text-xs text-muted-foreground">New customer — will be added to your directory on save.</p>
+              )}
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Company Name</Label>
+              <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Contact Person</Label>
+              <Input value={custContact} onChange={(e) => setCustContact(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Mobile</Label>
+              <Input value={custMobile} onChange={(e) => setCustMobile(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input type="email" value={custEmail} onChange={(e) => setCustEmail(e.target.value)} />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">GST Number{settings?.mandatory_gst_number && " *"}</Label>
+              <Input className="font-mono" value={custGst} onChange={(e) => setCustGst(e.target.value.toUpperCase())} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
@@ -400,7 +510,15 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   {isIGST ? "Inter-state → IGST" : "Intra-state → SGST + CGST"}
                 </div>
               </>
-            ) : <p className="text-muted-foreground text-xs">Select a customer to see details.</p>}
+            ) : customerText.trim() ? (
+              <>
+                <div className="font-medium">{custCompany || customerText}</div>
+                <div className="text-xs text-muted-foreground">New customer — saved when you save this invoice.</div>
+                <div className="pt-2 text-xs"><span className="text-muted-foreground">GST:</span> <span className="font-mono">{custGst || "—"}</span></div>
+                <div className="text-xs"><span className="text-muted-foreground">Mobile:</span> {custMobile || "—"}</div>
+                <div className="text-xs"><span className="text-muted-foreground">Email:</span> {custEmail || "—"}</div>
+              </>
+            ) : <p className="text-muted-foreground text-xs">Type a customer name to begin.</p>}
           </CardContent>
         </Card>
       </div>
@@ -447,11 +565,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                             sublabel: `${p.product_code ?? ""}${p.hsn_code ? ` • HSN ${p.hsn_code}` : ""}`,
                           }))}
                           onSelect={(opt) => applyProduct(idx, opt.id)}
-                          onMissing={(text) => {
-                            if (window.confirm(`Product "${text}" not found. Add a new product now?`)) {
-                              nav({ to: "/products" });
-                            }
-                          }}
                           placeholder="Type product…"
                           inputClassName="h-8"
                         />
