@@ -510,7 +510,15 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   {isIGST ? "Inter-state → IGST" : "Intra-state → SGST + CGST"}
                 </div>
               </>
-            ) : <p className="text-muted-foreground text-xs">Select a customer to see details.</p>}
+            ) : customerText.trim() ? (
+              <>
+                <div className="font-medium">{custCompany || customerText}</div>
+                <div className="text-xs text-muted-foreground">New customer — saved when you save this invoice.</div>
+                <div className="pt-2 text-xs"><span className="text-muted-foreground">GST:</span> <span className="font-mono">{custGst || "—"}</span></div>
+                <div className="text-xs"><span className="text-muted-foreground">Mobile:</span> {custMobile || "—"}</div>
+                <div className="text-xs"><span className="text-muted-foreground">Email:</span> {custEmail || "—"}</div>
+              </>
+            ) : <p className="text-muted-foreground text-xs">Type a customer name to begin.</p>}
           </CardContent>
         </Card>
       </div>
