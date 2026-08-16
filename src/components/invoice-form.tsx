@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -46,10 +46,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const nav = useNavigate();
   const { user } = useAuth();
   const isEdit = !!editId;
+  const qc = useQueryClient();
 
   const [items, setItems] = useState<LineItem[]>([emptyItem(1)]);
   const [customerId, setCustomerId] = useState<string>("");
   const [customerText, setCustomerText] = useState<string>("");
+  const [custCompany, setCustCompany] = useState("");
+  const [custContact, setCustContact] = useState("");
+  const [custMobile, setCustMobile] = useState("");
+  const [custEmail, setCustEmail] = useState("");
+  const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
   const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
   const [poNumber, setPoNumber] = useState("");
@@ -73,7 +79,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
-    queryFn: async () => (await supabase.from("customers").select("id, customer_name, company_name, gst_number, billing_address, state, state_code")).data ?? [],
+    queryFn: async () => (await supabase.from("customers").select("id, customer_name, company_name, gst_number, billing_address, state, state_code, contact_person, mobile, email")).data ?? [],
   });
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
