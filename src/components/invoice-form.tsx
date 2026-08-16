@@ -373,6 +373,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       return { id: invId, invoice_number: invNumber };
     },
     onSuccess: async (inv) => {
+      qc.invalidateQueries({ queryKey: ["customers-list"] });
+      qc.invalidateQueries({ queryKey: ["products-list"] });
       if (isEdit) {
         await logInvoiceEvent(inv.id, "edited", "Invoice edited");
       } else if (importMode) {
