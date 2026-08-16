@@ -62,6 +62,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [poDate, setPoDate] = useState("");
   const [challanNumber, setChallanNumber] = useState("");
   const [challanDate, setChallanDate] = useState("");
+  const [challanDates, setChallanDates] = useState<string[]>([]);
+  const [challanDateInput, setChallanDateInput] = useState("");
   const [workOrder, setWorkOrder] = useState("");
   const [freight, setFreight] = useState(0);
   const [packing, setPacking] = useState(0);
@@ -120,6 +122,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setPoDate(inv.po_date ?? "");
     setChallanNumber(inv.challan_number ?? "");
     setChallanDate(inv.challan_date ?? "");
+    setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));
     setWorkOrder(inv.work_order_number ?? "");
     setFreight(Number(inv.freight ?? 0));
     setPacking(Number(inv.packing_charges ?? 0));
@@ -311,7 +314,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         customer_gst_snapshot: cust.gst_number,
         customer_address_snapshot: cust.billing_address,
         po_number: poNumber || null, po_date: poDate || null,
-        challan_number: challanNumber || null, challan_date: challanDate || null,
+        challan_number: challanNumber || null,
+        challan_date: (isChallan ? challanDates[0] : challanDate) || null,
+        challan_dates: isChallan ? challanDates : challanDate ? [challanDate] : [],
         work_order_number: workOrder || null,
         place_of_supply: cust.state ?? null,
         is_igst: isIGST,
