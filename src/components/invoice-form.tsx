@@ -413,23 +413,41 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           <CardHeader><CardTitle className="text-base">Invoice Details</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Customer *</Label>
+              <Label className="text-xs">Customer Name *</Label>
               <TypeaheadInput
                 value={customerText}
                 onChange={(v) => { setCustomerText(v); if (customerId) setCustomerId(""); }}
                 options={customers.map((c: any) => ({
                   id: c.id,
-                  label: c.company_name || c.customer_name,
-                  sublabel: c.gst_number ?? c.customer_name ?? "",
+                  label: c.customer_name || c.company_name,
+                  sublabel: [c.company_name, c.gst_number].filter(Boolean).join(" • "),
                 }))}
                 onSelect={(opt) => { setCustomerId(opt.id); setCustomerText(opt.label); }}
-                onMissing={(text) => {
-                  if (window.confirm(`Customer "${text}" not found. Add a new customer now?`)) {
-                    nav({ to: "/customers" });
-                  }
-                }}
-                placeholder="Type customer name…"
+                placeholder="Type a customer name — new names are saved automatically"
               />
+              {!customerId && customerText.trim() && (
+                <p className="text-xs text-muted-foreground">New customer — will be added to your directory on save.</p>
+              )}
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Company Name</Label>
+              <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Contact Person</Label>
+              <Input value={custContact} onChange={(e) => setCustContact(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Mobile</Label>
+              <Input value={custMobile} onChange={(e) => setCustMobile(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input type="email" value={custEmail} onChange={(e) => setCustEmail(e.target.value)} />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">GST Number{settings?.mandatory_gst_number && " *"}</Label>
+              <Input className="font-mono" value={custGst} onChange={(e) => setCustGst(e.target.value.toUpperCase())} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
