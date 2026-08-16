@@ -157,6 +157,18 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const customer = customers.find((c: any) => c.id === customerId);
   const isIGST = !!(customer?.state_code && company?.state_code && customer.state_code !== company.state_code);
 
+  // Fill the customer detail fields whenever an existing customer is selected
+  // (also covers edit-mode hydration once the customer list arrives).
+  useEffect(() => {
+    if (!customer) return;
+    setCustomerText(customer.customer_name || customer.company_name || "");
+    setCustCompany(customer.company_name ?? "");
+    setCustContact((customer as any).contact_person ?? "");
+    setCustMobile((customer as any).mobile ?? "");
+    setCustEmail((customer as any).email ?? "");
+    setCustGst(customer.gst_number ?? "");
+  }, [customerId, customer]);
+
   const totals = useMemo(() => {
     let net = 0, tax = 0, disc = 0;
     for (const it of items) {
