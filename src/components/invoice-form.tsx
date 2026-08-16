@@ -78,6 +78,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [notes, setNotes] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
+  const isChallan = invoiceType === "delivery_challan";
+
+  const addChallanDate = () => {
+    const d = challanDateInput;
+    if (!d) return;
+    setChallanDates((prev) => (prev.includes(d) ? prev : [...prev, d].sort()));
+    setChallanDateInput("");
+  };
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
@@ -484,14 +492,60 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               </div>
             </>}
             {(settings?.show_challan_number || isEdit) && <>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Challan Number{settings?.mandatory_challan_number && " *"}</Label>
-                <Input value={challanNumber} onChange={(e) => setChallanNumber(e.target.value)} />
+              <div className={isChallan ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
+                <Label className="text-xs">
+                  Challan Number{isChallan && "s (comma separated)"}
+                  {settings?.mandatory_challan_number && " *"}
+                </Label>
+                <Input
+                  value={challanNumber}
+                  placeholder={isChallan ? "DC-001, DC-002, DC-003" : ""}
+                  onChange={(e) => setChallanNumber(e.target.value)}
+                />
+                {isChallan && challanNumber.trim() && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {challanNumber.split(",").map((n) => n.trim()).filter(Boolean).map((n, i) => (
+                      <span key={`${n}-${i}`} className="rounded-md bg-muted px-2 py-0.5 text-xs">{n}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Challan Date</Label>
-                <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
-              </div>
+              {isChallan ? (
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs">Challan Dates</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={challanDateInput}
+                      onChange={(e) => setChallanDateInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChallanDate(); } }}
+                    />
+                    <Button type="button" variant="secondary" onClick={addChallanDate}>Add</Button>
+                  </div>
+                  {challanDates.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {challanDates.map((d) => (
+                        <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
+                          {d}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${d}`}
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Challan Date</Label>
+                  <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
+                </div>
+              )}
             </>}
             {(settings?.show_work_order || isEdit) && (
               <div className="col-span-2 space-y-1.5">
