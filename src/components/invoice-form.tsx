@@ -557,11 +557,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                             sublabel: `${p.product_code ?? ""}${p.hsn_code ? ` • HSN ${p.hsn_code}` : ""}`,
                           }))}
                           onSelect={(opt) => applyProduct(idx, opt.id)}
-                          onMissing={(text) => {
-                            if (window.confirm(`Product "${text}" not found. Add a new product now?`)) {
-                              nav({ to: "/products" });
-                            }
-                          }}
                           placeholder="Type product…"
                           inputClassName="h-8"
                         />
