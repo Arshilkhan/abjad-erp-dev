@@ -213,8 +213,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   const save = useMutation({
     mutationFn: async (status: "draft" | "sent") => {
-      if (!customer) throw new Error("Please select a customer");
-      if (settings?.mandatory_gst_number && !customer.gst_number) throw new Error("Customer GST Number is mandatory");
+      const nameTyped = customerText.trim();
+      if (!nameTyped) throw new Error("Please enter a customer name");
+      if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
       if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
       if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
       const requireCharge = (key: string, val: number) => {
@@ -228,20 +229,91 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       requireCharge("delivery_charges", deliveryCharges);
       if (items.length === 0) throw new Error("Add at least one item");
 
+      // Resolve the customer: use the selected one, match an existing record by
+      // name, or create a brand-new customer from the typed details.
+      let cust: any =
+        customer ??
+        customers.find(
+          (c: any) =>
+            (c.customer_name ?? "").toLowerCase() === nameTyped.toLowerCase() ||
+            (c.company_name ?? "").toLowerCase() === nameTyped.toLowerCase(),
+        );
+      if (cust) {
+        const patch: any = {};
+        if (custCompany.trim() && custCompany !== (cust.company_name ?? "")) patch.company_name = custCompany.trim();
+        if (custContact.trim() && custContact !== (cust.contact_person ?? "")) patch.contact_person = custContact.trim();
+        if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
+        if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
+        if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
+        if (Object.keys(patch).length) {
+          const { data, error } = await supabase.from("customers").update(patch).eq("id", cust.id).select().single();
+          if (error) throw error;
+          cust = data;
+        }
+      } else {
+        const { data, error } = await supabase
+          .from("customers")
+          .insert({
+            customer_name: nameTyped,
+            company_name: custCompany.trim() || null,
+            contact_person: custContact.trim() || null,
+            mobile: custMobile.trim() || null,
+            email: custEmail.trim() || null,
+            gst_number: custGst.trim() || null,
+            created_by: user?.id ?? null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        cust = data;
+        setCustomerId(cust.id);
+      }
+
+      // Create any products that were typed in but don't exist yet.
+      const resolvedItems: LineItem[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i]!;
+        const typed = (productTexts[i] ?? "").trim();
+        if (it.product_id || !typed) {
+          resolvedItems.push({ ...it, description: it.description || typed });
+          continue;
+        }
+        const match = products.find((p: any) => (p.product_name ?? "").toLowerCase() === typed.toLowerCase());
+        if (match) {
+          resolvedItems.push({ ...it, product_id: match.id, description: it.description || typed });
+          continue;
+        }
+        const { data: newProd, error: pErr } = await supabase
+          .from("products")
+          .insert({
+            product_name: typed,
+            hsn_code: it.hsn_code || null,
+            description: it.description || null,
+            unit: it.uom || null,
+            selling_price: Number(it.unit_rate) || 0,
+            gst_percentage: Number(it.tax_pct) || 0,
+            stock_quantity: Number(it.quantity) || 0,
+          })
+          .select()
+          .single();
+        if (pErr) throw pErr;
+        resolvedItems.push({ ...it, product_id: newProd.id, description: it.description || typed });
+      }
+
       const sgst_amount = isIGST ? 0 : totals.tax / 2;
       const cgst_amount = isIGST ? 0 : totals.tax / 2;
       const igst_amount = isIGST ? totals.tax : 0;
 
       const payload: any = {
         invoice_type: invoiceType as any, invoice_date: invoiceDate,
-        customer_id: customer.id,
-        customer_name_snapshot: customer.company_name || customer.customer_name,
-        customer_gst_snapshot: customer.gst_number,
-        customer_address_snapshot: customer.billing_address,
+        customer_id: cust.id,
+        customer_name_snapshot: cust.company_name || cust.customer_name,
+        customer_gst_snapshot: cust.gst_number,
+        customer_address_snapshot: cust.billing_address,
         po_number: poNumber || null, po_date: poDate || null,
         challan_number: challanNumber || null, challan_date: challanDate || null,
         work_order_number: workOrder || null,
-        place_of_supply: customer.state ?? null,
+        place_of_supply: cust.state ?? null,
         is_igst: isIGST,
         net_value: totals.net,
         discount_amount: totals.disc + Number(discountExtra || 0),
@@ -257,7 +329,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
         payment_terms: paymentTerms || null,
-        contact_person: contactPerson || null,
+        contact_person: contactPerson || custContact || null,
         contact_mobile: contactMobile || null,
         notes: notes || null,
         status,
@@ -285,7 +357,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         invId = inv.id; invNumber = inv.invoice_number;
       }
 
-      const rows = items.map((it) => {
+      const rows = resolvedItems.map((it) => {
         const c = computeItem(it);
         return {
           invoice_id: invId, sr_no: it.sr_no, product_id: it.product_id,
