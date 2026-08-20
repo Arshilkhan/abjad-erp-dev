@@ -357,19 +357,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         const { error: dErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
-        const prefix = invoiceType === "quotation" ? "QTN" : invoiceType === "purchase_order" ? "PO" : "INV";
-        const year = new Date().getFullYear().toString().slice(-2);
-        const base = importMode ? `${prefix}-IMP-${year}-` : `${prefix}-${year}-`;
+        // Invoice number format: <sequence>-<company-name-slug>, e.g. 1-fluid-tech
+        const slug = (custCompany || cust.company_name || cust.customer_name || customerText || "customer")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "customer";
 
-        // Derive the next sequence from the highest existing number with this prefix,
-        // then retry on unique-constraint collisions (concurrent saves / duplicates).
-        const { data: existing } = await supabase
-          .from("invoices")
-          .select("invoice_number")
-          .like("invoice_number", `${base}%`);
+        const { data: existing } = await supabase.from("invoices").select("invoice_number");
         let seq = 0;
         for (const row of existing ?? []) {
-          const m = /(\d+)$/.exec(row.invoice_number.slice(base.length));
+          const m = /^(\d+)-/.exec(row.invoice_number ?? "");
           if (m) seq = Math.max(seq, Number(m[1]));
         }
 
@@ -377,7 +374,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         let lastErr: any = null;
         for (let attempt = 0; attempt < 25; attempt++) {
           seq += 1;
-          const invoice_number = `${base}${String(seq).padStart(4, "0")}`;
+          const invoice_number = `${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
           if (importMode) { insertPayload.is_imported = true; insertPayload.import_source = "manual"; }
           const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
