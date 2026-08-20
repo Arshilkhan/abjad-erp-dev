@@ -359,15 +359,34 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       } else {
         const prefix = invoiceType === "quotation" ? "QTN" : invoiceType === "purchase_order" ? "PO" : "INV";
         const year = new Date().getFullYear().toString().slice(-2);
-        const { count } = await supabase.from("invoices").select("id", { count: "exact", head: true }).eq("invoice_type", invoiceType as any);
-        const invoice_number = importMode
-          ? `${prefix}-IMP-${year}-${String((count ?? 0) + 1).padStart(4, "0")}`
-          : `${prefix}-${year}-${String((count ?? 0) + 1).padStart(4, "0")}`;
-        const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
-        if (importMode) { insertPayload.is_imported = true; insertPayload.import_source = "manual"; }
-        const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
-        if (error) throw error;
-        invId = inv.id; invNumber = inv.invoice_number;
+        const base = importMode ? `${prefix}-IMP-${year}-` : `${prefix}-${year}-`;
+
+        // Derive the next sequence from the highest existing number with this prefix,
+        // then retry on unique-constraint collisions (concurrent saves / duplicates).
+        const { data: existing } = await supabase
+          .from("invoices")
+          .select("invoice_number")
+          .like("invoice_number", `${base}%`);
+        let seq = 0;
+        for (const row of existing ?? []) {
+          const m = /(\d+)$/.exec(row.invoice_number.slice(base.length));
+          if (m) seq = Math.max(seq, Number(m[1]));
+        }
+
+        let inserted: any = null;
+        let lastErr: any = null;
+        for (let attempt = 0; attempt < 25; attempt++) {
+          seq += 1;
+          const invoice_number = `${base}${String(seq).padStart(4, "0")}`;
+          const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
+          if (importMode) { insertPayload.is_imported = true; insertPayload.import_source = "manual"; }
+          const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
+          if (!error) { inserted = inv; lastErr = null; break; }
+          lastErr = error;
+          if (error.code !== "23505") break;
+        }
+        if (!inserted) throw lastErr ?? new Error("Could not generate a unique invoice number");
+        invId = inserted.id; invNumber = inserted.invoice_number;
       }
 
       const rows = resolvedItems.map((it) => {
