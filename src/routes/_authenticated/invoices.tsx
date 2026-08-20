@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatINR, formatDate } from "@/lib/format";
-import { Plus, Pencil, Ban, Upload } from "lucide-react";
+import { Pencil, Ban } from "lucide-react";
 import { CancelInvoiceDialog } from "@/components/cancel-invoice-dialog";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
@@ -47,16 +47,6 @@ function InvoicesIndex() {
       <PageHeader
         title="Invoices"
         description="All tax invoices, proformas, and challans."
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/invoices/import"><Upload className="mr-1 h-4 w-4" /> Import Invoice</Link>
-            </Button>
-            <Button asChild>
-              <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
-            </Button>
-          </div>
-        }
       />
       <Card>
         <CardContent className="p-0">
