@@ -296,7 +296,13 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             <td className={`${cellBorder} p-1 ${label}`}>Challan No.</td>
             <td className={`${cellBorder} p-1 ${val}`}>{invoice.challan_number ?? ""}</td>
             <td className={`${cellBorder} p-1 ${label}`}>Date</td>
-            <td className={`${cellBorder} p-1 ${val}`}>{invoice.challan_date ? formatDate(invoice.challan_date) : "–"}</td>
+            <td className={`${cellBorder} p-1 ${val}`}>
+              {(() => {
+                const dates = (invoice as { challan_dates?: string[] | null }).challan_dates;
+                if (dates && dates.length > 0) return dates.map((d) => formatDate(d)).join(", ");
+                return invoice.challan_date ? formatDate(invoice.challan_date) : "–";
+              })()}
+            </td>
           </tr>
           <tr>
             <td className={`${cellBorder} p-1 ${label}`} colSpan={2}>PO No. /OS CH NO.</td>
