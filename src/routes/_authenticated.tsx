@@ -1,9 +1,11 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -26,6 +28,9 @@ function AuthedLayout() {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
             <SidebarTrigger />
             <GlobalSearch />
+            <Button asChild size="sm" className="ml-auto shrink-0">
+              <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
+            </Button>
           </header>
           <main className="flex-1 p-6">
             <Outlet />
