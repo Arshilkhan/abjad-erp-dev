@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { useAuth } from "@/lib/auth-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatINR, formatCompactINR, formatDate } from "@/lib/format";
 import {
@@ -113,6 +114,7 @@ function Kpi({ label, value, sub, icon: Icon, accent }: { label: string; value: 
 }
 
 function Dashboard() {
+  const { isAdmin } = useAuth();
   const [fyStart, setFyStart] = useState<number>(currentFyStart());
   const { data, isLoading } = useDashboardData(fyStart);
   const fyOptions = useMemo(() => {
@@ -123,7 +125,8 @@ function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Live snapshot of sales, inventory, and receivables." />
+      <PageHeader title="Dashboard" description={isAdmin ? "Live snapshot of sales, inventory, and receivables." : "Your most recent invoices."} />
+      {isAdmin && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label="Today's Sales" value={formatINR(data?.todaySales ?? 0)} icon={IndianRupee} />
         <Kpi label="Monthly Sales" value={formatCompactINR(data?.monthSales ?? 0)} sub={formatINR(data?.monthSales ?? 0)} icon={TrendingUp} accent="bg-chart-2" />
@@ -134,8 +137,10 @@ function Dashboard() {
         <Kpi label="Pending POs" value="0" icon={ShoppingCart} accent="bg-chart-5" />
         <Kpi label="Financial Year" value={fyLabel} sub="April – March" icon={TrendingUp} />
       </div>
+      )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      <div className={`mt-6 grid gap-4 ${isAdmin ? "lg:grid-cols-3" : ""}`}>
+        {isAdmin && (
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Monthly Sales — FY {fyLabel}</CardTitle>
@@ -162,6 +167,7 @@ function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
