@@ -51,43 +51,47 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-[45fr_55fr]">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground md:flex">
+      <div className="relative hidden flex-col overflow-hidden bg-primary px-14 py-12 text-primary-foreground md:flex">
         <div className="absolute inset-0">
           <svg className="h-full w-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="oklch(0.30 0.10 255)" />
-                <stop offset="100%" stopColor="oklch(0.22 0.08 255)" />
+                <stop offset="0%" stopColor="oklch(0.32 0.10 255)" />
+                <stop offset="55%" stopColor="oklch(0.24 0.09 255)" />
+                <stop offset="100%" stopColor="oklch(0.20 0.08 255)" />
               </linearGradient>
-              <linearGradient id="orb1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="oklch(0.55 0.13 255 / 0.35)" />
-                <stop offset="100%" stopColor="oklch(0.55 0.13 255 / 0)" />
+              <radialGradient id="glowTop" cx="80%" cy="20%" r="60%">
+                <stop offset="0%" stopColor="oklch(0.58 0.12 255 / 0.22)" />
+                <stop offset="100%" stopColor="oklch(0.58 0.12 255 / 0)" />
+              </radialGradient>
+              <radialGradient id="glowBottom" cx="20%" cy="90%" r="55%">
+                <stop offset="0%" stopColor="oklch(0.50 0.10 240 / 0.18)" />
+                <stop offset="100%" stopColor="oklch(0.50 0.10 240 / 0)" />
+              </radialGradient>
+              <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="oklch(1 0 0 / 0.08)" />
+                <stop offset="100%" stopColor="oklch(1 0 0 / 0)" />
               </linearGradient>
-              <linearGradient id="orb2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="oklch(0.70 0.08 240 / 0.25)" />
-                <stop offset="100%" stopColor="oklch(0.70 0.08 240 / 0)" />
-              </linearGradient>
-              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="oklch(1 0 0 / 0.04)" strokeWidth="1" />
+              <pattern id="grid" width="72" height="72" patternUnits="userSpaceOnUse">
+                <path d="M 72 0 L 0 0 0 72" fill="none" stroke="oklch(1 0 0 / 0.035)" strokeWidth="1" />
               </pattern>
             </defs>
             <rect width="800" height="800" fill="url(#bgGrad)" />
             <rect width="800" height="800" fill="url(#grid)" />
-            <circle cx="150" cy="200" r="320" fill="url(#orb1)" />
-            <circle cx="650" cy="650" r="380" fill="url(#orb2)" />
-            <g stroke="oklch(1 0 0 / 0.06)" strokeWidth="1.5" fill="none">
-              <line x1="100" y1="100" x2="250" y2="220" />
-              <line x1="250" y1="220" x2="220" y2="420" />
-              <line x1="220" y1="420" x2="420" y2="480" />
-              <line x1="420" y1="480" x2="520" y2="320" />
-              <line x1="520" y1="320" x2="700" y2="380" />
-              <circle cx="250" cy="220" r="5" fill="oklch(1 0 0 / 0.12)" />
-              <circle cx="220" cy="420" r="5" fill="oklch(1 0 0 / 0.12)" />
-              <circle cx="420" cy="480" r="5" fill="oklch(1 0 0 / 0.12)" />
-              <circle cx="520" cy="320" r="5" fill="oklch(1 0 0 / 0.12)" />
+            <circle cx="640" cy="160" r="360" fill="url(#glowTop)" />
+            <circle cx="160" cy="680" r="320" fill="url(#glowBottom)" />
+            <path d="M -40 600 Q 200 480 400 560 T 840 520" fill="none" stroke="url(#arcGrad)" strokeWidth="2" />
+            <path d="M -40 680 Q 220 560 440 640 T 840 600" fill="none" stroke="url(#arcGrad)" strokeWidth="1.5" />
+            <g stroke="oklch(1 0 0 / 0.05)" strokeWidth="1.5" fill="none">
+              <circle cx="720" cy="280" r="90" />
+              <circle cx="720" cy="280" r="130" />
+              <line x1="120" y1="120" x2="240" y2="220" />
+              <line x1="240" y1="220" x2="220" y2="380" />
+              <circle cx="240" cy="220" r="4" fill="oklch(1 0 0 / 0.10)" />
+              <circle cx="220" cy="380" r="4" fill="oklch(1 0 0 / 0.10)" />
             </g>
           </svg>
-          <div className="absolute inset-0 bg-primary/40" />
+          <div className="absolute inset-0 bg-primary/25" />
         </div>
 
         <div className="relative z-10 flex items-center gap-3">
@@ -95,11 +99,13 @@ function AuthPage() {
           <span className="text-xl font-semibold tracking-tight">ABJAD</span>
         </div>
 
-        <div className="relative z-10 max-w-sm">
-          <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
-          <p className="mt-3 text-sm text-primary-foreground/80">
-            Invoices, challans, purchases and payments — managed end to end for your engineering works.
-          </p>
+        <div className="relative z-10 flex flex-1 flex-col justify-center pt-10">
+          <div className="max-w-[380px] space-y-4">
+            <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
+            <p className="text-base leading-relaxed text-primary-foreground/80">
+              Invoices, challans, purchases and payments — managed end to end for your engineering works.
+            </p>
+          </div>
         </div>
       </div>
 
