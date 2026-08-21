@@ -3,12 +3,15 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Search, FileText, User, Package } from "lucide-react";
+import { Search, FileText, User, Package, Folder } from "lucide-react";
+import { folderSlug } from "@/lib/invoice-folders";
 
 type Hit =
   | { kind: "invoice"; id: string; primary: string; secondary: string }
+  | { kind: "folder"; id: string; primary: string; secondary: string }
   | { kind: "customer"; id: string; primary: string; secondary: string }
   | { kind: "product"; id: string; primary: string; secondary: string };
+
 
 export function GlobalSearch() {
   const nav = useNavigate();
