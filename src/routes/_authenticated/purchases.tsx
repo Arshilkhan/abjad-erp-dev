@@ -332,8 +332,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
             <Label>Vendor Name *</Label>
             <TypeaheadInput
               value={vendor.vendor_name ?? ""}
-              onChange={(v) => { setVendorId(""); setV("vendor_name", v); }}
-              onSelect={(o) => pickVendor(o.id)}
+              onChange={(v: string) => { setVendorId(""); setV("vendor_name", v); }}
+              onSelect={(o: TypeaheadOption) => pickVendor(o.id)}
               options={vendors.map((v: any) => ({ id: v.id, label: v.vendor_name, sublabel: v.company_name ?? v.gst_number ?? undefined }))}
               placeholder="Type to search or add new vendor"
             />
