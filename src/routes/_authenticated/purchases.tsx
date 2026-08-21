@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatINR, formatDate } from "@/lib/format";
+import { TypeaheadInput, type TypeaheadOption } from "@/components/typeahead-input";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
