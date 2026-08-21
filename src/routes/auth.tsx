@@ -50,19 +50,19 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="grid w-full max-w-4xl overflow-hidden rounded-xl border border-border/60 bg-card shadow-xl md:grid-cols-2">
-        <div className="relative hidden flex-col justify-between bg-gradient-to-br from-primary to-primary/70 p-10 text-primary-foreground md:flex">
-          <div className="text-2xl font-semibold tracking-tight">ABJAD</div>
-          <div>
-            <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
-            <p className="mt-3 text-sm text-primary-foreground/80">
-              Invoices, challans, purchases and payments — managed end to end for your engineering works.
-            </p>
-          </div>
+    <div className="grid min-h-screen md:grid-cols-2">
+      <div className="relative hidden flex-col justify-between bg-gradient-to-br from-primary to-primary/70 p-10 text-primary-foreground md:flex">
+        <div className="text-2xl font-semibold tracking-tight">ABJAD</div>
+        <div>
+          <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
+          <p className="mt-3 text-sm text-primary-foreground/80">
+            Invoices, challans, purchases and payments — managed end to end for your engineering works.
+          </p>
         </div>
+      </div>
 
-        <div className="p-8 md:p-10">
+      <div className="flex items-center justify-center bg-card p-6 md:p-10">
+        <div className="w-full max-w-sm">
           <h1 className="text-2xl font-semibold tracking-tight">Log in</h1>
           <p className="mt-1 text-sm text-muted-foreground">Enter your credentials to access your account</p>
           <form onSubmit={signIn} className="mt-6 space-y-4">
