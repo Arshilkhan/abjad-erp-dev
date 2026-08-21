@@ -246,68 +246,79 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const roundOff = rounded - rawTotal;
 
   const save = async () => {
-    if (!poNumber) return toast.error("PO number required");
+    if (saving) return;
+    if (!poNumber.trim()) return toast.error("PO number required");
     const name = (vendor.vendor_name ?? "").trim();
     if (!name) return toast.error("Vendor name is required");
     if (lines.some((l) => !l.description)) return toast.error("Every line needs a description");
     setSaving(true);
 
-    let vId = vendorId;
-    if (!vId) {
-      const existing = vendors.find((v: any) => v.vendor_name.toLowerCase() === name.toLowerCase());
-      if (existing) {
-        vId = existing.id;
-      } else {
-        const { data: newVendor, error: vErr } = await supabase.from("vendors").insert({
-          vendor_name: name,
-          company_name: vendor.company_name || null,
-          contact_person: vendor.contact_person || null,
-          mobile: vendor.mobile || null,
-          email: vendor.email || null,
-          gst_number: vendor.gst_number || null,
-          pan_number: vendor.pan_number || null,
-          address: vendor.address || null,
-          state: vendor.state || null,
-          state_code: vendor.state_code || null,
-          payment_terms: vendor.payment_terms || null,
-        }).select("id").single();
-        if (vErr || !newVendor) { setSaving(false); return toast.error(vErr?.message ?? "Could not create vendor"); }
-        vId = newVendor.id;
-        qc.invalidateQueries({ queryKey: ["vendors"] });
-        qc.invalidateQueries({ queryKey: ["vendors-select"] });
-        toast.success(`Vendor "${name}" added`);
+    try {
+      let vId = vendorId;
+      if (!vId) {
+        const existing = vendors.find((v: any) => (v.vendor_name ?? "").toLowerCase() === name.toLowerCase());
+        if (existing) {
+          vId = existing.id;
+        } else {
+          const { data: newVendor, error: vErr } = await supabase.from("vendors").insert({
+            vendor_name: name,
+            company_name: vendor.company_name || null,
+            contact_person: vendor.contact_person || null,
+            mobile: vendor.mobile || null,
+            email: vendor.email || null,
+            gst_number: vendor.gst_number || null,
+            pan_number: vendor.pan_number || null,
+            address: vendor.address || null,
+            state: vendor.state || null,
+            state_code: vendor.state_code || null,
+            payment_terms: vendor.payment_terms || null,
+          }).select("id").single();
+          if (vErr || !newVendor) { toast.error(vErr?.message ?? "Could not create vendor"); return; }
+          vId = newVendor.id;
+          qc.invalidateQueries({ queryKey: ["vendors"] });
+          qc.invalidateQueries({ queryKey: ["vendors-select"] });
+          toast.success(`Vendor "${name}" added`);
+        }
       }
-    }
 
-    const { data: po, error } = await supabase.from("purchase_orders").insert({
-      po_number: poNumber, po_date: poDate,
-      expected_date: expected || null,
-      vendor_id: vId,
-      vendor_name_snapshot: name,
-      vendor_gst_snapshot: vendor.gst_number || null,
-      vendor_address_snapshot: vendor.address || null,
-      is_igst: isIgst,
-      net_value: netValue, sub_total: netValue,
-      sgst_amount: sgst, cgst_amount: cgst, igst_amount: igst,
-      round_off: roundOff, grand_total: rounded,
-      notes: notes || null, status: "draft",
-    }).select("id").single();
-    if (error) { setSaving(false); return toast.error(error.message); }
-    const items = lines.map((l, i) => ({
-      purchase_order_id: po.id, sr_no: i + 1,
-      description: l.description, hsn_code: l.hsn || null,
-      quantity: l.qty, unit_rate: l.rate, tax_pct: l.tax_pct,
-      tax_amount: l.qty * l.rate * l.tax_pct / 100,
-      total_amount: l.qty * l.rate * (1 + l.tax_pct / 100),
-    }));
-    const { error: iErr } = await supabase.from("purchase_order_items").insert(items);
-    setSaving(false);
-    if (iErr) return toast.error(iErr.message);
-    toast.success("Purchase order created");
-    setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
-    setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
-    onSaved(); onClose();
+      const { data: po, error } = await supabase.from("purchase_orders").insert({
+        po_number: poNumber.trim(), po_date: poDate,
+        expected_date: expected || null,
+        vendor_id: vId,
+        vendor_name_snapshot: name,
+        vendor_gst_snapshot: vendor.gst_number || null,
+        vendor_address_snapshot: vendor.address || null,
+        is_igst: isIgst,
+        net_value: netValue, sub_total: netValue,
+        sgst_amount: sgst, cgst_amount: cgst, igst_amount: igst,
+        round_off: roundOff, grand_total: rounded,
+        notes: notes || null, status: "draft",
+      }).select("id").single();
+      if (error || !po) {
+        toast.error(error?.message?.includes("duplicate key") ? `PO number "${poNumber}" already exists` : (error?.message ?? "Could not create purchase order"));
+        return;
+      }
+      const items = lines.map((l, i) => ({
+        purchase_order_id: po.id, sr_no: i + 1,
+        description: l.description, hsn_code: l.hsn || null,
+        quantity: Number(l.qty) || 0, unit_rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0,
+        tax_amount: Number(l.qty) * Number(l.rate) * Number(l.tax_pct) / 100,
+        total_amount: Number(l.qty) * Number(l.rate) * (1 + Number(l.tax_pct) / 100),
+      }));
+      const { error: iErr } = await supabase.from("purchase_order_items").insert(items);
+      if (iErr) { toast.error(iErr.message); return; }
+      toast.success("Purchase order created");
+      setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
+      setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+      onSaved(); onClose();
+    } catch (e: any) {
+      console.error("PO save failed", e);
+      toast.error(e?.message ?? "Something went wrong while saving");
+    } finally {
+      setSaving(false);
+    }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
