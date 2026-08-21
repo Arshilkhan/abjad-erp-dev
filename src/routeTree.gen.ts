@@ -30,6 +30,7 @@ import { Route as AuthenticatedInvoicesImportRouteImport } from './routes/_authe
 import { Route as AuthenticatedInvoicesNewRouteImport } from './routes/_authenticated/invoices.new'
 import { Route as AuthenticatedInvoicesIdIndexRouteImport } from './routes/_authenticated/invoices.$id.index'
 import { Route as AuthenticatedInvoicesIdEditRouteImport } from './routes/_authenticated/invoices.$id.edit'
+import { Route as AuthenticatedInvoicesFolderCompanyRouteImport } from './routes/_authenticated/invoices.folder.$company'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,6 +143,12 @@ const AuthenticatedInvoicesIdEditRoute =
     path: '/$id/edit',
     getParentRoute: () => AuthenticatedInvoicesRoute,
   } as any)
+const AuthenticatedInvoicesFolderCompanyRoute =
+  AuthenticatedInvoicesFolderCompanyRouteImport.update({
+    id: '/folder/$company',
+    path: '/folder/$company',
+    getParentRoute: () => AuthenticatedInvoicesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
+  '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/invoices/$id/': typeof AuthenticatedInvoicesIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -185,6 +193,7 @@ export interface FileRoutesByTo {
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
+  '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/invoices/$id': typeof AuthenticatedInvoicesIdIndexRoute
 }
 export interface FileRoutesById {
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/_authenticated/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/_authenticated/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
+  '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/_authenticated/invoices/$id/': typeof AuthenticatedInvoicesIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/invoices/import'
     | '/invoices/new'
     | '/invoices/$id/edit'
+    | '/invoices/folder/$company'
     | '/invoices/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/invoices/import'
     | '/invoices/new'
     | '/invoices/$id/edit'
+    | '/invoices/folder/$company'
     | '/invoices/$id'
   id:
     | '__root__'
@@ -278,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/import'
     | '/_authenticated/invoices/new'
     | '/_authenticated/invoices/$id/edit'
+    | '/_authenticated/invoices/folder/$company'
     | '/_authenticated/invoices/$id/'
   fileRoutesById: FileRoutesById
 }
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoicesIdEditRouteImport
       parentRoute: typeof AuthenticatedInvoicesRoute
     }
+    '/_authenticated/invoices/folder/$company': {
+      id: '/_authenticated/invoices/folder/$company'
+      path: '/folder/$company'
+      fullPath: '/invoices/folder/$company'
+      preLoaderRoute: typeof AuthenticatedInvoicesFolderCompanyRouteImport
+      parentRoute: typeof AuthenticatedInvoicesRoute
+    }
   }
 }
 
@@ -444,6 +464,7 @@ interface AuthenticatedInvoicesRouteChildren {
   AuthenticatedInvoicesImportRoute: typeof AuthenticatedInvoicesImportRoute
   AuthenticatedInvoicesNewRoute: typeof AuthenticatedInvoicesNewRoute
   AuthenticatedInvoicesIdEditRoute: typeof AuthenticatedInvoicesIdEditRoute
+  AuthenticatedInvoicesFolderCompanyRoute: typeof AuthenticatedInvoicesFolderCompanyRoute
   AuthenticatedInvoicesIdIndexRoute: typeof AuthenticatedInvoicesIdIndexRoute
 }
 
@@ -451,6 +472,8 @@ const AuthenticatedInvoicesRouteChildren: AuthenticatedInvoicesRouteChildren = {
   AuthenticatedInvoicesImportRoute: AuthenticatedInvoicesImportRoute,
   AuthenticatedInvoicesNewRoute: AuthenticatedInvoicesNewRoute,
   AuthenticatedInvoicesIdEditRoute: AuthenticatedInvoicesIdEditRoute,
+  AuthenticatedInvoicesFolderCompanyRoute:
+    AuthenticatedInvoicesFolderCompanyRoute,
   AuthenticatedInvoicesIdIndexRoute: AuthenticatedInvoicesIdIndexRoute,
 }
 

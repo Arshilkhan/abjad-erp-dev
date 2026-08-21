@@ -1,14 +1,13 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Folder, Search, LayoutGrid, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { InvoiceTable } from "@/components/invoice-table";
+import { useInvoiceFolders } from "@/lib/invoice-folders";
 import { formatINR, formatDate } from "@/lib/format";
-import { Pencil, Ban } from "lucide-react";
-import { CancelInvoiceDialog } from "@/components/cancel-invoice-dialog";
 
 export const Route = createFileRoute("/_authenticated/invoices")({
   head: () => ({ meta: [{ title: "Invoices — ABJAD ERP" }] }),
@@ -21,90 +20,75 @@ function InvoicesLayout() {
   return <InvoicesIndex />;
 }
 
-const statusStyles: Record<string, string> = {
-  paid: "bg-[color:oklch(0.92_0.06_155)] text-[color:oklch(0.35_0.14_155)] border-transparent",
-  sent: "bg-secondary text-secondary-foreground",
-  partial: "bg-[color:oklch(0.94_0.09_75)] text-[color:oklch(0.40_0.15_75)] border-transparent",
-  draft: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/10 text-destructive border-transparent",
-};
-
 function InvoicesIndex() {
-  const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["invoices"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("invoices")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const { folders, isLoading } = useInvoiceFolders();
+  const [q, setQ] = useState("");
+  const [view, setView] = useState<"folders" | "all">("folders");
+
+  const s = q.trim().toLowerCase();
+  const visibleFolders = folders.filter((f) => !s || f.name.toLowerCase().includes(s));
+  const allRows = folders.flatMap((f) => f.rows).filter((r: any) =>
+    !s || [r.invoice_number, r.customer_name_snapshot, r.po_number, r.challan_number]
+      .filter(Boolean)
+      .some((v: string) => String(v).toLowerCase().includes(s)),
+  );
 
   return (
     <>
       <PageHeader
         title="Invoices"
-        description="All tax invoices, proformas, and challans."
+        description="Documents organised into a folder per company."
+        actions={
+          <div className="flex gap-1 rounded-md border p-0.5">
+            <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => setView("folders")}>
+              <LayoutGrid className="mr-1 h-4 w-4" /> Folders
+            </Button>
+            <Button size="sm" variant={view === "all" ? "secondary" : "ghost"} onClick={() => setView("all")}>
+              <List className="mr-1 h-4 w-4" /> All documents
+            </Button>
+          </div>
+        }
       />
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-24 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-              {!isLoading && rows.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No invoices yet. <Link to="/invoices/new" className="text-primary hover:underline">Create your first invoice</Link>.
-                </TableCell></TableRow>
-              )}
-              {rows.map((r: any) => (
-                <TableRow key={r.id} className={`cursor-pointer hover:bg-muted/40 ${r.status === "cancelled" ? "opacity-60" : ""}`}>
-                  <TableCell className="font-mono text-sm font-medium">
-                    <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.invoice_number}</Link>
-                    {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
-                  </TableCell>
-                  <TableCell><span className="text-xs uppercase tracking-wider text-muted-foreground">{r.invoice_type.replace("_", " ")}</span></TableCell>
-                  <TableCell>{r.customer_name_snapshot ?? "—"}</TableCell>
-                  <TableCell>{formatDate(r.invoice_date)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatINR(r.grand_total)}</TableCell>
-                  <TableCell><Badge variant="outline" className={`text-[10px] font-medium uppercase ${statusStyles[r.status] ?? ""}`}>{r.status}</Badge></TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {r.status !== "cancelled" && (
-                        <>
-                          <Button size="icon" variant="ghost" asChild title="Edit">
-                            <Link to="/invoices/$id/edit" params={{ id: r.id }}><Pencil className="h-3.5 w-3.5" /></Link>
-                          </Button>
-                          <CancelInvoiceDialog
-                            invoiceId={r.id}
-                            invoiceNumber={r.invoice_number}
-                            onCancelled={() => qc.invalidateQueries({ queryKey: ["invoices"] })}
-                            trigger={
-                              <Button size="icon" variant="ghost" title="Cancel invoice"><Ban className="h-3.5 w-3.5 text-destructive" /></Button>
-                            }
-                          />
-                        </>
-                      )}
+
+      <div className="relative mb-4 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="h-9 pl-9"
+          placeholder={view === "folders" ? "Search companies…" : "Search documents…"}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+
+      {view === "all" ? (
+        <Card><CardContent className="p-0"><InvoiceTable rows={allRows} isLoading={isLoading} /></CardContent></Card>
+      ) : isLoading ? (
+        <p className="py-10 text-center text-muted-foreground">Loading…</p>
+      ) : visibleFolders.length === 0 ? (
+        <p className="py-10 text-center text-muted-foreground">
+          No company folders yet. <Link to="/invoices/new" className="text-primary hover:underline">Create an invoice</Link> to start one.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleFolders.map((f) => (
+            <Link key={f.slug} to="/invoices/folder/$company" params={{ company: f.slug }}>
+              <Card className="h-full transition-colors hover:border-primary/50 hover:bg-muted/30">
+                <CardContent className="flex items-start gap-3 p-4">
+                  <span className="rounded-md bg-primary/10 p-2 text-primary"><Folder className="h-5 w-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{f.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {f.rows.length} document{f.rows.length === 1 ? "" : "s"}
+                      {f.lastDate ? ` • last ${formatDate(f.lastDate)}` : ""}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    <div className="mt-1 text-sm font-semibold tabular-nums">{formatINR(f.total)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </>
   );
 }
