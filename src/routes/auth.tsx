@@ -51,9 +51,9 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
-      <div className="relative hidden flex-col justify-between bg-gradient-to-br from-primary to-primary/70 p-10 text-primary-foreground md:flex">
-        <div className="text-2xl font-semibold tracking-tight">ABJAD</div>
-        <div>
+      <div className="relative hidden flex-col items-center justify-center bg-gradient-to-br from-primary to-primary/70 p-10 text-center text-primary-foreground md:flex">
+        <div className="max-w-md">
+          <div className="mb-6 text-2xl font-semibold tracking-tight">ABJAD</div>
           <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
           <p className="mt-3 text-sm text-primary-foreground/80">
             Invoices, challans, purchases and payments — managed end to end for your engineering works.
