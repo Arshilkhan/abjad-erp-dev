@@ -38,6 +38,8 @@ export function InvoiceConfigurationTab() {
     },
   });
 
+  const rows = allRows.filter((r) => !HIDDEN_KEYS.has(r.feature_key));
+
   const toggle = async (row: Row, patch: Partial<Row>) => {
     // Enforce: Editable and Read Only are mutually exclusive
     if (patch.is_editable === true) patch.is_read_only = false;
