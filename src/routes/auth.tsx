@@ -29,7 +29,9 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { if (!loading && user) nav({ to: "/dashboard" }); }, [user, loading, nav]);
+  useEffect(() => {
+    if (!loading && user) nav({ to: "/dashboard" });
+  }, [user, loading, nav]);
 
   const describe = (error: unknown) => {
     const err = error as { message?: string; status?: number } | null;
@@ -41,7 +43,8 @@ function AuthPage() {
   };
 
   const signIn = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true);
+    e.preventDefault();
+    setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(describe(error));
@@ -53,7 +56,12 @@ function AuthPage() {
     <div className="grid min-h-screen md:grid-cols-[45fr_55fr]">
       <div className="relative hidden flex-col overflow-hidden bg-primary px-14 py-12 text-primary-foreground md:flex">
         <div className="absolute inset-0">
-          <svg className="h-full w-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            className="h-full w-full"
+            preserveAspectRatio="xMidYMid slice"
+            viewBox="0 0 800 800"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <defs>
               <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="oklch(0.32 0.10 255)" />
@@ -94,11 +102,6 @@ function AuthPage() {
           <div className="absolute inset-0 bg-primary/25" />
         </div>
 
-        <div className="relative z-10 flex items-center gap-3">
-          <img src={logo} alt="ABJAD logo" className="h-10 w-10 rounded-lg object-contain shadow-sm" />
-          <span className="text-xl font-semibold tracking-tight">ABJAD</span>
-        </div>
-
         <div className="relative z-10 flex flex-1 flex-col justify-center pt-10">
           <div className="max-w-[380px] space-y-4">
             <h2 className="text-3xl font-semibold leading-tight">Billing and inventory, in one place.</h2>
@@ -118,17 +121,34 @@ function AuthPage() {
           <form onSubmit={signIn} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="e1">Email address</Label>
-              <Input id="e1" type="email" required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 rounded-lg" />
+              <Input
+                id="e1"
+                type="email"
+                required
+                placeholder="name@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11 rounded-lg"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="p1">Password</Label>
-              <Input id="p1" type="password" required placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 rounded-lg" />
+              <Input
+                id="p1"
+                type="password"
+                required
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 rounded-lg"
+              />
             </div>
-            <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+            <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </Button>
           </form>
         </div>
       </div>
     </div>
   );
 }
-
