@@ -16,9 +16,18 @@ type Row = {
   sort_order: number;
 };
 
+const HIDDEN_KEYS = new Set([
+  "rejected_items",
+  "customer_credit",
+  "credit_note",
+  "inventory_adjustment",
+  "history_tracking",
+  "audit_log",
+]);
+
 export function InvoiceConfigurationTab() {
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: allRows = [], isLoading } = useQuery({
     queryKey: ["invoice-config"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("invoice_configuration") as any)
@@ -28,6 +37,8 @@ export function InvoiceConfigurationTab() {
       return (data ?? []) as Row[];
     },
   });
+
+  const rows = allRows.filter((r) => !HIDDEN_KEYS.has(r.feature_key));
 
   const toggle = async (row: Row, patch: Partial<Row>) => {
     // Enforce: Editable and Read Only are mutually exclusive
