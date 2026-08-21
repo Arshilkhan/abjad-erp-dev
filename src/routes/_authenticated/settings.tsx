@@ -84,8 +84,6 @@ function CompanyProfile() {
         {field("mobile", "Mobile")}
         {field("alt_mobile", "Alt Mobile")}
         {field("email", "Email", "email")}
-        {field("invoice_prefix", "Invoice Prefix")}
-        {field("quotation_prefix", "Quotation Prefix")}
         {field("financial_year", "Financial Year")}
         <div className="col-span-2 grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
           <div className="col-span-2 text-sm font-semibold">Bank Details</div>
