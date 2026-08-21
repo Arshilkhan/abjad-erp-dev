@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSpreadsheet, Users, Package, Warehouse,
   ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard, Upload,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -12,26 +13,27 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 
 const main = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Invoices", url: "/invoices", icon: FileText },
-  { title: "Cancelled Invoices", url: "/cancelled-invoices", icon: Ban },
-  { title: "Import Invoice", url: "/invoices/import", icon: Upload },
-  { title: "Quotations", url: "/quotations", icon: FileSpreadsheet },
-  { title: "Customers", url: "/customers", icon: Users },
-  { title: "Products", url: "/products", icon: Package },
-  { title: "Inventory", url: "/inventory", icon: Warehouse },
-  { title: "Rejected Items", url: "/rejected-items", icon: PackageX },
-  { title: "Customer Credits", url: "/customer-credits", icon: CreditCard },
-  { title: "Purchases", url: "/purchases", icon: ShoppingCart },
-  { title: "Payments", url: "/payments", icon: Wallet },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, panel: "dashboard" },
+  { title: "Invoices", url: "/invoices", icon: FileText, panel: "invoices" },
+  { title: "Cancelled Invoices", url: "/cancelled-invoices", icon: Ban, panel: "cancelled-invoices" },
+  { title: "Import Invoice", url: "/invoices/import", icon: Upload, panel: "invoice-import" },
+  { title: "Quotations", url: "/quotations", icon: FileSpreadsheet, panel: "quotations" },
+  { title: "Customers", url: "/customers", icon: Users, panel: "customers" },
+  { title: "Products", url: "/products", icon: Package, panel: "products" },
+  { title: "Inventory", url: "/inventory", icon: Warehouse, panel: "inventory" },
+  { title: "Rejected Items", url: "/rejected-items", icon: PackageX, panel: "rejected-items" },
+  { title: "Customer Credits", url: "/customer-credits", icon: CreditCard, panel: "customer-credits" },
+  { title: "Purchases", url: "/purchases", icon: ShoppingCart, panel: "purchases" },
+  { title: "Payments", url: "/payments", icon: Wallet, panel: "payments" },
+  { title: "Reports", url: "/reports", icon: BarChart3, panel: "reports" },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin, canAccess } = useAuth();
+  const visible = main.filter((i) => canAccess(i.panel));
   const isActive = (u: string) => path === u || path.startsWith(u + "/");
 
   return (
@@ -54,7 +56,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {main.map((item) => (
+              {visible.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <Link to={item.url}>
@@ -71,14 +73,26 @@ export function AppSidebar() {
           <SidebarGroupLabel>Configuration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/settings")}>
-                  <Link to="/settings">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {canAccess("settings") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/settings")}>
+                    <Link to="/settings">
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/users")}>
+                    <Link to="/users">
+                      <UserCog className="h-4 w-4" />
+                      <span>Users</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
