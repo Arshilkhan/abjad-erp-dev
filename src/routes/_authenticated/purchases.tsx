@@ -205,19 +205,31 @@ function PurchaseOrdersTab() {
 type POLine = { description: string; hsn: string; qty: number; rate: number; tax_pct: number };
 
 function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const qc = useQueryClient();
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-select"],
-    queryFn: async () => (await supabase.from("vendors").select("id, vendor_name, gst_number, address, state_code")).data ?? [],
+    queryFn: async () => (await supabase.from("vendors").select("*").order("vendor_name")).data ?? [],
   });
 
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
   const [expected, setExpected] = useState("");
   const [vendorId, setVendorId] = useState<string>("");
+  const [vendor, setVendor] = useState<any>({});
+  const setV = (k: string, v: any) => setVendor((f: any) => ({ ...f, [k]: v }));
   const [isIgst, setIsIgst] = useState(false);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<POLine[]>([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
   const [saving, setSaving] = useState(false);
+
+  const isNewVendor = !vendorId && !!(vendor.vendor_name ?? "").trim();
+
+  const pickVendor = (id: string) => {
+    const v = vendors.find((x: any) => x.id === id);
+    if (!v) return;
+    setVendorId(v.id);
+    setVendor({ ...v });
+  };
 
   const addLine = () => setLines((l) => [...l, { description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
   const rmLine = (i: number) => setLines((l) => l.filter((_, idx) => idx !== i));
@@ -234,17 +246,45 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
 
   const save = async () => {
     if (!poNumber) return toast.error("PO number required");
-    if (!vendorId) return toast.error("Select a vendor");
+    const name = (vendor.vendor_name ?? "").trim();
+    if (!name) return toast.error("Vendor name is required");
     if (lines.some((l) => !l.description)) return toast.error("Every line needs a description");
     setSaving(true);
-    const vendor = vendors.find((v: any) => v.id === vendorId);
+
+    let vId = vendorId;
+    if (!vId) {
+      const existing = vendors.find((v: any) => v.vendor_name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        vId = existing.id;
+      } else {
+        const { data: newVendor, error: vErr } = await supabase.from("vendors").insert({
+          vendor_name: name,
+          company_name: vendor.company_name || null,
+          contact_person: vendor.contact_person || null,
+          mobile: vendor.mobile || null,
+          email: vendor.email || null,
+          gst_number: vendor.gst_number || null,
+          pan_number: vendor.pan_number || null,
+          address: vendor.address || null,
+          state: vendor.state || null,
+          state_code: vendor.state_code || null,
+          payment_terms: vendor.payment_terms || null,
+        }).select("id").single();
+        if (vErr || !newVendor) { setSaving(false); return toast.error(vErr?.message ?? "Could not create vendor"); }
+        vId = newVendor.id;
+        qc.invalidateQueries({ queryKey: ["vendors"] });
+        qc.invalidateQueries({ queryKey: ["vendors-select"] });
+        toast.success(`Vendor "${name}" added`);
+      }
+    }
+
     const { data: po, error } = await supabase.from("purchase_orders").insert({
       po_number: poNumber, po_date: poDate,
       expected_date: expected || null,
-      vendor_id: vendorId,
-      vendor_name_snapshot: vendor?.vendor_name ?? null,
-      vendor_gst_snapshot: vendor?.gst_number ?? null,
-      vendor_address_snapshot: vendor?.address ?? null,
+      vendor_id: vId,
+      vendor_name_snapshot: name,
+      vendor_gst_snapshot: vendor.gst_number || null,
+      vendor_address_snapshot: vendor.address || null,
       is_igst: isIgst,
       net_value: netValue, sub_total: netValue,
       sgst_amount: sgst, cgst_amount: cgst, igst_amount: igst,
@@ -263,7 +303,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     setSaving(false);
     if (iErr) return toast.error(iErr.message);
     toast.success("Purchase order created");
-    setPoNumber(""); setNotes(""); setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+    setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
+    setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
     onSaved(); onClose();
   };
 
@@ -285,16 +326,30 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
               </SelectContent>
             </Select>
           </div>
-          <div className="col-span-4">
-            <Label>Vendor *</Label>
-            <Select value={vendorId} onValueChange={setVendorId}>
-              <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
-              <SelectContent>
-                {vendors.map((v: any) => <SelectItem key={v.id} value={v.id}>{v.vendor_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+
+          <div className="col-span-2">
+            <Label>Vendor Name *</Label>
+            <TypeaheadInput
+              value={vendor.vendor_name ?? ""}
+              onChange={(v) => { setVendorId(""); setV("vendor_name", v); }}
+              onSelect={(o) => pickVendor(o.id)}
+              options={vendors.map((v: any) => ({ id: v.id, label: v.vendor_name, sublabel: v.company_name ?? v.gst_number ?? undefined }))}
+              placeholder="Type to search or add new vendor"
+            />
+            {isNewVendor && <p className="mt-1 text-xs text-muted-foreground">New vendor — will be saved for reuse.</p>}
           </div>
+          <div className="col-span-2"><Label>Company Name</Label><Input value={vendor.company_name ?? ""} onChange={(e) => setV("company_name", e.target.value)} /></div>
+          <div><Label>Contact Person</Label><Input value={vendor.contact_person ?? ""} onChange={(e) => setV("contact_person", e.target.value)} /></div>
+          <div><Label>Mobile</Label><Input value={vendor.mobile ?? ""} onChange={(e) => setV("mobile", e.target.value)} /></div>
+          <div><Label>Email</Label><Input value={vendor.email ?? ""} onChange={(e) => setV("email", e.target.value)} /></div>
+          <div><Label>GSTIN</Label><Input value={vendor.gst_number ?? ""} onChange={(e) => setV("gst_number", e.target.value)} /></div>
+          <div><Label>PAN</Label><Input value={vendor.pan_number ?? ""} onChange={(e) => setV("pan_number", e.target.value)} /></div>
+          <div><Label>State</Label><Input value={vendor.state ?? ""} onChange={(e) => setV("state", e.target.value)} /></div>
+          <div><Label>State Code</Label><Input value={vendor.state_code ?? ""} onChange={(e) => setV("state_code", e.target.value)} /></div>
+          <div><Label>Payment Terms</Label><Input value={vendor.payment_terms ?? ""} onChange={(e) => setV("payment_terms", e.target.value)} /></div>
+          <div className="col-span-4"><Label>Address</Label><Textarea rows={2} value={vendor.address ?? ""} onChange={(e) => setV("address", e.target.value)} /></div>
         </div>
+
 
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
