@@ -3,12 +3,15 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Search, FileText, User, Package } from "lucide-react";
+import { Search, FileText, User, Package, Folder } from "lucide-react";
+import { folderSlug } from "@/lib/invoice-folders";
 
 type Hit =
   | { kind: "invoice"; id: string; primary: string; secondary: string }
+  | { kind: "folder"; id: string; primary: string; secondary: string }
   | { kind: "customer"; id: string; primary: string; secondary: string }
   | { kind: "product"; id: string; primary: string; secondary: string };
+
 
 export function GlobalSearch() {
   const nav = useNavigate();
@@ -19,7 +22,7 @@ export function GlobalSearch() {
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["gs-invoices"],
-    queryFn: async () => (await supabase.from("invoices").select("id, invoice_number, customer_name_snapshot, status").order("created_at", { ascending: false }).limit(200)).data ?? [],
+    queryFn: async () => (await supabase.from("invoices").select("id, invoice_number, customer_name_snapshot, invoice_type, po_number, challan_number, status").order("created_at", { ascending: false }).limit(200)).data ?? [],
   });
   const { data: customers = [] } = useQuery({
     queryKey: ["gs-customers"],
@@ -34,9 +37,33 @@ export function GlobalSearch() {
     const s = q.trim().toLowerCase();
     if (!s) return [];
     const inv: Hit[] = invoices
-      .filter((r: any) => r.invoice_number.toLowerCase().includes(s) || (r.customer_name_snapshot ?? "").toLowerCase().includes(s))
+      .filter((r: any) =>
+        [r.invoice_number, r.customer_name_snapshot, r.po_number, r.challan_number, r.invoice_type]
+          .filter(Boolean)
+          .some((v: string) => String(v).toLowerCase().includes(s)),
+      )
       .slice(0, 6)
-      .map((r: any) => ({ kind: "invoice", id: r.id, primary: r.invoice_number, secondary: r.customer_name_snapshot ?? "" }));
+      .map((r: any) => ({
+        kind: "invoice",
+        id: r.id,
+        primary: r.invoice_number,
+        secondary: [r.customer_name_snapshot, String(r.invoice_type ?? "").replace(/_/g, " ")].filter(Boolean).join(" • "),
+      }));
+
+    const folderNames = new Map<string, string>();
+    for (const r of invoices as any[]) {
+      const name = (r.customer_name_snapshot ?? "").trim();
+      if (name) folderNames.set(folderSlug(name), name);
+    }
+    for (const c of customers as any[]) {
+      const name = (c.company_name || c.customer_name || "").trim();
+      if (name) folderNames.set(folderSlug(name), name);
+    }
+    const fld: Hit[] = [...folderNames.entries()]
+      .filter(([, name]) => name.toLowerCase().includes(s))
+      .slice(0, 4)
+      .map(([slug, name]) => ({ kind: "folder", id: slug, primary: name, secondary: "Company folder" }));
+
     const cus: Hit[] = customers
       .filter((r: any) => (r.company_name ?? "").toLowerCase().includes(s) || (r.customer_name ?? "").toLowerCase().includes(s) || (r.gst_number ?? "").toLowerCase().includes(s))
       .slice(0, 6)
@@ -45,7 +72,7 @@ export function GlobalSearch() {
       .filter((r: any) => (r.product_name ?? "").toLowerCase().includes(s) || (r.product_code ?? "").toLowerCase().includes(s) || (r.hsn_code ?? "").toLowerCase().includes(s))
       .slice(0, 6)
       .map((r: any) => ({ kind: "product", id: r.id, primary: r.product_name, secondary: r.product_code ?? "" }));
-    return [...inv, ...cus, ...prd];
+    return [...fld, ...inv, ...cus, ...prd];
   }, [q, invoices, customers, products]);
 
   useEffect(() => {
@@ -58,11 +85,17 @@ export function GlobalSearch() {
     setOpen(false);
     setQ("");
     if (hit.kind === "invoice") nav({ to: "/invoices/$id", params: { id: hit.id } });
+    else if (hit.kind === "folder") nav({ to: "/invoices/folder/$company", params: { company: hit.id } });
     else if (hit.kind === "customer") nav({ to: "/customers" });
     else if (hit.kind === "product") nav({ to: "/products" });
   };
 
-  const Icon = ({ k }: { k: Hit["kind"] }) => k === "invoice" ? <FileText className="h-3.5 w-3.5" /> : k === "customer" ? <User className="h-3.5 w-3.5" /> : <Package className="h-3.5 w-3.5" />;
+  const Icon = ({ k }: { k: Hit["kind"] }) =>
+    k === "invoice" ? <FileText className="h-3.5 w-3.5" />
+      : k === "folder" ? <Folder className="h-3.5 w-3.5" />
+      : k === "customer" ? <User className="h-3.5 w-3.5" />
+      : <Package className="h-3.5 w-3.5" />;
+
 
   return (
     <div ref={wrapRef} className="relative flex-1 max-w-md">
