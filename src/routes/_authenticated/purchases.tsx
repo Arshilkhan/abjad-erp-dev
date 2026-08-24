@@ -549,8 +549,12 @@ function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; o
             {po.notes && <p className="text-xs text-muted-foreground">Notes: {po.notes}</p>}
           </div>
         )}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={download}><Download className="mr-1 h-4 w-4" /> Download PDF</Button>
+          <Button onClick={sendToVendor} disabled={!vendor?.email} title={vendor?.email ? `Send to ${vendor.email}` : "No vendor email on file"}>
+            <Mail className="mr-1 h-4 w-4" /> Send to Vendor
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
