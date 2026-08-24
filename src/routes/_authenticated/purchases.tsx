@@ -248,7 +248,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const rounded = Math.round(rawTotal);
   const roundOff = rounded - rawTotal;
 
-  const save = async () => {
+  const save = async (send = false) => {
     if (saving) return;
     if (!poNumber.trim()) return toast.error("PO number required");
     const name = (vendor.vendor_name ?? "").trim();
