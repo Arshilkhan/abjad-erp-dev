@@ -427,3 +427,88 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
     </div>
   );
 }
+function ViewPODialog({ po, onClose }: { po: any; onClose: () => void }) {
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ["purchase_order_items", po?.id],
+    enabled: !!po?.id,
+    queryFn: async () =>
+      (await supabase.from("purchase_order_items").select("*").eq("purchase_order_id", po.id).order("sr_no")).data ?? [],
+  });
+
+  return (
+    <Dialog open={!!po} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Purchase Order {po?.po_number}</DialogTitle>
+        </DialogHeader>
+        {po && (
+          <div className="space-y-4 text-sm">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Row k="Vendor" v={po.vendor_name_snapshot ?? "—"} />
+              <Row k="GST" v={po.vendor_gst_snapshot ?? "—"} />
+              <Row k="PO Date" v={formatDate(po.po_date)} />
+              <Row k="Expected" v={po.expected_date ? formatDate(po.expected_date) : "—"} />
+              <Row k="Status" v={String(po.status)} />
+              <Row k="Tax type" v={po.is_igst ? "IGST" : "CGST + SGST"} />
+            </div>
+            {po.vendor_address_snapshot && (
+              <p className="text-xs text-muted-foreground">{po.vendor_address_snapshot}</p>
+            )}
+            <div className="overflow-x-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>HSN</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="text-right">Tax %</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading && <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+                  {!isLoading && items.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No line items.</TableCell></TableRow>
+                  )}
+                  {items.map((it: any) => (
+                    <TableRow key={it.id}>
+                      <TableCell>{it.sr_no}</TableCell>
+                      <TableCell>{it.description}</TableCell>
+                      <TableCell className="text-xs">{it.hsn_code ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{Number(it.quantity)} {it.uom ?? ""}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatINR(it.unit_rate)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{Number(it.tax_pct)}%</TableCell>
+                      <TableCell className="text-right tabular-nums font-medium">{formatINR(it.total_amount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="ml-auto w-full max-w-xs space-y-1">
+              <Row k="Net value" v={formatINR(po.net_value)} />
+              {Number(po.discount_amount) > 0 && <Row k="Discount" v={formatINR(po.discount_amount)} />}
+              {Number(po.freight) > 0 && <Row k="Freight" v={formatINR(po.freight)} />}
+              {Number(po.packing_charges) > 0 && <Row k="Packing" v={formatINR(po.packing_charges)} />}
+              <Row k="Sub total" v={formatINR(po.sub_total)} />
+              {po.is_igst ? (
+                <Row k="IGST" v={formatINR(po.igst_amount)} />
+              ) : (
+                <>
+                  <Row k="CGST" v={formatINR(po.cgst_amount)} />
+                  <Row k="SGST" v={formatINR(po.sgst_amount)} />
+                </>
+              )}
+              <Row k="Grand total" v={formatINR(po.grand_total)} strong />
+            </div>
+            {po.notes && <p className="text-xs text-muted-foreground">Notes: {po.notes}</p>}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
