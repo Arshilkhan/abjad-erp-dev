@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatINR, formatDate } from "@/lib/format";
 import { TypeaheadInput, type TypeaheadOption } from "@/components/typeahead-input";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Download, Mail } from "lucide-react";
+import { buildPOHtml, printPOHtml, buildPOMailto } from "@/lib/po-print";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/purchases")({
@@ -200,7 +201,7 @@ function PurchaseOrdersTab() {
           </TableBody>
         </Table>
         <NewPODialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["purchase_orders"] })} />
-        <ViewPODialog po={viewing} onClose={() => setViewing(null)} />
+        <ViewPODialog po={viewing} onClose={() => setViewing(null)} onSent={() => qc.invalidateQueries({ queryKey: ["purchase_orders"] })} />
       </CardContent>
     </Card>
   );
@@ -248,7 +249,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const rounded = Math.round(rawTotal);
   const roundOff = rounded - rawTotal;
 
-  const save = async () => {
+  const save = async (send = false) => {
     if (saving) return;
     if (!poNumber.trim()) return toast.error("PO number required");
     const name = (vendor.vendor_name ?? "").trim();
@@ -295,8 +296,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         net_value: netValue, sub_total: netValue,
         sgst_amount: sgst, cgst_amount: cgst, igst_amount: igst,
         round_off: roundOff, grand_total: rounded,
-        notes: notes || null, status: "draft",
-      }).select("id").single();
+        notes: notes || null, status: send ? "sent" : "draft",
+      }).select("*").single();
       if (error || !po) {
         toast.error(error?.message?.includes("duplicate key") ? `PO number "${poNumber}" already exists` : (error?.message ?? "Could not create purchase order"));
         return;
@@ -310,7 +311,20 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }));
       const { error: iErr } = await supabase.from("purchase_order_items").insert(items);
       if (iErr) { toast.error(iErr.message); return; }
-      toast.success("Purchase order created");
+
+      if (send) {
+        const { data: company } = await supabase.from("company_profile").select("*").limit(1).maybeSingle();
+        printPOHtml(buildPOHtml(po, items, company, vendor));
+        if (vendor.email) {
+          window.open(buildPOMailto(po, vendor.email, company?.name), "_blank");
+          toast.success("PO saved & email draft opened — attach the downloaded PDF");
+        } else {
+          toast.warning("PO saved and marked sent, but this vendor has no email on file");
+        }
+      } else {
+        toast.success("Purchase order saved as draft");
+      }
+
       setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
       setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
       onSaved(); onClose();
@@ -412,8 +426,11 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Create PO"}</Button>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={() => save(false)} disabled={saving}>{saving ? "Saving…" : "Save as Draft"}</Button>
+          <Button onClick={() => save(true)} disabled={saving}>
+            <Mail className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save & Send"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -427,13 +444,40 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
     </div>
   );
 }
-function ViewPODialog({ po, onClose }: { po: any; onClose: () => void }) {
+function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; onSent?: () => void }) {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["purchase_order_items", po?.id],
     enabled: !!po?.id,
     queryFn: async () =>
       (await supabase.from("purchase_order_items").select("*").eq("purchase_order_id", po.id).order("sr_no")).data ?? [],
   });
+  const { data: company } = useQuery({
+    queryKey: ["company_profile"],
+    queryFn: async () => (await supabase.from("company_profile").select("*").limit(1).maybeSingle()).data,
+  });
+  const { data: vendor } = useQuery({
+    queryKey: ["vendor", po?.vendor_id],
+    enabled: !!po?.vendor_id,
+    queryFn: async () => (await supabase.from("vendors").select("*").eq("id", po.vendor_id).maybeSingle()).data,
+  });
+
+  const download = () => {
+    if (!printPOHtml(buildPOHtml(po, items, company, vendor))) {
+      toast.error("Allow pop-ups to download the purchase order");
+    }
+  };
+
+  const sendToVendor = async () => {
+    const email = vendor?.email;
+    if (!email) return toast.error("This vendor has no email address on file");
+    download();
+    window.open(buildPOMailto(po, email, company?.name), "_blank");
+    if (po.status === "draft") {
+      await supabase.from("purchase_orders").update({ status: "sent" }).eq("id", po.id);
+      onSent?.();
+    }
+    toast.success(`Email draft opened for ${email} — attach the downloaded PDF`);
+  };
 
   return (
     <Dialog open={!!po} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -505,8 +549,12 @@ function ViewPODialog({ po, onClose }: { po: any; onClose: () => void }) {
             {po.notes && <p className="text-xs text-muted-foreground">Notes: {po.notes}</p>}
           </div>
         )}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={download}><Download className="mr-1 h-4 w-4" /> Download PDF</Button>
+          <Button onClick={sendToVendor} disabled={!vendor?.email} title={vendor?.email ? `Send to ${vendor.email}` : "No vendor email on file"}>
+            <Mail className="mr-1 h-4 w-4" /> Send to Vendor
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
