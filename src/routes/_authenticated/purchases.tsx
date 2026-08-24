@@ -200,6 +200,7 @@ function PurchaseOrdersTab() {
           </TableBody>
         </Table>
         <NewPODialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["purchase_orders"] })} />
+        <ViewPODialog po={viewing} onClose={() => setViewing(null)} />
       </CardContent>
     </Card>
   );
