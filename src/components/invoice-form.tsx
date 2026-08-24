@@ -1,6 +1,6 @@
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
@@ -11,11 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, X } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
+import { extractInvoicePdf } from "@/lib/invoice-pdf-extract.functions";
 
 interface LineItem {
   sr_no: number;
@@ -30,7 +31,17 @@ interface LineItem {
 }
 
 function emptyItem(sr: number): LineItem {
-  return { sr_no: sr, product_id: null, hsn_code: "", description: "", quantity: 1, uom: "NOS", unit_rate: 0, discount_pct: 0, tax_pct: 18 };
+  return {
+    sr_no: sr,
+    product_id: null,
+    hsn_code: "",
+    description: "",
+    quantity: 1,
+    uom: "NOS",
+    unit_rate: 0,
+    discount_pct: 0,
+    tax_pct: 18,
+  };
 }
 
 function computeItem(it: LineItem) {
@@ -80,6 +91,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [hydrated, setHydrated] = useState(false);
   const isChallan = invoiceType === "delivery_challan";
 
+  const [pdfAnalysing, setPdfAnalysing] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
   const addChallanDate = () => {
     const d = challanDateInput;
     if (!d) return;
@@ -89,11 +103,23 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-list"],
-    queryFn: async () => (await supabase.from("customers").select("id, customer_name, company_name, gst_number, billing_address, state, state_code, contact_person, mobile, email")).data ?? [],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("customers")
+          .select(
+            "id, customer_name, company_name, gst_number, billing_address, state, state_code, contact_person, mobile, email",
+          )
+      ).data ?? [],
   });
   const { data: products = [] } = useQuery({
     queryKey: ["products-list"],
-    queryFn: async () => (await supabase.from("products").select("id, product_name, product_code, hsn_code, unit, gst_percentage, selling_price")).data ?? [],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("products")
+          .select("id, product_name, product_code, hsn_code, unit, gst_percentage, selling_price")
+      ).data ?? [],
   });
   const { data: settings } = useQuery({
     queryKey: ["invoice-settings"],
@@ -155,13 +181,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             discount_pct: Number(it.discount_pct ?? 0),
             tax_pct: Number(it.tax_pct ?? 18),
           }))
-        : [emptyItem(1)]
+        : [emptyItem(1)],
     );
-    setProductTexts(
-      existing.items.length
-        ? existing.items.map((it: any) => it.description ?? "")
-        : [""],
-    );
+    setProductTexts(existing.items.length ? existing.items.map((it: any) => it.description ?? "") : [""]);
     setHydrated(true);
   }, [existing, hydrated]);
 
@@ -181,10 +203,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   }, [customerId, customer]);
 
   const totals = useMemo(() => {
-    let net = 0, tax = 0, disc = 0;
+    let net = 0,
+      tax = 0,
+      disc = 0;
     for (const it of items) {
       const c = computeItem(it);
-      net += c.net; tax += c.tax_amount; disc += c.discount_amount;
+      net += c.net;
+      tax += c.tax_amount;
+      disc += c.discount_amount;
     }
     const subtotal =
       net +
@@ -216,10 +242,92 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     const p = products.find((x: any) => x.id === pid);
     if (!p) return;
     setItem(idx, {
-      product_id: p.id, hsn_code: p.hsn_code ?? "", description: p.product_name,
-      unit_rate: Number(p.selling_price ?? 0), uom: p.unit ?? "NOS", tax_pct: Number(p.gst_percentage ?? 18),
+      product_id: p.id,
+      hsn_code: p.hsn_code ?? "",
+      description: p.product_name,
+      unit_rate: Number(p.selling_price ?? 0),
+      uom: p.unit ?? "NOS",
+      tax_pct: Number(p.gst_percentage ?? 18),
     });
     setProductTexts((prev) => prev.map((t, i) => (i === idx ? p.product_name : t)));
+  };
+
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Could not read that file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-uploading the same file again
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Please upload a PDF file");
+      return;
+    }
+    setPdfAnalysing(true);
+    try {
+      const fileData = await readFileAsDataUrl(file);
+      const extracted = await extractInvoicePdf({ data: { fileData } });
+
+      // Customer block — treat as freshly typed so it isn't overwritten by a
+      // stale directory match; the existing name-match-or-create logic in
+      // save() still applies when the invoice is saved.
+      setCustomerId("");
+      setCustomerText(extracted.customer_name);
+      setCustCompany(extracted.company_name);
+      setCustContact(extracted.contact_person);
+      setCustMobile(extracted.mobile);
+      setCustEmail(extracted.email);
+      setCustGst(extracted.gst_number);
+
+      if (extracted.invoice_date) setInvoiceDate(extracted.invoice_date);
+      setPoNumber(extracted.po_number);
+      setPoDate(extracted.po_date);
+      setChallanNumber(extracted.challan_number);
+      setChallanDate(extracted.challan_date);
+      if (extracted.challan_date) setChallanDates([extracted.challan_date]);
+      setWorkOrder(extracted.work_order_number);
+
+      setFreight(extracted.freight);
+      setPacking(extracted.packing_charges);
+      setOtherCharges(extracted.other_charges);
+      setDiscountExtra(extracted.discount_amount);
+
+      if (extracted.delivery_mode) setDeliveryMode(extracted.delivery_mode);
+      if (extracted.payment_terms) setPaymentTerms(extracted.payment_terms);
+      if (extracted.contact_person) setContactPerson(extracted.contact_person);
+      if (extracted.mobile) setContactMobile(extracted.mobile);
+      setNotes(extracted.notes);
+
+      if (extracted.items.length) {
+        setItems(
+          extracted.items.map((it, i) => ({
+            sr_no: i + 1,
+            product_id: null,
+            hsn_code: it.hsn_code,
+            description: it.description,
+            quantity: it.quantity || 1,
+            uom: it.uom || "NOS",
+            unit_rate: it.unit_rate,
+            discount_pct: it.discount_pct,
+            tax_pct: it.tax_pct || 18,
+          })),
+        );
+        setProductTexts(extracted.items.map((it) => it.description));
+      }
+
+      toast.success(
+        `Extracted ${extracted.items.length || 0} item${extracted.items.length === 1 ? "" : "s"} — review before saving`,
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Could not read that PDF");
+    } finally {
+      setPdfAnalysing(false);
+    }
   };
 
   const save = useMutation({
@@ -252,7 +360,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (cust) {
         const patch: any = {};
         if (custCompany.trim() && custCompany !== (cust.company_name ?? "")) patch.company_name = custCompany.trim();
-        if (custContact.trim() && custContact !== (cust.contact_person ?? "")) patch.contact_person = custContact.trim();
+        if (custContact.trim() && custContact !== (cust.contact_person ?? ""))
+          patch.contact_person = custContact.trim();
         if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
         if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
         if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
@@ -316,12 +425,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const igst_amount = isIGST ? totals.tax : 0;
 
       const payload: any = {
-        invoice_type: invoiceType as any, invoice_date: invoiceDate,
+        invoice_type: invoiceType as any,
+        invoice_date: invoiceDate,
         customer_id: cust.id,
         customer_name_snapshot: cust.company_name || cust.customer_name,
         customer_gst_snapshot: cust.gst_number,
         customer_address_snapshot: cust.billing_address,
-        po_number: poNumber || null, po_date: poDate || null,
+        po_number: poNumber || null,
+        po_date: poDate || null,
         challan_number: challanNumber || null,
         challan_date: (isChallan ? challanDates[0] : challanDate) || null,
         challan_dates: isChallan ? challanDates : challanDate ? [challanDate] : [],
@@ -336,7 +447,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         transportation_charges: Number(transportCharges || 0),
         delivery_charges: Number(deliveryCharges || 0),
         subtotal: totals.subtotal,
-        sgst_amount, cgst_amount, igst_amount,
+        sgst_amount,
+        cgst_amount,
+        igst_amount,
         round_off: totals.round_off,
         grand_total: totals.grand,
         amount_in_words: amountInWords(totals.grand),
@@ -351,17 +464,24 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       let invId: string;
       let invNumber: string;
       if (isEdit) {
-        const { data: inv, error } = await supabase.from("invoices").update(payload).eq("id", editId!).select().single();
+        const { data: inv, error } = await supabase
+          .from("invoices")
+          .update(payload)
+          .eq("id", editId!)
+          .select()
+          .single();
         if (error) throw error;
-        invId = inv.id; invNumber = inv.invoice_number;
+        invId = inv.id;
+        invNumber = inv.invoice_number;
         const { error: dErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
         // Invoice number format: <sequence>-<company-name-slug>, e.g. 1-fluid-tech
-        const slug = (custCompany || cust.company_name || cust.customer_name || customerText || "customer")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "") || "customer";
+        const slug =
+          (custCompany || cust.company_name || cust.customer_name || customerText || "customer")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "customer";
 
         const { data: existing } = await supabase.from("invoices").select("invoice_number");
         let seq = 0;
@@ -376,24 +496,40 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           seq += 1;
           const invoice_number = `${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
-          if (importMode) { insertPayload.is_imported = true; insertPayload.import_source = "manual"; }
+          if (importMode) {
+            insertPayload.is_imported = true;
+            insertPayload.import_source = "manual";
+          }
           const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
-          if (!error) { inserted = inv; lastErr = null; break; }
+          if (!error) {
+            inserted = inv;
+            lastErr = null;
+            break;
+          }
           lastErr = error;
           if (error.code !== "23505") break;
         }
         if (!inserted) throw lastErr ?? new Error("Could not generate a unique invoice number");
-        invId = inserted.id; invNumber = inserted.invoice_number;
+        invId = inserted.id;
+        invNumber = inserted.invoice_number;
       }
 
       const rows = resolvedItems.map((it) => {
         const c = computeItem(it);
         return {
-          invoice_id: invId, sr_no: it.sr_no, product_id: it.product_id,
-          hsn_code: it.hsn_code || null, description: it.description,
-          quantity: it.quantity, uom: it.uom, unit_rate: it.unit_rate,
-          discount_pct: it.discount_pct, discount_amount: c.discount_amount,
-          tax_pct: it.tax_pct, tax_amount: c.tax_amount, total_amount: c.total_amount,
+          invoice_id: invId,
+          sr_no: it.sr_no,
+          product_id: it.product_id,
+          hsn_code: it.hsn_code || null,
+          description: it.description,
+          quantity: it.quantity,
+          uom: it.uom,
+          unit_rate: it.unit_rate,
+          discount_pct: it.discount_pct,
+          discount_amount: c.discount_amount,
+          tax_pct: it.tax_pct,
+          tax_amount: c.tax_amount,
+          total_amount: c.total_amount,
         };
       });
       const { error: iErr } = await supabase.from("invoice_items").insert(rows);
@@ -420,38 +556,97 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   return (
     <>
       <PageHeader
-        title={isEdit
-          ? `Edit Invoice${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
-          : importMode ? "Import Invoice" : "New Invoice"}
-        description={importMode
-          ? "Record an invoice that was created outside the software. It'll be tagged 'Imported' and behaves like a normal invoice."
-          : isEdit
-            ? "Update customer, line items, taxes, charges, delivery and payment details."
-            : "Create a GST tax invoice. Field visibility and mandatory rules follow your Settings."}
+        title={
+          isEdit
+            ? `Edit Invoice${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
+            : importMode
+              ? "Import Invoice"
+              : "New Invoice"
+        }
+        description={
+          importMode
+            ? "Record an invoice that was created outside the software. It'll be tagged 'Imported' and behaves like a normal invoice."
+            : isEdit
+              ? "Update customer, line items, taxes, charges, delivery and payment details."
+              : "Create a GST tax invoice. Field visibility and mandatory rules follow your Settings."
+        }
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" asChild><Link to="/invoices"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Link></Button>
-            <Button variant="outline" onClick={() => save.mutate("draft")} disabled={save.isPending}>Save Draft</Button>
-            <Button onClick={() => save.mutate("sent")} disabled={save.isPending}>{save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save & Send"}</Button>
+            <Button variant="outline" asChild>
+              <Link to="/invoices">
+                <ArrowLeft className="mr-1 h-4 w-4" /> Back
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => save.mutate("draft")} disabled={save.isPending}>
+              Save Draft
+            </Button>
+            <Button onClick={() => save.mutate("sent")} disabled={save.isPending}>
+              {save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save & Send"}
+            </Button>
           </div>
         }
       />
 
+      {importMode && (
+        <Card className="mb-4 border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="text-sm font-medium">Upload Invoice PDF</p>
+              <p className="text-xs text-muted-foreground">
+                Auto-fill the fields below from a scanned or digital invoice — multi-item invoices add rows
+                automatically.
+              </p>
+            </div>
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handlePdfUpload}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pdfAnalysing}
+              onClick={() => pdfInputRef.current?.click()}
+            >
+              {pdfAnalysing ? (
+                <>
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Analysing PDF…
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-1 h-4 w-4" /> Upload Invoice PDF
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Invoice Details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Invoice Details</CardTitle>
+          </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Customer Name *</Label>
               <TypeaheadInput
                 value={customerText}
-                onChange={(v) => { setCustomerText(v); if (customerId) setCustomerId(""); }}
+                onChange={(v) => {
+                  setCustomerText(v);
+                  if (customerId) setCustomerId("");
+                }}
                 options={customers.map((c: any) => ({
                   id: c.id,
                   label: c.customer_name || c.company_name,
                   sublabel: [c.company_name, c.gst_number].filter(Boolean).join(" • "),
                 }))}
-                onSelect={(opt) => { setCustomerId(opt.id); setCustomerText(opt.label); }}
+                onSelect={(opt) => {
+                  setCustomerId(opt.id);
+                  setCustomerText(opt.label);
+                }}
                 placeholder="Type a customer name — new names are saved automatically"
               />
               {!customerId && customerText.trim() && (
@@ -481,7 +676,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
               <Select value={invoiceType} onValueChange={setInvoiceType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tax_invoice">Tax Invoice</SelectItem>
                   <SelectItem value="proforma">Proforma</SelectItem>
@@ -497,72 +694,89 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
             </div>
 
-            {(settings?.show_po_number || isEdit) && <>
-              <div className="space-y-1.5">
-                <Label className="text-xs">PO Number{settings?.mandatory_po_number && " *"}</Label>
-                <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">PO Date</Label>
-                <Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} />
-              </div>
-            </>}
-            {(settings?.show_challan_number || isEdit) && <>
-              <div className={isChallan ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
-                <Label className="text-xs">
-                  Challan Number{isChallan && "s (comma separated)"}
-                  {settings?.mandatory_challan_number && " *"}
-                </Label>
-                <Input
-                  value={challanNumber}
-                  placeholder={isChallan ? "DC-001, DC-002, DC-003" : ""}
-                  onChange={(e) => setChallanNumber(e.target.value)}
-                />
-                {isChallan && challanNumber.trim() && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {challanNumber.split(",").map((n) => n.trim()).filter(Boolean).map((n, i) => (
-                      <span key={`${n}-${i}`} className="rounded-md bg-muted px-2 py-0.5 text-xs">{n}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {isChallan ? (
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs">Challan Dates</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      value={challanDateInput}
-                      onChange={(e) => setChallanDateInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChallanDate(); } }}
-                    />
-                    <Button type="button" variant="secondary" onClick={addChallanDate}>Add</Button>
-                  </div>
-                  {challanDates.length > 0 && (
+            {(settings?.show_po_number || isEdit) && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">PO Number{settings?.mandatory_po_number && " *"}</Label>
+                  <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">PO Date</Label>
+                  <Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} />
+                </div>
+              </>
+            )}
+            {(settings?.show_challan_number || isEdit) && (
+              <>
+                <div className={isChallan ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
+                  <Label className="text-xs">
+                    Challan Number{isChallan && "s (comma separated)"}
+                    {settings?.mandatory_challan_number && " *"}
+                  </Label>
+                  <Input
+                    value={challanNumber}
+                    placeholder={isChallan ? "DC-001, DC-002, DC-003" : ""}
+                    onChange={(e) => setChallanNumber(e.target.value)}
+                  />
+                  {isChallan && challanNumber.trim() && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {challanDates.map((d) => (
-                        <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
-                          {d}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${d}`}
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
+                      {challanNumber
+                        .split(",")
+                        .map((n) => n.trim())
+                        .filter(Boolean)
+                        .map((n, i) => (
+                          <span key={`${n}-${i}`} className="rounded-md bg-muted px-2 py-0.5 text-xs">
+                            {n}
+                          </span>
+                        ))}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Challan Date</Label>
-                  <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
-                </div>
-              )}
-            </>}
+                {isChallan ? (
+                  <div className="col-span-2 space-y-1.5">
+                    <Label className="text-xs">Challan Dates</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={challanDateInput}
+                        onChange={(e) => setChallanDateInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addChallanDate();
+                          }
+                        }}
+                      />
+                      <Button type="button" variant="secondary" onClick={addChallanDate}>
+                        Add
+                      </Button>
+                    </div>
+                    {challanDates.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {challanDates.map((d) => (
+                          <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
+                            {d}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${d}`}
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Challan Date</Label>
+                    <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
+                  </div>
+                )}
+              </>
+            )}
             {(settings?.show_work_order || isEdit) && (
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs">Work Order Number</Label>
@@ -573,14 +787,21 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Customer Info</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Customer Info</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-1 text-sm">
             {customer ? (
               <>
                 <div className="font-medium">{customer.company_name || customer.customer_name}</div>
                 <div className="text-xs text-muted-foreground whitespace-pre-line">{customer.billing_address}</div>
-                <div className="pt-2 text-xs"><span className="text-muted-foreground">GST:</span> <span className="font-mono">{customer.gst_number ?? "—"}</span></div>
-                <div className="text-xs"><span className="text-muted-foreground">State:</span> {customer.state} ({customer.state_code})</div>
+                <div className="pt-2 text-xs">
+                  <span className="text-muted-foreground">GST:</span>{" "}
+                  <span className="font-mono">{customer.gst_number ?? "—"}</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-muted-foreground">State:</span> {customer.state} ({customer.state_code})
+                </div>
                 <div className="mt-2 rounded bg-secondary px-2 py-1 text-xs font-medium">
                   {isIGST ? "Inter-state → IGST" : "Intra-state → SGST + CGST"}
                 </div>
@@ -589,11 +810,20 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <>
                 <div className="font-medium">{custCompany || customerText}</div>
                 <div className="text-xs text-muted-foreground">New customer — saved when you save this invoice.</div>
-                <div className="pt-2 text-xs"><span className="text-muted-foreground">GST:</span> <span className="font-mono">{custGst || "—"}</span></div>
-                <div className="text-xs"><span className="text-muted-foreground">Mobile:</span> {custMobile || "—"}</div>
-                <div className="text-xs"><span className="text-muted-foreground">Email:</span> {custEmail || "—"}</div>
+                <div className="pt-2 text-xs">
+                  <span className="text-muted-foreground">GST:</span>{" "}
+                  <span className="font-mono">{custGst || "—"}</span>
+                </div>
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Mobile:</span> {custMobile || "—"}
+                </div>
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Email:</span> {custEmail || "—"}
+                </div>
               </>
-            ) : <p className="text-muted-foreground text-xs">Type a customer name to begin.</p>}
+            ) : (
+              <p className="text-muted-foreground text-xs">Type a customer name to begin.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -601,7 +831,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Line Items</CardTitle>
-          <Button size="sm" variant="outline" onClick={addItem}><Plus className="mr-1 h-4 w-4" /> Add Row</Button>
+          <Button size="sm" variant="outline" onClick={addItem}>
+            <Plus className="mr-1 h-4 w-4" /> Add Row
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -644,15 +876,66 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                           inputClassName="h-8"
                         />
                       </td>
-                      <td className="p-1"><Input className="h-8 font-mono text-xs" value={it.hsn_code} onChange={(e) => setItem(idx, { hsn_code: e.target.value })} /></td>
-                      <td className="p-1"><Input className="h-8" value={it.description} onChange={(e) => setItem(idx, { description: e.target.value })} /></td>
-                      <td className="p-1"><Input className="h-8 text-right tabular-nums" type="number" value={it.quantity} onChange={(e) => setItem(idx, { quantity: Number(e.target.value) })} /></td>
-                      <td className="p-1"><Input className="h-8" value={it.uom} onChange={(e) => setItem(idx, { uom: e.target.value })} /></td>
-                      <td className="p-1"><Input className="h-8 text-right tabular-nums" type="number" value={it.unit_rate} onChange={(e) => setItem(idx, { unit_rate: Number(e.target.value) })} /></td>
-                      <td className="p-1"><Input className="h-8 text-right tabular-nums" type="number" value={it.discount_pct} onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })} /></td>
-                      <td className="p-1"><Input className="h-8 text-right tabular-nums" type="number" value={it.tax_pct} onChange={(e) => setItem(idx, { tax_pct: Number(e.target.value) })} /></td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8 font-mono text-xs"
+                          value={it.hsn_code}
+                          onChange={(e) => setItem(idx, { hsn_code: e.target.value })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8"
+                          value={it.description}
+                          onChange={(e) => setItem(idx, { description: e.target.value })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8 text-right tabular-nums"
+                          type="number"
+                          value={it.quantity}
+                          onChange={(e) => setItem(idx, { quantity: Number(e.target.value) })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Input className="h-8" value={it.uom} onChange={(e) => setItem(idx, { uom: e.target.value })} />
+                      </td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8 text-right tabular-nums"
+                          type="number"
+                          value={it.unit_rate}
+                          onChange={(e) => setItem(idx, { unit_rate: Number(e.target.value) })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8 text-right tabular-nums"
+                          type="number"
+                          value={it.discount_pct}
+                          onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
+                        />
+                      </td>
+                      <td className="p-1">
+                        <Input
+                          className="h-8 text-right tabular-nums"
+                          type="number"
+                          value={it.tax_pct}
+                          onChange={(e) => setItem(idx, { tax_pct: Number(e.target.value) })}
+                        />
+                      </td>
                       <td className="p-2 text-right tabular-nums font-medium">{formatINR(c.total_amount)}</td>
-                      <td className="p-1"><Button size="icon" variant="ghost" onClick={() => removeItem(idx)} disabled={items.length === 1}><Trash2 className="h-3.5 w-3.5" /></Button></td>
+                      <td className="p-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removeItem(idx)}
+                          disabled={items.length === 1}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -664,7 +947,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Additional Details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Additional Details</CardTitle>
+          </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             {(settings?.show_delivery || isEdit) && (
               <div className="space-y-1.5">
@@ -676,16 +961,18 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Label className="text-xs">Payment Terms</Label>
               <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             </div>
-            {(settings?.show_contact_person || isEdit) && <>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Contact Person</Label>
-                <Input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Contact Mobile</Label>
-                <Input value={contactMobile} onChange={(e) => setContactMobile(e.target.value)} />
-              </div>
-            </>}
+            {(settings?.show_contact_person || isEdit) && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Contact Person</Label>
+                  <Input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Contact Mobile</Label>
+                  <Input value={contactMobile} onChange={(e) => setContactMobile(e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -694,20 +981,47 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Totals</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Totals</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <Row label="Net Value" value={formatINR(totals.net)} />
             {(settings?.show_discount || isEdit) && (
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Extra Discount</Label>
-                <Input className="h-8 w-32 text-right" type="number" value={discountExtra} onChange={(e) => setDiscountExtra(Number(e.target.value))} />
+                <Input
+                  className="h-8 w-32 text-right"
+                  type="number"
+                  value={discountExtra}
+                  onChange={(e) => setDiscountExtra(Number(e.target.value))}
+                />
               </div>
             )}
             <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
-            <ChargeRow config={cfg("transportation_charges")} fallbackLabel="Transportation Charges" value={transportCharges} onChange={setTransportCharges} />
-            <ChargeRow config={cfg("delivery_charges")} fallbackLabel="Delivery Charges" value={deliveryCharges} onChange={setDeliveryCharges} />
-            <ChargeRow config={cfg("packing_charges")} fallbackLabel="Packing & Forwarding" value={packing} onChange={setPacking} />
-            <ChargeRow config={cfg("other_charges")} fallbackLabel="Other Charges" value={otherCharges} onChange={setOtherCharges} />
+            <ChargeRow
+              config={cfg("transportation_charges")}
+              fallbackLabel="Transportation Charges"
+              value={transportCharges}
+              onChange={setTransportCharges}
+            />
+            <ChargeRow
+              config={cfg("delivery_charges")}
+              fallbackLabel="Delivery Charges"
+              value={deliveryCharges}
+              onChange={setDeliveryCharges}
+            />
+            <ChargeRow
+              config={cfg("packing_charges")}
+              fallbackLabel="Packing & Forwarding"
+              value={packing}
+              onChange={setPacking}
+            />
+            <ChargeRow
+              config={cfg("other_charges")}
+              fallbackLabel="Other Charges"
+              value={otherCharges}
+              onChange={setOtherCharges}
+            />
             <div className="border-t pt-2">
               <Row label="Subtotal" value={formatINR(totals.subtotal)} />
               {isIGST ? (
