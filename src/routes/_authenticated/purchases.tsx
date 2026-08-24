@@ -444,13 +444,40 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
     </div>
   );
 }
-function ViewPODialog({ po, onClose }: { po: any; onClose: () => void }) {
+function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; onSent?: () => void }) {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["purchase_order_items", po?.id],
     enabled: !!po?.id,
     queryFn: async () =>
       (await supabase.from("purchase_order_items").select("*").eq("purchase_order_id", po.id).order("sr_no")).data ?? [],
   });
+  const { data: company } = useQuery({
+    queryKey: ["company_profile"],
+    queryFn: async () => (await supabase.from("company_profile").select("*").limit(1).maybeSingle()).data,
+  });
+  const { data: vendor } = useQuery({
+    queryKey: ["vendor", po?.vendor_id],
+    enabled: !!po?.vendor_id,
+    queryFn: async () => (await supabase.from("vendors").select("*").eq("id", po.vendor_id).maybeSingle()).data,
+  });
+
+  const download = () => {
+    if (!printPOHtml(buildPOHtml(po, items, company, vendor))) {
+      toast.error("Allow pop-ups to download the purchase order");
+    }
+  };
+
+  const sendToVendor = async () => {
+    const email = vendor?.email;
+    if (!email) return toast.error("This vendor has no email address on file");
+    download();
+    window.open(buildPOMailto(po, email, company?.name), "_blank");
+    if (po.status === "draft") {
+      await supabase.from("purchase_orders").update({ status: "sent" }).eq("id", po.id);
+      onSent?.();
+    }
+    toast.success(`Email draft opened for ${email} — attach the downloaded PDF`);
+  };
 
   return (
     <Dialog open={!!po} onOpenChange={(o) => { if (!o) onClose(); }}>
