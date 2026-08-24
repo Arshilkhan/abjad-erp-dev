@@ -154,10 +154,12 @@ function VendorDialog({ open, onClose, vendor, onSaved }: { open: boolean; onClo
 function PurchaseOrdersTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [viewing, setViewing] = useState<any>(null);
   const { data: pos = [] } = useQuery({
     queryKey: ["purchase_orders"],
     queryFn: async () => (await supabase.from("purchase_orders").select("*").order("po_date", { ascending: false })).data ?? [],
   });
+
 
   const statusColor: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",
