@@ -1,6 +1,6 @@
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
@@ -11,12 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, X, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, X } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
-import { extractInvoicePdf } from "@/lib/invoice-pdf-extract.functions";
 
 interface LineItem {
   sr_no: number;
@@ -90,9 +89,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
   const isChallan = invoiceType === "delivery_challan";
-
-  const [pdfAnalysing, setPdfAnalysing] = useState(false);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const addChallanDate = () => {
     const d = challanDateInput;
@@ -250,84 +246,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       tax_pct: Number(p.gst_percentage ?? 18),
     });
     setProductTexts((prev) => prev.map((t, i) => (i === idx ? p.product_name : t)));
-  };
-
-  const readFileAsDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Could not read that file"));
-      reader.readAsDataURL(file);
-    });
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-uploading the same file again
-    if (!file) return;
-    if (file.type !== "application/pdf") {
-      toast.error("Please upload a PDF file");
-      return;
-    }
-    setPdfAnalysing(true);
-    try {
-      const fileData = await readFileAsDataUrl(file);
-      const extracted = await extractInvoicePdf({ data: { fileData } });
-
-      // Customer block — treat as freshly typed so it isn't overwritten by a
-      // stale directory match; the existing name-match-or-create logic in
-      // save() still applies when the invoice is saved.
-      setCustomerId("");
-      setCustomerText(extracted.customer_name);
-      setCustCompany(extracted.company_name);
-      setCustContact(extracted.contact_person);
-      setCustMobile(extracted.mobile);
-      setCustEmail(extracted.email);
-      setCustGst(extracted.gst_number);
-
-      if (extracted.invoice_date) setInvoiceDate(extracted.invoice_date);
-      setPoNumber(extracted.po_number);
-      setPoDate(extracted.po_date);
-      setChallanNumber(extracted.challan_number);
-      setChallanDate(extracted.challan_date);
-      if (extracted.challan_date) setChallanDates([extracted.challan_date]);
-      setWorkOrder(extracted.work_order_number);
-
-      setFreight(extracted.freight);
-      setPacking(extracted.packing_charges);
-      setOtherCharges(extracted.other_charges);
-      setDiscountExtra(extracted.discount_amount);
-
-      if (extracted.delivery_mode) setDeliveryMode(extracted.delivery_mode);
-      if (extracted.payment_terms) setPaymentTerms(extracted.payment_terms);
-      if (extracted.contact_person) setContactPerson(extracted.contact_person);
-      if (extracted.mobile) setContactMobile(extracted.mobile);
-      setNotes(extracted.notes);
-
-      if (extracted.items.length) {
-        setItems(
-          extracted.items.map((it, i) => ({
-            sr_no: i + 1,
-            product_id: null,
-            hsn_code: it.hsn_code,
-            description: it.description,
-            quantity: it.quantity || 1,
-            uom: it.uom || "NOS",
-            unit_rate: it.unit_rate,
-            discount_pct: it.discount_pct,
-            tax_pct: it.tax_pct || 18,
-          })),
-        );
-        setProductTexts(extracted.items.map((it) => it.description));
-      }
-
-      toast.success(
-        `Extracted ${extracted.items.length || 0} item${extracted.items.length === 1 ? "" : "s"} — review before saving`,
-      );
-    } catch (err: any) {
-      toast.error(err?.message || "Could not read that PDF");
-    } finally {
-      setPdfAnalysing(false);
-    }
   };
 
   const save = useMutation({
@@ -586,43 +504,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           </div>
         }
       />
-
-      {importMode && (
-        <Card className="mb-4 border-dashed">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="text-sm font-medium">Upload Invoice PDF</p>
-              <p className="text-xs text-muted-foreground">
-                Auto-fill the fields below from a scanned or digital invoice — multi-item invoices add rows
-                automatically.
-              </p>
-            </div>
-            <input
-              ref={pdfInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handlePdfUpload}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pdfAnalysing}
-              onClick={() => pdfInputRef.current?.click()}
-            >
-              {pdfAnalysing ? (
-                <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Analysing PDF…
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-1 h-4 w-4" /> Upload Invoice PDF
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
