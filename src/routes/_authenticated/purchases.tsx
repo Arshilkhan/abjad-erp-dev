@@ -426,8 +426,11 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Create PO"}</Button>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={() => save(false)} disabled={saving}>{saving ? "Saving…" : "Save as Draft"}</Button>
+          <Button onClick={() => save(true)} disabled={saving}>
+            <Mail className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save & Send"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
