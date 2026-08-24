@@ -295,8 +295,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         net_value: netValue, sub_total: netValue,
         sgst_amount: sgst, cgst_amount: cgst, igst_amount: igst,
         round_off: roundOff, grand_total: rounded,
-        notes: notes || null, status: "draft",
-      }).select("id").single();
+        notes: notes || null, status: send ? "sent" : "draft",
+      }).select("*").single();
       if (error || !po) {
         toast.error(error?.message?.includes("duplicate key") ? `PO number "${poNumber}" already exists` : (error?.message ?? "Could not create purchase order"));
         return;
@@ -310,7 +310,20 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }));
       const { error: iErr } = await supabase.from("purchase_order_items").insert(items);
       if (iErr) { toast.error(iErr.message); return; }
-      toast.success("Purchase order created");
+
+      if (send) {
+        const { data: company } = await supabase.from("company_profile").select("*").limit(1).maybeSingle();
+        printPOHtml(buildPOHtml(po, items, company, vendor));
+        if (vendor.email) {
+          window.open(buildPOMailto(po, vendor.email, company?.name), "_blank");
+          toast.success("PO saved & email draft opened — attach the downloaded PDF");
+        } else {
+          toast.warning("PO saved and marked sent, but this vendor has no email on file");
+        }
+      } else {
+        toast.success("Purchase order saved as draft");
+      }
+
       setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
       setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
       onSaved(); onClose();
