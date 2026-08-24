@@ -188,7 +188,7 @@ function PurchaseOrdersTab() {
           <TableBody>
             {pos.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No purchase orders yet.</TableCell></TableRow>}
             {pos.map((p: any) => (
-              <TableRow key={p.id}>
+              <TableRow key={p.id} className="cursor-pointer" onClick={() => setViewing(p)}>
                 <TableCell className="font-mono">{p.po_number}</TableCell>
                 <TableCell>{formatDate(p.po_date)}</TableCell>
                 <TableCell>{p.vendor_name_snapshot ?? "—"}</TableCell>
