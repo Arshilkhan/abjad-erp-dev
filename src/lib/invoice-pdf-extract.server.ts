@@ -12,6 +12,8 @@ Return ONLY a JSON object (no markdown fences) with exactly this shape:
   "mobile": string,
   "email": string,
   "gst_number": string,
+  "footer_contact_person": string,
+  "footer_contact_mobiles": string[],
   "invoice_date": "YYYY-MM-DD",
   "po_number": string,
   "po_date": "YYYY-MM-DD",
@@ -33,6 +35,8 @@ Return ONLY a JSON object (no markdown fences) with exactly this shape:
 Rules:
 - The customer is the party being BILLED (buyer / "Customer Name" block), never the issuing seller company.
 - contact_person / mobile / email must belong to the buyer; leave empty when only the seller's contact is printed.
+- footer_contact_person / footer_contact_mobiles come from the "Contact Person" and "Mob. No." lines printed near the bottom of the invoice (usually below Delivery/Payment terms), regardless of whether they belong to the buyer or the seller. Always fill them when those lines are printed.
+- footer_contact_mobiles: one entry per phone number; numbers printed as "9324329320 / 8169691366" become two entries. Keep digits only per entry.
 - tax_pct per item = SGST% + CGST%, or the IGST% when IGST is charged (e.g. 9+9 -> 18).
 - Include EVERY line item row, in printed order.
 - Use "" for unknown text and 0 for unknown numbers. Never invent data.
@@ -55,6 +59,8 @@ export type ExtractedInvoice = {
   mobile: string;
   email: string;
   gst_number: string;
+  footer_contact_person: string;
+  footer_contact_mobiles: string[];
   invoice_date: string;
   po_number: string;
   po_date: string;
@@ -87,6 +93,13 @@ function normalize(raw: any): ExtractedInvoice {
     mobile: str(raw?.mobile),
     email: str(raw?.email),
     gst_number: str(raw?.gst_number).toUpperCase(),
+    footer_contact_person: str(raw?.footer_contact_person),
+    footer_contact_mobiles: (Array.isArray(raw?.footer_contact_mobiles)
+      ? raw.footer_contact_mobiles
+      : String(raw?.footer_contact_mobiles ?? "").split(/[\/,;]+/)
+    )
+      .map((m: unknown) => str(m).replace(/[^0-9+]/g, ""))
+      .filter((m: string) => m.length >= 6),
     invoice_date: date(raw?.invoice_date),
     po_number: str(raw?.po_number),
     po_date: date(raw?.po_date),
