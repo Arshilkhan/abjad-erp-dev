@@ -500,14 +500,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         setCustomerText(d.customer_name);
       }
       if (d.company_name) setCustCompany(d.company_name);
-      if (d.contact_person) {
-        setCustContact(d.contact_person);
-        setContactPerson(d.contact_person);
-      }
-      if (d.mobile) {
-        setCustMobile(d.mobile);
-        setContactMobile(d.mobile);
-      }
+      if (d.contact_person) setCustContact(d.contact_person);
+      if (d.mobile) setCustMobile(d.mobile);
+      const footerPerson = d.footer_contact_person || d.contact_person;
+      if (footerPerson) setContactPerson(footerPerson);
+      const footerMobiles =
+        (d.footer_contact_mobiles ?? []).length > 0
+          ? (d.footer_contact_mobiles ?? []).join(" / ")
+          : d.mobile;
+      if (footerMobiles) setContactMobile(footerMobiles);
+
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
