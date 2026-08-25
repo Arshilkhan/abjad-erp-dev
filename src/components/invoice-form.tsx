@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, X } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
