@@ -471,6 +471,85 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     onError: (e: any) => toast.error(e.message),
   });
 
+  const runExtract = useServerFn(extractInvoicePdf);
+  const [extracting, setExtracting] = useState(false);
+  const [pdfName, setPdfName] = useState("");
+
+  const handlePdf = async (file: File) => {
+    if (file.type !== "application/pdf") return toast.error("Please choose a PDF file.");
+    if (file.size > 15 * 1024 * 1024) return toast.error("PDF is too large (max 15 MB).");
+    setPdfName(file.name);
+    setExtracting(true);
+    try {
+      const fileData = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("Could not read that file."));
+        r.readAsDataURL(file);
+      });
+      const d = await runExtract({ data: { fileData } });
+      if (d.customer_name) {
+        const match = customers.find(
+          (c: any) =>
+            (c.customer_name ?? "").toLowerCase() === d.customer_name.toLowerCase() ||
+            (c.company_name ?? "").toLowerCase() === d.customer_name.toLowerCase(),
+        );
+        setCustomerId(match?.id ?? "");
+        setCustomerText(d.customer_name);
+      }
+      if (d.company_name) setCustCompany(d.company_name);
+      if (d.contact_person) {
+        setCustContact(d.contact_person);
+        setContactPerson(d.contact_person);
+      }
+      if (d.mobile) {
+        setCustMobile(d.mobile);
+        setContactMobile(d.mobile);
+      }
+      if (d.email) setCustEmail(d.email);
+      if (d.gst_number) setCustGst(d.gst_number);
+      if (d.invoice_date) setInvoiceDate(d.invoice_date);
+      if (d.po_number) setPoNumber(d.po_number);
+      if (d.po_date) setPoDate(d.po_date);
+      if (d.challan_number) setChallanNumber(d.challan_number);
+      if (d.challan_date) {
+        setChallanDate(d.challan_date);
+        setChallanDates([d.challan_date]);
+      }
+      if (d.work_order_number) setWorkOrder(d.work_order_number);
+      if (d.freight) setFreight(d.freight);
+      if (d.packing_charges) setPacking(d.packing_charges);
+      if (d.other_charges) setOtherCharges(d.other_charges);
+      if (d.discount_amount) setDiscountExtra(d.discount_amount);
+      if (d.delivery_mode) setDeliveryMode(d.delivery_mode);
+      if (d.payment_terms) setPaymentTerms(d.payment_terms);
+      if (d.notes) setNotes(d.notes);
+      if (d.items.length) {
+        setItems(
+          d.items.map((it, i) => ({
+            sr_no: i + 1,
+            product_id:
+              products.find((p: any) => (p.product_name ?? "").toLowerCase() === it.description.toLowerCase())?.id ??
+              null,
+            hsn_code: it.hsn_code,
+            description: it.description,
+            quantity: it.quantity,
+            uom: it.uom,
+            unit_rate: it.unit_rate,
+            discount_pct: it.discount_pct,
+            tax_pct: it.tax_pct || 18,
+          })),
+        );
+        setProductTexts(d.items.map((it) => it.description));
+      }
+      toast.success(`Imported ${d.items.length} line item${d.items.length === 1 ? "" : "s"} from the PDF.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not read that PDF.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
