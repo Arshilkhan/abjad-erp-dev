@@ -1,6 +1,8 @@
 import { useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { extractInvoicePdf } from "@/lib/invoice-pdf.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
@@ -11,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowLeft, X } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
@@ -471,6 +473,85 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     onError: (e: any) => toast.error(e.message),
   });
 
+  const runExtract = useServerFn(extractInvoicePdf);
+  const [extracting, setExtracting] = useState(false);
+  const [pdfName, setPdfName] = useState("");
+
+  const handlePdf = async (file: File) => {
+    if (file.type !== "application/pdf") return toast.error("Please choose a PDF file.");
+    if (file.size > 15 * 1024 * 1024) return toast.error("PDF is too large (max 15 MB).");
+    setPdfName(file.name);
+    setExtracting(true);
+    try {
+      const fileData = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("Could not read that file."));
+        r.readAsDataURL(file);
+      });
+      const d = await runExtract({ data: { fileData } });
+      if (d.customer_name) {
+        const match = customers.find(
+          (c: any) =>
+            (c.customer_name ?? "").toLowerCase() === d.customer_name.toLowerCase() ||
+            (c.company_name ?? "").toLowerCase() === d.customer_name.toLowerCase(),
+        );
+        setCustomerId(match?.id ?? "");
+        setCustomerText(d.customer_name);
+      }
+      if (d.company_name) setCustCompany(d.company_name);
+      if (d.contact_person) {
+        setCustContact(d.contact_person);
+        setContactPerson(d.contact_person);
+      }
+      if (d.mobile) {
+        setCustMobile(d.mobile);
+        setContactMobile(d.mobile);
+      }
+      if (d.email) setCustEmail(d.email);
+      if (d.gst_number) setCustGst(d.gst_number);
+      if (d.invoice_date) setInvoiceDate(d.invoice_date);
+      if (d.po_number) setPoNumber(d.po_number);
+      if (d.po_date) setPoDate(d.po_date);
+      if (d.challan_number) setChallanNumber(d.challan_number);
+      if (d.challan_date) {
+        setChallanDate(d.challan_date);
+        setChallanDates([d.challan_date]);
+      }
+      if (d.work_order_number) setWorkOrder(d.work_order_number);
+      if (d.freight) setFreight(d.freight);
+      if (d.packing_charges) setPacking(d.packing_charges);
+      if (d.other_charges) setOtherCharges(d.other_charges);
+      if (d.discount_amount) setDiscountExtra(d.discount_amount);
+      if (d.delivery_mode) setDeliveryMode(d.delivery_mode);
+      if (d.payment_terms) setPaymentTerms(d.payment_terms);
+      if (d.notes) setNotes(d.notes);
+      if (d.items.length) {
+        setItems(
+          d.items.map((it, i) => ({
+            sr_no: i + 1,
+            product_id:
+              products.find((p: any) => (p.product_name ?? "").toLowerCase() === it.description.toLowerCase())?.id ??
+              null,
+            hsn_code: it.hsn_code,
+            description: it.description,
+            quantity: it.quantity,
+            uom: it.uom,
+            unit_rate: it.unit_rate,
+            discount_pct: it.discount_pct,
+            tax_pct: it.tax_pct || 18,
+          })),
+        );
+        setProductTexts(d.items.map((it) => it.description));
+      }
+      toast.success(`Imported ${d.items.length} line item${d.items.length === 1 ? "" : "s"} from the PDF.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not read that PDF.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -511,6 +592,39 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <CardTitle className="text-base">Invoice Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {importMode && (
+              <div className="col-span-2 space-y-1.5 md:col-span-4">
+                <Label className="text-xs">Upload Invoice PDF</Label>
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-3">
+                  <input
+                    id="invoice-pdf"
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    disabled={extracting}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) void handlePdf(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="sm" disabled={extracting} asChild={!extracting}>
+                    {extracting ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Reading PDF…
+                      </span>
+                    ) : (
+                      <label htmlFor="invoice-pdf" className="cursor-pointer">
+                        <Upload className="mr-1 h-4 w-4" /> Choose PDF
+                      </label>
+                    )}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {pdfName || "Fields and line items below are filled in automatically."}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Customer Name *</Label>
               <TypeaheadInput
