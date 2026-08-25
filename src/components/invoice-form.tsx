@@ -592,6 +592,39 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <CardTitle className="text-base">Invoice Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {importMode && (
+              <div className="col-span-2 space-y-1.5 md:col-span-4">
+                <Label className="text-xs">Upload Invoice PDF</Label>
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-3">
+                  <input
+                    id="invoice-pdf"
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    disabled={extracting}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) void handlePdf(f);
+                    }}
+                  />
+                  <Button type="button" variant="outline" size="sm" disabled={extracting} asChild={!extracting}>
+                    {extracting ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Reading PDF…
+                      </span>
+                    ) : (
+                      <label htmlFor="invoice-pdf" className="cursor-pointer">
+                        <Upload className="mr-1 h-4 w-4" /> Choose PDF
+                      </label>
+                    )}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {pdfName || "Fields and line items below are filled in automatically."}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Customer Name *</Label>
               <TypeaheadInput
