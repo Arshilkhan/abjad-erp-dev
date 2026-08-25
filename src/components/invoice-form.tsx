@@ -500,14 +500,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         setCustomerText(d.customer_name);
       }
       if (d.company_name) setCustCompany(d.company_name);
-      if (d.contact_person) {
-        setCustContact(d.contact_person);
-        setContactPerson(d.contact_person);
-      }
-      if (d.mobile) {
-        setCustMobile(d.mobile);
-        setContactMobile(d.mobile);
-      }
+      if (d.contact_person) setCustContact(d.contact_person);
+      if (d.mobile) setCustMobile(d.mobile);
+      const footerPerson = d.footer_contact_person || d.contact_person;
+      if (footerPerson) setContactPerson(footerPerson);
+      const footerMobiles =
+        (d.footer_contact_mobiles ?? []).length > 0
+          ? (d.footer_contact_mobiles ?? []).join(" / ")
+          : d.mobile;
+      if (footerMobiles) setContactMobile(footerMobiles);
+
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
@@ -964,8 +966,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Contact Mobile</Label>
-                  <Input value={contactMobile} onChange={(e) => setContactMobile(e.target.value)} />
+                  <Input
+                    value={contactMobile}
+                    onChange={(e) => setContactMobile(e.target.value)}
+                    placeholder="9324329320 / 8169691366"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Multiple numbers allowed — separate with “/” or a comma.
+                  </p>
                 </div>
+
               </>
             )}
             <div className="col-span-2 space-y-1.5">
