@@ -64,7 +64,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [customerId, setCustomerId] = useState<string>("");
   const [customerText, setCustomerText] = useState<string>("");
   const [custCompany, setCustCompany] = useState("");
-  const [custContact, setCustContact] = useState("");
+  // Contact person mirrors the customer name — no separate input.
   const [custMobile, setCustMobile] = useState("");
   const [custEmail, setCustEmail] = useState("");
   const [custGst, setCustGst] = useState("");
@@ -190,7 +190,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     if (!customer) return;
     setCustomerText(customer.customer_name || customer.company_name || "");
     setCustCompany(customer.company_name ?? "");
-    setCustContact((customer as any).contact_person ?? "");
+    
     setCustMobile((customer as any).mobile ?? "");
     setCustEmail((customer as any).email ?? "");
     setCustGst(customer.gst_number ?? "");
@@ -249,7 +249,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const save = useMutation({
     mutationFn: async (status: "draft" | "sent") => {
       const nameTyped = customerText.trim();
-      if (!nameTyped) throw new Error("Please enter a customer name");
+      if (!custCompany.trim()) throw new Error("Please enter a company name");
       if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
       if (isChallan && settings?.mandatory_challan_number && !challanNumber)
         throw new Error("Challan Number is mandatory");
@@ -277,8 +277,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (cust) {
         const patch: any = {};
         if (custCompany.trim() && custCompany !== (cust.company_name ?? "")) patch.company_name = custCompany.trim();
-        if (custContact.trim() && custContact !== (cust.contact_person ?? ""))
-          patch.contact_person = custContact.trim();
+        if (nameTyped && nameTyped !== (cust.contact_person ?? "")) patch.contact_person = nameTyped;
         if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
         if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
         if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
