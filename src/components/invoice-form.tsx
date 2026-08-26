@@ -255,8 +255,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const nameTyped = customerText.trim();
       if (!nameTyped) throw new Error("Please enter a customer name");
       if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
-      if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
-      if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
+      if (isChallan && settings?.mandatory_challan_number && !challanNumber)
+        throw new Error("Challan Number is mandatory");
+
       const requireCharge = (key: string, val: number) => {
         const c = cfg(key);
         if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
