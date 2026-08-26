@@ -691,31 +691,19 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
             </div>
 
-            {(settings?.show_po_number || isEdit) && (
+            {isChallan && (
               <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">PO Number{settings?.mandatory_po_number && " *"}</Label>
-                  <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">PO Date</Label>
-                  <Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} />
-                </div>
-              </>
-            )}
-            {(settings?.show_challan_number || isEdit) && (
-              <>
-                <div className={isChallan ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
+                <div className="col-span-2 space-y-1.5">
                   <Label className="text-xs">
-                    Challan Number{isChallan && "s (comma separated)"}
+                    Challan Numbers (comma separated)
                     {settings?.mandatory_challan_number && " *"}
                   </Label>
                   <Input
                     value={challanNumber}
-                    placeholder={isChallan ? "DC-001, DC-002, DC-003" : ""}
+                    placeholder="DC-001, DC-002, DC-003"
                     onChange={(e) => setChallanNumber(e.target.value)}
                   />
-                  {isChallan && challanNumber.trim() && (
+                  {challanNumber.trim() && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {challanNumber
                         .split(",")
@@ -729,51 +717,45 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                     </div>
                   )}
                 </div>
-                {isChallan ? (
-                  <div className="col-span-2 space-y-1.5">
-                    <Label className="text-xs">Challan Dates</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="date"
-                        value={challanDateInput}
-                        onChange={(e) => setChallanDateInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addChallanDate();
-                          }
-                        }}
-                      />
-                      <Button type="button" variant="secondary" onClick={addChallanDate}>
-                        Add
-                      </Button>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs">Challan Dates</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={challanDateInput}
+                      onChange={(e) => setChallanDateInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addChallanDate();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" onClick={addChallanDate}>
+                      Add
+                    </Button>
+                  </div>
+                  {challanDates.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {challanDates.map((d) => (
+                        <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
+                          {d}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${d}`}
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
                     </div>
-                    {challanDates.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {challanDates.map((d) => (
-                          <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
-                            {d}
-                            <button
-                              type="button"
-                              aria-label={`Remove ${d}`}
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Challan Date</Label>
-                    <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
+
             {(settings?.show_work_order || isEdit) && (
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs">Work Order Number</Label>
