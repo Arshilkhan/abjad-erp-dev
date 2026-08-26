@@ -680,10 +680,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{isChallan ? "Challan Date" : "Date"}</Label>
-              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-            </div>
+            {!isChallan && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+              </div>
+            )}
 
 
             {isChallan && (
