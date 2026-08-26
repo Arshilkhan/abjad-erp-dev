@@ -513,13 +513,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
-      if (d.po_number) setPoNumber(d.po_number);
-      if (d.po_date) setPoDate(d.po_date);
       if (d.challan_number) setChallanNumber(d.challan_number);
-      if (d.challan_date) {
-        setChallanDate(d.challan_date);
-        setChallanDates([d.challan_date]);
-      }
+      if (d.challan_date) setChallanDates([d.challan_date]);
+
       if (d.work_order_number) setWorkOrder(d.work_order_number);
       if (d.freight) setFreight(d.freight);
       if (d.packing_charges) setPacking(d.packing_charges);
