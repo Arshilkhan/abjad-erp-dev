@@ -70,12 +70,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
   const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
-  const [poNumber, setPoNumber] = useState("");
-  const [poDate, setPoDate] = useState("");
   const [challanNumber, setChallanNumber] = useState("");
-  const [challanDate, setChallanDate] = useState("");
   const [challanDates, setChallanDates] = useState<string[]>([]);
   const [challanDateInput, setChallanDateInput] = useState("");
+
   const [workOrder, setWorkOrder] = useState("");
   const [freight, setFreight] = useState(0);
   const [packing, setPacking] = useState(0);
@@ -150,11 +148,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setCustomerText(inv.customer_name_snapshot ?? "");
     setInvoiceType(inv.invoice_type);
     setInvoiceDate(inv.invoice_date);
-    setPoNumber(inv.po_number ?? "");
-    setPoDate(inv.po_date ?? "");
     setChallanNumber(inv.challan_number ?? "");
-    setChallanDate(inv.challan_date ?? "");
     setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));
+
     setWorkOrder(inv.work_order_number ?? "");
     setFreight(Number(inv.freight ?? 0));
     setPacking(Number(inv.packing_charges ?? 0));
@@ -255,8 +251,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const nameTyped = customerText.trim();
       if (!nameTyped) throw new Error("Please enter a customer name");
       if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
-      if (settings?.mandatory_po_number && !poNumber) throw new Error("PO Number is mandatory");
-      if (settings?.mandatory_challan_number && !challanNumber) throw new Error("Challan Number is mandatory");
+      if (isChallan && settings?.mandatory_challan_number && !challanNumber)
+        throw new Error("Challan Number is mandatory");
+
       const requireCharge = (key: string, val: number) => {
         const c = cfg(key);
         if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
@@ -351,11 +348,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         customer_name_snapshot: cust.company_name || cust.customer_name,
         customer_gst_snapshot: cust.gst_number,
         customer_address_snapshot: cust.billing_address,
-        po_number: poNumber || null,
-        po_date: poDate || null,
-        challan_number: challanNumber || null,
-        challan_date: (isChallan ? challanDates[0] : challanDate) || null,
-        challan_dates: isChallan ? challanDates : challanDate ? [challanDate] : [],
+        po_number: null,
+        po_date: null,
+        challan_number: isChallan ? challanNumber || null : null,
+        challan_date: isChallan ? challanDates[0] || invoiceDate : null,
+        challan_dates: isChallan ? (challanDates.length ? challanDates : [invoiceDate]) : [],
+
         work_order_number: workOrder || null,
         place_of_supply: cust.state ?? null,
         is_igst: isIGST,
@@ -513,13 +511,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
-      if (d.po_number) setPoNumber(d.po_number);
-      if (d.po_date) setPoDate(d.po_date);
       if (d.challan_number) setChallanNumber(d.challan_number);
-      if (d.challan_date) {
-        setChallanDate(d.challan_date);
-        setChallanDates([d.challan_date]);
-      }
+      if (d.challan_date) setChallanDates([d.challan_date]);
+
       if (d.work_order_number) setWorkOrder(d.work_order_number);
       if (d.freight) setFreight(d.freight);
       if (d.packing_charges) setPacking(d.packing_charges);
@@ -687,35 +681,24 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Date</Label>
+              <Label className="text-xs">{isChallan ? "Challan Date" : "Date"}</Label>
               <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
             </div>
 
-            {(settings?.show_po_number || isEdit) && (
+
+            {isChallan && (
               <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">PO Number{settings?.mandatory_po_number && " *"}</Label>
-                  <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">PO Date</Label>
-                  <Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} />
-                </div>
-              </>
-            )}
-            {(settings?.show_challan_number || isEdit) && (
-              <>
-                <div className={isChallan ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
+                <div className="col-span-2 space-y-1.5">
                   <Label className="text-xs">
-                    Challan Number{isChallan && "s (comma separated)"}
+                    Challan Numbers (comma separated)
                     {settings?.mandatory_challan_number && " *"}
                   </Label>
                   <Input
                     value={challanNumber}
-                    placeholder={isChallan ? "DC-001, DC-002, DC-003" : ""}
+                    placeholder="DC-001, DC-002, DC-003"
                     onChange={(e) => setChallanNumber(e.target.value)}
                   />
-                  {isChallan && challanNumber.trim() && (
+                  {challanNumber.trim() && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {challanNumber
                         .split(",")
@@ -729,51 +712,45 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                     </div>
                   )}
                 </div>
-                {isChallan ? (
-                  <div className="col-span-2 space-y-1.5">
-                    <Label className="text-xs">Challan Dates</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="date"
-                        value={challanDateInput}
-                        onChange={(e) => setChallanDateInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addChallanDate();
-                          }
-                        }}
-                      />
-                      <Button type="button" variant="secondary" onClick={addChallanDate}>
-                        Add
-                      </Button>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs">Challan Dates</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={challanDateInput}
+                      onChange={(e) => setChallanDateInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addChallanDate();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" onClick={addChallanDate}>
+                      Add
+                    </Button>
+                  </div>
+                  {challanDates.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {challanDates.map((d) => (
+                        <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
+                          {d}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${d}`}
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
                     </div>
-                    {challanDates.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {challanDates.map((d) => (
-                          <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
-                            {d}
-                            <button
-                              type="button"
-                              aria-label={`Remove ${d}`}
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Challan Date</Label>
-                    <Input type="date" value={challanDate} onChange={(e) => setChallanDate(e.target.value)} />
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
+
             {(settings?.show_work_order || isEdit) && (
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs">Work Order Number</Label>
