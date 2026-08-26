@@ -70,12 +70,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
   const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
-  const [poNumber, setPoNumber] = useState("");
-  const [poDate, setPoDate] = useState("");
   const [challanNumber, setChallanNumber] = useState("");
-  const [challanDate, setChallanDate] = useState("");
   const [challanDates, setChallanDates] = useState<string[]>([]);
   const [challanDateInput, setChallanDateInput] = useState("");
+
   const [workOrder, setWorkOrder] = useState("");
   const [freight, setFreight] = useState(0);
   const [packing, setPacking] = useState(0);
