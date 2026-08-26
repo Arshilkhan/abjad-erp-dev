@@ -148,11 +148,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setCustomerText(inv.customer_name_snapshot ?? "");
     setInvoiceType(inv.invoice_type);
     setInvoiceDate(inv.invoice_date);
-    setPoNumber(inv.po_number ?? "");
-    setPoDate(inv.po_date ?? "");
     setChallanNumber(inv.challan_number ?? "");
-    setChallanDate(inv.challan_date ?? "");
     setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));
+
     setWorkOrder(inv.work_order_number ?? "");
     setFreight(Number(inv.freight ?? 0));
     setPacking(Number(inv.packing_charges ?? 0));
