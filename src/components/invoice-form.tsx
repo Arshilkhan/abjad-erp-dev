@@ -190,7 +190,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     if (!customer) return;
     setCustomerText(customer.customer_name || customer.company_name || "");
     setCustCompany(customer.company_name ?? "");
-    
+
     setCustMobile((customer as any).mobile ?? "");
     setCustEmail((customer as any).email ?? "");
     setCustGst(customer.gst_number ?? "");
@@ -292,7 +292,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           .insert({
             customer_name: nameTyped,
             company_name: custCompany.trim() || null,
-            contact_person: custContact.trim() || null,
+            contact_person: nameTyped || null,
             mobile: custMobile.trim() || null,
             email: custEmail.trim() || null,
             gst_number: custGst.trim() || null,
@@ -372,7 +372,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
         payment_terms: paymentTerms || null,
-        contact_person: contactPerson || custContact || null,
+        contact_person: contactPerson || nameTyped || null,
         contact_mobile: contactMobile || null,
         notes: notes || null,
         status,
@@ -497,14 +497,11 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         setCustomerText(d.customer_name);
       }
       if (d.company_name) setCustCompany(d.company_name);
-      if (d.contact_person) setCustContact(d.contact_person);
       if (d.mobile) setCustMobile(d.mobile);
       const footerPerson = d.footer_contact_person || d.contact_person;
       if (footerPerson) setContactPerson(footerPerson);
       const footerMobiles =
-        (d.footer_contact_mobiles ?? []).length > 0
-          ? (d.footer_contact_mobiles ?? []).join(" / ")
-          : d.mobile;
+        (d.footer_contact_mobiles ?? []).length > 0 ? (d.footer_contact_mobiles ?? []).join(" / ") : d.mobile;
       if (footerMobiles) setContactMobile(footerMobiles);
 
       if (d.email) setCustEmail(d.email);
@@ -647,10 +644,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Label className="text-xs">Company Name</Label>
               <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Contact Person</Label>
-              <Input value={custContact} onChange={(e) => setCustContact(e.target.value)} />
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Mobile</Label>
               <Input value={custMobile} onChange={(e) => setCustMobile(e.target.value)} />
@@ -685,7 +678,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
               </div>
             )}
-
 
             {isChallan && (
               <>
@@ -953,7 +945,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                     Multiple numbers allowed — separate with “/” or a comma.
                   </p>
                 </div>
-
               </>
             )}
             <div className="col-span-2 space-y-1.5">
