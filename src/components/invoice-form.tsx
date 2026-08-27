@@ -921,25 +921,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Label className="text-xs">Payment Terms</Label>
               <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             </div>
-            {(settings?.show_delivery || isEdit) && (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Contact Person</Label>
-                  <Input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Contact Mobile</Label>
-                  <Input
-                    value={contactMobile}
-                    onChange={(e) => setContactMobile(e.target.value)}
-                    placeholder="9324329320 / 8169691366"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Multiple numbers allowed — separate with “/” or a comma.
-                  </p>
-                </div>
-              </>
-            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
