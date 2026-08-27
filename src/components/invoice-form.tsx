@@ -85,7 +85,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
   const [notes, setNotes] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
   const isChallan = invoiceType === "delivery_challan";
 
