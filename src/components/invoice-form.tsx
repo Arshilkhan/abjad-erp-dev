@@ -83,9 +83,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [discountExtra, setDiscountExtra] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactMobile, setContactMobile] = useState("");
   const [notes, setNotes] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
   const isChallan = invoiceType === "delivery_challan";
@@ -159,8 +158,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
-    setContactPerson(inv.contact_person ?? "");
-    setContactMobile(inv.contact_mobile ?? "");
     setNotes(inv.notes ?? "");
     setItems(
       existing.items.length
@@ -618,7 +615,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               </div>
             )}
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Customer Name *</Label>
+              <Label className="text-xs">Customer Name</Label>
               <TypeaheadInput
                 value={customerText}
                 onChange={(v) => {
@@ -641,7 +638,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               )}
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Company Name</Label>
+              <Label className="text-xs">Company Name *</Label>
               <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
             </div>
             <div className="space-y-1.5">
