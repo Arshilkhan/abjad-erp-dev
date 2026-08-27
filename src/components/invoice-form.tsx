@@ -368,8 +368,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
         payment_terms: paymentTerms || null,
-        contact_person: contactPerson || nameTyped || null,
-        contact_mobile: contactMobile || null,
+        contact_person: nameTyped || null,
+        contact_mobile: custMobile || null,
         notes: notes || null,
         status,
       };
@@ -494,11 +494,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       }
       if (d.company_name) setCustCompany(d.company_name);
       if (d.mobile) setCustMobile(d.mobile);
-      const footerPerson = d.footer_contact_person || d.contact_person;
-      if (footerPerson) setContactPerson(footerPerson);
-      const footerMobiles =
-        (d.footer_contact_mobiles ?? []).length > 0 ? (d.footer_contact_mobiles ?? []).join(" / ") : d.mobile;
-      if (footerMobiles) setContactMobile(footerMobiles);
+      const footerMobiles = (d.footer_contact_mobiles ?? []).length > 0 ? d.footer_contact_mobiles!.join(" / ") : "";
+      if (footerMobiles && !d.mobile) setCustMobile(footerMobiles);
 
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
@@ -924,7 +921,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Label className="text-xs">Payment Terms</Label>
               <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             </div>
-            {(settings?.show_contact_person || isEdit) && (
+            {(settings?.show_delivery || isEdit) && (
               <>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Contact Person</Label>
