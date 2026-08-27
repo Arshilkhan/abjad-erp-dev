@@ -83,8 +83,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [discountExtra, setDiscountExtra] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactMobile, setContactMobile] = useState("");
   const [notes, setNotes] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
@@ -159,8 +157,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
-    setContactPerson(inv.contact_person ?? "");
-    setContactMobile(inv.contact_mobile ?? "");
     setNotes(inv.notes ?? "");
     setItems(
       existing.items.length
@@ -372,8 +368,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
         payment_terms: paymentTerms || null,
-        contact_person: contactPerson || nameTyped || null,
-        contact_mobile: contactMobile || null,
+        contact_person: nameTyped || null,
+        contact_mobile: custMobile || null,
         notes: notes || null,
         status,
       };
@@ -498,11 +494,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       }
       if (d.company_name) setCustCompany(d.company_name);
       if (d.mobile) setCustMobile(d.mobile);
-      const footerPerson = d.footer_contact_person || d.contact_person;
-      if (footerPerson) setContactPerson(footerPerson);
-      const footerMobiles =
-        (d.footer_contact_mobiles ?? []).length > 0 ? (d.footer_contact_mobiles ?? []).join(" / ") : d.mobile;
-      if (footerMobiles) setContactMobile(footerMobiles);
+      const footerMobiles = (d.footer_contact_mobiles ?? []).length > 0 ? d.footer_contact_mobiles!.join(" / ") : "";
+      if (footerMobiles && !d.mobile) setCustMobile(footerMobiles);
 
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
@@ -618,7 +611,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               </div>
             )}
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Customer Name *</Label>
+              <Label className="text-xs">Customer Name</Label>
               <TypeaheadInput
                 value={customerText}
                 onChange={(v) => {
@@ -641,7 +634,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               )}
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Company Name</Label>
+              <Label className="text-xs">Company Name *</Label>
               <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
             </div>
             <div className="space-y-1.5">
@@ -928,25 +921,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Label className="text-xs">Payment Terms</Label>
               <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             </div>
-            {(settings?.show_contact_person || isEdit) && (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Contact Person</Label>
-                  <Input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Contact Mobile</Label>
-                  <Input
-                    value={contactMobile}
-                    onChange={(e) => setContactMobile(e.target.value)}
-                    placeholder="9324329320 / 8169691366"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Multiple numbers allowed — separate with “/” or a comma.
-                  </p>
-                </div>
-              </>
-            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
