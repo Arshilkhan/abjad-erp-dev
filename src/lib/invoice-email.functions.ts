@@ -24,6 +24,8 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     if (error || !invoice) return { sent: false as const, reason: 'invoice_not_found' }
 
     let email: string | null = null
+    let customerName: string | null = null
+    let companyName: string | null = null
     if (invoice.customer_id) {
       const { data: cust } = await supabase
         .from('customers')
@@ -31,8 +33,8 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
         .eq('id', invoice.customer_id)
         .single()
       email = cust?.email ?? null
-      var customerName = cust?.contact_person || cust?.customer_name || null
-      var companyName = cust?.company_name || invoice.customer_name_snapshot || null
+      customerName = cust?.contact_person || cust?.customer_name || null
+      companyName = cust?.company_name || invoice.customer_name_snapshot || null
     }
     if (!email) return { sent: false as const, reason: 'no_email' }
 
