@@ -6,6 +6,7 @@ import {
   Heading,
   Hr,
   Html,
+  Button,
   Preview,
   Section,
   Text,
@@ -17,7 +18,7 @@ interface Props {
   invoiceDate?: string
   companyName?: string
   customerName?: string
-  grandTotal?: string
+  pdfUrl?: string
   senderName?: string
 }
 
@@ -26,7 +27,7 @@ const Email = ({
   invoiceDate = '',
   companyName = '',
   customerName,
-  grandTotal = '',
+  pdfUrl = '',
   senderName = 'ABJAD Engineering Works',
 }: Props) => (
   <Html lang="en" dir="ltr">
@@ -36,13 +37,6 @@ const Email = ({
       <Container style={container}>
         <Text style={brand}>{senderName}</Text>
         <Heading style={h1}>Invoice {invoiceNumber}</Heading>
-        <Text style={text}>
-          {customerName ? `Dear ${customerName},` : 'Hello,'}
-        </Text>
-        <Text style={text}>
-          Please find the details of your invoice below. Reach out to us if anything looks
-          incorrect.
-        </Text>
         <Section style={card}>
           <Text style={row}>
             <span style={label}>Invoice No.</span> {invoiceNumber}
@@ -57,12 +51,14 @@ const Email = ({
               <span style={label}>Billed to</span> {companyName}
             </Text>
           ) : null}
-          {grandTotal ? (
-            <Text style={row}>
-              <span style={label}>Amount</span> {grandTotal}
-            </Text>
-          ) : null}
         </Section>
+        {pdfUrl ? (
+          <Section style={{ margin: '20px 0' }}>
+            <Button style={button} href={pdfUrl}>
+              Download invoice PDF
+            </Button>
+          </Section>
+        ) : null}
         <Hr style={hr} />
         <Text style={muted}>Thank you for your business.</Text>
         <Text style={muted}>{senderName}</Text>
@@ -81,7 +77,7 @@ export const template = {
     invoiceDate: '2026-08-29',
     companyName: 'Fluid Tech Systems',
     customerName: 'Mr. A Javad',
-    grandTotal: 'Rs. 11,800.00',
+    pdfUrl: 'https://example.com/invoice.pdf',
     senderName: 'ABJAD Engineering Works',
   },
 } satisfies TemplateEntry
@@ -94,5 +90,6 @@ const text = { fontSize: '14px', lineHeight: '22px', color: '#374151', margin: '
 const card = { backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', margin: '16px 0' }
 const row = { fontSize: '14px', color: '#111827', margin: '0 0 6px' }
 const label = { display: 'inline-block', width: '110px', color: '#6b7280' }
+const button = { backgroundColor: '#111827', color: '#ffffff', borderRadius: '6px', padding: '12px 20px', fontSize: '14px', textDecoration: 'none', display: 'inline-block' }
 const hr = { borderColor: '#e5e7eb', margin: '20px 0' }
 const muted = { fontSize: '12px', color: '#6b7280', margin: '0 0 4px' }
