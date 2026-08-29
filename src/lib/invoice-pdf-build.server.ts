@@ -158,11 +158,15 @@ export async function buildInvoicePdf(
 
   const totals: Array<[string, any]> = [
     ['Subtotal', invoice['subtotal']],
-    ['Discount', invoice['discount_total']],
+    ['Discount', invoice['discount_amount']],
     ['CGST', invoice['cgst_amount']],
     ['SGST', invoice['sgst_amount']],
     ['IGST', invoice['igst_amount']],
-    ['Freight', invoice['freight_charges']],
+    ['Freight', invoice['freight']],
+    ['Packing', invoice['packing_charges']],
+    ['Delivery', invoice['delivery_charges']],
+    ['Transportation', invoice['transportation_charges']],
+    ['Other Charges', invoice['other_charges']],
     ['Round Off', invoice['round_off']],
   ]
   for (const [label, val] of totals) {
