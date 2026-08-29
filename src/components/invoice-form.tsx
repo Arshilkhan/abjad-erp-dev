@@ -461,6 +461,23 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         await logInvoiceEvent(inv.id, "created", `Created invoice ${inv.invoice_number}`);
       }
       toast.success(`Invoice ${inv.invoice_number} ${isEdit ? "updated" : importMode ? "imported" : "created"}`);
+
+      if (status === "sent") {
+        try {
+          const res: any = await sendEmail({ data: { invoiceId: inv.id } });
+          if (res?.sent) {
+            toast.success(`Invoice emailed to ${res.email}`);
+            await logInvoiceEvent(inv.id, "emailed", `Invoice emailed to ${res.email}`);
+          } else if (res?.reason === "no_email") {
+            toast.info("Saved. No customer email on file, so nothing was sent.");
+          } else if (res?.reason === "recipient_suppressed") {
+            toast.warning("Saved. The customer has unsubscribed from emails.");
+          }
+        } catch (err: any) {
+          toast.error(`Invoice saved, but the email could not be sent: ${err?.message ?? "unknown error"}`);
+        }
+      }
+
       nav({ to: "/invoices/$id", params: { id: inv.id } });
     },
     onError: (e: any) => toast.error(e.message),
