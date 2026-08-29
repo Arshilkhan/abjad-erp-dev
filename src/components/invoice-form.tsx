@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { extractInvoicePdf } from "@/lib/invoice-pdf.functions";
+import { sendInvoiceEmail } from "@/lib/invoice-email.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
@@ -242,6 +243,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setProductTexts((prev) => prev.map((t, i) => (i === idx ? p.product_name : t)));
   };
 
+  const sendEmail = useServerFn(sendInvoiceEmail);
+
   const save = useMutation({
     mutationFn: async (status: "draft" | "sent") => {
       const nameTyped = customerText.trim();
@@ -467,7 +470,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           const res: any = await sendEmail({ data: { invoiceId: inv.id } });
           if (res?.sent) {
             toast.success(`Invoice emailed to ${res.email}`);
-            await logInvoiceEvent(inv.id, "emailed", `Invoice emailed to ${res.email}`);
+            await logInvoiceEvent(inv.id, "sent", `Invoice emailed to ${res.email}`);
           } else if (res?.reason === "no_email") {
             toast.info("Saved. No customer email on file, so nothing was sent.");
           } else if (res?.reason === "recipient_suppressed") {
