@@ -141,7 +141,11 @@ export async function buildInvoicePdf(
   }
 
   // ---------- HEADER ----------
-  draw(c['name'] ?? 'ABJAD ENGINEERING WORKS', L, y - 14, 15, { bold: true })
+  draw(c['name'] ?? 'ABJAD ENGINEERING WORKS', L, y - 14, 15, {
+    bold: true,
+    maxWidth: W - 140,
+    minSize: 9,
+  })
   y -= 18
   const addr =
     [c['address'], c['city'], c['state'] ? `(${c['state']})` : '', c['pincode']].filter(Boolean).join(', ') ||
@@ -153,11 +157,15 @@ export async function buildInvoicePdf(
   }
   const phone = [c['mobile'], c['alt_mobile']].filter(Boolean).join(' / ')
   if (phone) {
-    draw(`Mobile: ${phone}`, L, y - 9, 8)
+    draw(`Mobile: ${phone}`, L, y - 9, 8, { maxWidth: W - 130 })
     y -= 10
   }
   if (c['email']) {
-    draw(`Email: ${c['email']}`, L, y - 9, 8, { italic: true, color: rgb(0.1, 0.2, 0.7) })
+    draw(`Email: ${c['email']}`, L, y - 9, 8, {
+      italic: true,
+      color: rgb(0.1, 0.2, 0.7),
+      maxWidth: W - 130,
+    })
     y -= 10
   }
 
