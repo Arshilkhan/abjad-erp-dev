@@ -14,6 +14,11 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabase } = context
 
+    const { enforceRateLimit } = await import('./rate-limit.server')
+    await enforceRateLimit('invoice-email', context.userId, 60, 3600)
+    await enforceRateLimit('invoice-email-doc', data.invoiceId, 5, 3600)
+
+
     const { data: invoice, error } = await supabase
       .from('invoices')
       .select('*')

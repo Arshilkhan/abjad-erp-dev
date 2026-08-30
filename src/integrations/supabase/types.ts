@@ -1012,6 +1012,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
+      }
       rejected_inventory: {
         Row: {
           created_at: string
@@ -1233,12 +1254,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      amount_in_words: { Args: { amount: number }; Returns: string }
+      can_edit_panel: { Args: { _panel: string }; Returns: boolean }
+      can_write: { Args: { _user_id?: string }; Returns: boolean }
+      has_panel: {
+        Args: { _panel: string; _user_id?: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      is_admin: { Args: { _user_id?: string }; Returns: boolean }
+      num_words_below_hundred: { Args: { n: number }; Returns: string }
+      recalc_invoice_totals: {
+        Args: { _invoice_id: string }
+        Returns: undefined
       }
     }
     Enums: {
