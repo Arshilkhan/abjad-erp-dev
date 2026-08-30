@@ -81,7 +81,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
   <h1>PURCHASE ORDER</h1>
   <table>
     <tr>
-      <td rowspan="3" style="width:45%"><span class="lbl">Invoice To/Dispatch to</span><br/>${companyBlock}</td>
+      <td rowspan="3" style="width:45%"><span class="lbl">Invoice To/Dispatch to</span><br/>${supplierBlock}</td>
       <td style="width:27%"><span class="lbl">Voucher No.</span><br/>${esc(po.po_number)}</td>
       <td style="width:28%"><span class="lbl">Dated</span><br/>${esc(formatDate(po.po_date))}</td>
     </tr>
@@ -94,7 +94,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
       <td><span class="lbl">Company's GSTIN</span><br/>${esc(company?.gst_number ?? "—")}</td>
     </tr>
     <tr>
-      <td rowspan="2"><span class="lbl">Supplier</span><br/>${supplierBlock}</td>
+      <td rowspan="2"><span class="lbl">Supplier</span><br/>${companyBlock}</td>
       <td><span class="lbl">Status</span><br/>${esc(String(po.status ?? "").toUpperCase())}</td>
       <td><span class="lbl">Tax Type</span><br/>${po.is_igst ? "IGST" : "CGST + SGST"}</td>
     </tr>

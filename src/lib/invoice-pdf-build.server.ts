@@ -51,16 +51,40 @@ export async function buildInvoicePdf(
     x: number,
     yy: number,
     size = 8,
-    o: { bold?: boolean; italic?: boolean; color?: any; align?: 'left' | 'right' | 'center'; width?: number } = {},
+    o: {
+      bold?: boolean
+      italic?: boolean
+      color?: any
+      align?: 'left' | 'right' | 'center'
+      width?: number
+      maxWidth?: number
+      minSize?: number
+    } = {},
   ) => {
     const f = o.bold ? bold : o.italic ? italic : font
-    const str = clean(s)
+    let str = clean(s)
     if (!str) return
-    const w = f.widthOfTextAtSize(str, size)
+    let fittedSize = size
+    const maxWidth = o.maxWidth
+    const minSize = o.minSize ?? 5
+    if (maxWidth && maxWidth > 0) {
+      while (fittedSize > minSize && f.widthOfTextAtSize(str, fittedSize) > maxWidth) {
+        fittedSize -= 0.5
+      }
+      if (f.widthOfTextAtSize(str, fittedSize) > maxWidth) {
+        const suffix = '...'
+        while (str.length && f.widthOfTextAtSize(`${str}${suffix}`, fittedSize) > maxWidth) {
+          str = str.slice(0, -1)
+        }
+        str = str ? `${str}${suffix}` : ''
+      }
+    }
+    if (!str) return
+    const textWidth = f.widthOfTextAtSize(str, fittedSize)
     let x0 = x
-    if (o.align === 'right') x0 = x - w
-    if (o.align === 'center') x0 = x + ((o.width ?? 0) - w) / 2
-    page.drawText(str, { x: x0, y: yy, size, font: f, color: o.color ?? black })
+    if (o.align === 'right') x0 = x - textWidth
+    if (o.align === 'center') x0 = x + ((o.width ?? 0) - textWidth) / 2
+    page.drawText(str, { x: x0, y: yy, size: fittedSize, font: f, color: o.color ?? black })
   }
 
   const wrap = (s: string, maxW: number, size = 8, f = font) => {
@@ -70,7 +94,20 @@ export async function buildInvoicePdf(
       const t = cur ? `${cur} ${word}` : word
       if (f.widthOfTextAtSize(t, size) > maxW) {
         if (cur) out.push(cur)
-        cur = word
+        if (f.widthOfTextAtSize(word, size) <= maxW) {
+          cur = word
+        } else {
+          let part = ''
+          for (const char of word) {
+            if (part && f.widthOfTextAtSize(`${part}${char}`, size) > maxW) {
+              out.push(part)
+              part = char
+            } else {
+              part += char
+            }
+          }
+          cur = part
+        }
       } else cur = t
     }
     if (cur) out.push(cur)
@@ -97,9 +134,10 @@ export async function buildInvoicePdf(
     })
     const size = o.size ?? 8
     const ty = yTop - h + (h - size) / 2 + 1
-    if (o.align === 'right') draw(txt, x + w - 3, ty, size, { bold: o.bold, align: 'right', color: o.color })
-    else if (o.align === 'center') draw(txt, x, ty, size, { bold: o.bold, align: 'center', width: w, color: o.color })
-    else draw(txt, x + 3, ty, size, { bold: o.bold, color: o.color })
+    const maxWidth = Math.max(0, w - 6)
+    if (o.align === 'right') draw(txt, x + w - 3, ty, size, { bold: o.bold, align: 'right', color: o.color, maxWidth })
+    else if (o.align === 'center') draw(txt, x, ty, size, { bold: o.bold, align: 'center', width: w, color: o.color, maxWidth })
+    else draw(txt, x + 3, ty, size, { bold: o.bold, color: o.color, maxWidth })
   }
 
   // ---------- HEADER ----------
@@ -303,8 +341,8 @@ export async function buildInvoicePdf(
     ['BRANCH NAME', c['bank_branch']],
   ]
   bank.forEach(([k, v], i) => {
-    draw(k, L + 5, bankTop - 14 - i * 12, 8, { bold: true })
-    draw(String(v ?? ''), L + 90, bankTop - 14 - i * 12, 8)
+    draw(k, L + 5, bankTop - 14 - i * 12, 8, { bold: true, maxWidth: 80 })
+    draw(String(v ?? ''), L + 90, bankTop - 14 - i * 12, 8, { maxWidth: bankW - 95 })
   })
 
   const tx = L + bankW
@@ -333,7 +371,11 @@ export async function buildInvoicePdf(
     { size: 7 },
   )
   page.drawRectangle({ x: L + footL, y: y - footH, width: W - footL, height: footH, borderColor: black, borderWidth: 0.6 })
-  draw(`For ${c['name'] ?? 'ABJAD ENGINEERING WORKS'}`, L + footL + 5, y - 12, 8, { bold: true, color: red })
+  draw(`For ${c['name'] ?? 'ABJAD ENGINEERING WORKS'}`, L + footL + 5, y - 12, 8, {
+    bold: true,
+    color: red,
+    maxWidth: W - footL - 10,
+  })
   draw('Authorised Signatory', L + footL + 5, y - footH + 6, 8, { bold: true })
   y -= footH + 10
 
