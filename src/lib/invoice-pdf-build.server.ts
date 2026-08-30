@@ -108,7 +108,7 @@ export async function buildInvoicePdf(
   const addr =
     [c['address'], c['city'], c['state'] ? `(${c['state']})` : '', c['pincode']].filter(Boolean).join(', ') ||
     'UNIT NO. 008, G-WING, UDYOG BHAVAN -2, PLOT NO. K-3, MIDC ANAND NAGER AMBERNATH (E) PIN 421 506'
-  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W, 8)
+  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W - 130, 8)
   for (const l of headLines) {
     draw(l, L, y - 9, 8)
     y -= 10
@@ -145,7 +145,7 @@ export async function buildInvoicePdf(
   y -= 26
 
   // ---------- CUSTOMER + BILL META ----------
-  const cw = [0.15, 0.45, 0.15, 0.1, 0.08, 0.07].map((f) => f * W)
+  const cw = [0.15, 0.38, 0.14, 0.13, 0.07, 0.13].map((f) => f * W)
   const cx: number[] = []
   cw.reduce((acc, w, i) => {
     cx[i] = acc
