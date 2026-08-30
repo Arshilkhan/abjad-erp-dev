@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { amountInWords, formatDate } from '@/lib/format'
-import logoDataUrl from '@/assets/aew-logo.jpg?inline'
+import { AEW_LOGO_BASE64 } from '@/assets/aew-logo-base64'
 
 type Row = Record<string, any>
 
@@ -125,7 +125,7 @@ export async function buildInvoicePdf(
 
   // ---------- LOGO ----------
   try {
-    const b64 = String(logoDataUrl).split(',')[1]
+    const b64 = AEW_LOGO_BASE64
     if (b64) {
       const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))
       const img = await pdf.embedJpg(bytes)
