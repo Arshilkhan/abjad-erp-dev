@@ -17,7 +17,6 @@ interface Props {
   invoiceNumber?: string
   invoiceDate?: string
   companyName?: string
-  customerName?: string
   pdfUrl?: string
   senderName?: string
 }
@@ -26,7 +25,6 @@ const Email = ({
   invoiceNumber = '',
   invoiceDate = '',
   companyName = '',
-  customerName,
   pdfUrl = '',
   senderName = 'ABJAD Engineering Works',
 }: Props) => (
