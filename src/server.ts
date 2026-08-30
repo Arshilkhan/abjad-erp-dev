@@ -53,7 +53,9 @@ function withSecurityHeaders(response: Response): Response {
   headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
   headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  if (!headers.has("Cache-Control")) headers.set("Cache-Control", "private, no-store");
+  const isHtml = (headers.get("content-type") ?? "").includes("text/html");
+  if (isHtml && !headers.has("Cache-Control")) headers.set("Cache-Control", "private, no-store");
+
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
