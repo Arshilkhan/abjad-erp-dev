@@ -1012,6 +1012,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
+      }
       rejected_inventory: {
         Row: {
           created_at: string
@@ -1233,6 +1254,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit_panel: { Args: { _panel: string }; Returns: boolean }
+      can_write: { Args: { _user_id?: string }; Returns: boolean }
+      has_panel: {
+        Args: { _panel: string; _user_id?: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1240,6 +1267,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id?: string }; Returns: boolean }
     }
     Enums: {
       app_role:
