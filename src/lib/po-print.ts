@@ -141,7 +141,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
       ${vendor?.pan_number ? `Supplier's PAN : ${esc(vendor.pan_number)}` : ""}
     </div>
     <div class="sign">
-      for ${esc(company?.name ?? "Company")}<br/><br/><br/>
+      for ${esc(po.vendor_name_snapshot ?? vendor?.vendor_name ?? vendor?.company_name ?? "Supplier")}<br/><br/><br/>
       Authorised Signatory
     </div>
   </div>
