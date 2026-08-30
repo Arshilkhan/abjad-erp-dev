@@ -1254,6 +1254,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      amount_in_words: { Args: { amount: number }; Returns: string }
       can_edit_panel: { Args: { _panel: string }; Returns: boolean }
       can_write: { Args: { _user_id?: string }; Returns: boolean }
       has_panel: {
@@ -1268,6 +1269,11 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id?: string }; Returns: boolean }
+      num_words_below_hundred: { Args: { n: number }; Returns: string }
+      recalc_invoice_totals: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
