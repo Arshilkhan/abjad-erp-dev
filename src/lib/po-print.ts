@@ -30,8 +30,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
     .filter(Boolean)
     .join("<br/>");
 
-  const taxTotal =
-    Number(po.igst_amount ?? 0) + Number(po.cgst_amount ?? 0) + Number(po.sgst_amount ?? 0);
+  const taxTotal = Number(po.igst_amount ?? 0) + Number(po.cgst_amount ?? 0) + Number(po.sgst_amount ?? 0);
   const qtyTotal = items.reduce((a, i) => a + Number(i.quantity ?? 0), 0);
 
   const rows = items
@@ -46,7 +45,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
         <td class="c">${esc(it.uom ?? "nos")}</td>
         <td class="r">${Number(it.tax_pct ?? 0)} %</td>
         <td class="r">${formatINR(Number(it.quantity ?? 0) * Number(it.unit_rate ?? 0), { withSymbol: false })}</td>
-      </tr>`
+      </tr>`,
     )
     .join("");
 
@@ -82,7 +81,7 @@ export function buildPOHtml(po: any, items: any[], company: Company, vendor?: Re
   <h1>PURCHASE ORDER</h1>
   <table>
     <tr>
-      <td rowspan="3" style="width:45%"><span class="lbl">Invoice To</span><br/>${companyBlock}</td>
+      <td rowspan="3" style="width:45%"><span class="lbl">Invoice To/Dispatch to</span><br/>${companyBlock}</td>
       <td style="width:27%"><span class="lbl">Voucher No.</span><br/>${esc(po.po_number)}</td>
       <td style="width:28%"><span class="lbl">Dated</span><br/>${esc(formatDate(po.po_date))}</td>
     </tr>
