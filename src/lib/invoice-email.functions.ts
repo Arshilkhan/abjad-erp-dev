@@ -41,7 +41,7 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoice.id)
-        .order('sort_order', { ascending: true }),
+        .order('sr_no', { ascending: true }),
       supabase.from('company_profile').select('*').limit(1).maybeSingle(),
     ])
 

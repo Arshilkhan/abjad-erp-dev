@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { amountInWords, formatDate } from '@/lib/format'
+import { AEW_LOGO_BASE64 } from '@/assets/aew-logo-base64'
 
 type Row = Record<string, any>
 
@@ -107,7 +108,7 @@ export async function buildInvoicePdf(
   const addr =
     [c['address'], c['city'], c['state'] ? `(${c['state']})` : '', c['pincode']].filter(Boolean).join(', ') ||
     'UNIT NO. 008, G-WING, UDYOG BHAVAN -2, PLOT NO. K-3, MIDC ANAND NAGER AMBERNATH (E) PIN 421 506'
-  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W, 8)
+  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W - 130, 8)
   for (const l of headLines) {
     draw(l, L, y - 9, 8)
     y -= 10
@@ -122,6 +123,20 @@ export async function buildInvoicePdf(
     y -= 10
   }
 
+  // ---------- LOGO ----------
+  try {
+    const b64 = AEW_LOGO_BASE64
+    if (b64) {
+      const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))
+      const img = await pdf.embedJpg(bytes)
+      const h = 58
+      const w = (img.width / img.height) * h
+      page.drawImage(img, { x: R - w, y: 841.89 - M - h, width: w, height: h })
+    }
+  } catch {
+    // logo optional
+  }
+
   // ---------- TITLE BANNER ----------
   y -= 4
   page.drawRectangle({ x: L, y: y - 22, width: W, height: 22, color: blue })
@@ -130,8 +145,12 @@ export async function buildInvoicePdf(
   y -= 26
 
   // ---------- CUSTOMER + BILL META ----------
-  const cw = [0.15, 0.45, 0.15, 0.1, 0.08, 0.07].map((f) => f * W)
-  const cx = cw.reduce<number[]>((a, w, i) => [...a, (a[i] ?? L) + (i ? cw[i - 1]! : 0)], [L])
+  const cw = [0.15, 0.38, 0.14, 0.13, 0.07, 0.13].map((f) => f * W)
+  const cx: number[] = []
+  cw.reduce((acc, w, i) => {
+    cx[i] = acc
+    return acc + w
+  }, L)
   const rowH = 14
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
