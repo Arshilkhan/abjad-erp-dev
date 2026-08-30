@@ -16,9 +16,7 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
 
     const { data: invoice, error } = await supabase
       .from('invoices')
-      .select(
-        'id, invoice_number, invoice_date, customer_name_snapshot, contact_person, customer_id, subtotal, discount_amount, cgst_amount, sgst_amount, igst_amount, freight, packing_charges, delivery_charges, transportation_charges, other_charges, round_off, grand_total, customer_address_snapshot, customer_gst_snapshot',
-      )
+      .select('*')
       .eq('id', data.invoiceId)
       .single()
     if (error || !invoice) return { sent: false as const, reason: 'invoice_not_found' }
@@ -41,7 +39,7 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     const [{ data: items }, { data: company }] = await Promise.all([
       supabase
         .from('invoice_items')
-        .select('description, hsn_code, quantity, uom, unit_rate, total_amount')
+        .select('*')
         .eq('invoice_id', invoice.id)
         .order('sort_order', { ascending: true }),
       supabase.from('company_profile').select('*').limit(1).maybeSingle(),

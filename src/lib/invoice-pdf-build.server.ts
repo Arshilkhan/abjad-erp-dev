@@ -1,204 +1,333 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { amountInWords, formatDate } from '@/lib/format'
 
 type Row = Record<string, any>
 
-const inr = (n: number) =>
-  'Rs. ' +
-  Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const clean = (v: any) => String(v ?? '').replace(/[^\x20-\x7E]/g, '')
+const num = (v: any) => Number(v ?? 0)
+const money = (n: number) => num(n).toFixed(2)
 
-const clean = (v: any) => String(v ?? '').replace(/[^\x20-\x7E\n]/g, '')
+const TYPE_LABELS: Record<string, string> = {
+  tax_invoice: 'TAX INVOICE',
+  proforma: 'PROFORMA INVOICE',
+  quotation: 'QUOTATION',
+  challan: 'DELIVERY CHALLAN',
+  delivery_challan: 'DELIVERY CHALLAN',
+  purchase_order: 'PURCHASE ORDER',
+}
 
-/** Builds a simple, print-clean A4 invoice PDF and returns the bytes. */
+/**
+ * Builds the A4 invoice PDF using the same layout as the on-screen
+ * printable invoice: bordered tables, blue title banner, buyer/company
+ * detail grid, item table, bank + totals block, words, footer, declaration.
+ */
 export async function buildInvoicePdf(
   invoice: Row,
   items: Row[],
   company: Row | null,
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
-  const font = await pdf.embedFont(StandardFonts.Helvetica)
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const font = await pdf.embedFont(StandardFonts.TimesRoman)
+  const bold = await pdf.embedFont(StandardFonts.TimesRomanBold)
+  const italic = await pdf.embedFont(StandardFonts.TimesRomanItalic)
 
-  let page = pdf.addPage([595.28, 841.89])
-  const { width } = page.getSize()
-  const margin = 40
-  let y = 800
+  const page = pdf.addPage([595.28, 841.89])
+  const M = 28
+  const W = 595.28 - M * 2
+  const L = M
+  const R = M + W
+  const black = rgb(0, 0, 0)
+  const grey = rgb(0.94, 0.94, 0.94)
+  const blue = rgb(0.357, 0.608, 0.835)
+  const white = rgb(1, 1, 1)
+  const red = rgb(0.86, 0.15, 0.15)
 
-  const dark = rgb(0.07, 0.09, 0.15)
-  const grey = rgb(0.42, 0.45, 0.5)
+  const c = company ?? {}
+  let y = 841.89 - M
 
-  const text = (
+  const draw = (
     s: string,
     x: number,
-    size = 9,
-    opts: { bold?: boolean; color?: any; align?: 'left' | 'right' } = {},
+    yy: number,
+    size = 8,
+    o: { bold?: boolean; italic?: boolean; color?: any; align?: 'left' | 'right' | 'center'; width?: number } = {},
   ) => {
-    const f = opts.bold ? bold : font
+    const f = o.bold ? bold : o.italic ? italic : font
     const str = clean(s)
+    if (!str) return
     const w = f.widthOfTextAtSize(str, size)
-    page.drawText(str, {
-      x: opts.align === 'right' ? x - w : x,
-      y,
-      size,
-      font: f,
-      color: opts.color ?? dark,
-    })
+    let x0 = x
+    if (o.align === 'right') x0 = x - w
+    if (o.align === 'center') x0 = x + ((o.width ?? 0) - w) / 2
+    page.drawText(str, { x: x0, y: yy, size, font: f, color: o.color ?? black })
   }
 
-  const line = () => {
-    page.drawLine({
-      start: { x: margin, y: y + 6 },
-      end: { x: width - margin, y: y + 6 },
-      thickness: 0.7,
-      color: rgb(0.85, 0.87, 0.9),
-    })
-  }
-
-  const nextPage = () => {
-    page = pdf.addPage([595.28, 841.89])
-    y = 800
-  }
-
-  // Header
-  text(company?.['name'] ?? 'Invoice', margin, 16, { bold: true })
-  y -= 14
-  const addr = [company?.['address'], [company?.['city'], company?.['state'], company?.['pincode']].filter(Boolean).join(', ')]
-    .filter(Boolean)
-    .join(', ')
-  if (addr) {
-    text(addr, margin, 8, { color: grey })
-    y -= 11
-  }
-  const cLine = [
-    company?.['gst_number'] ? `GSTIN: ${company['gst_number']}` : '',
-    company?.['mobile'] ? `Mobile: ${company['mobile']}` : '',
-    company?.['email'] ? `Email: ${company['email']}` : '',
-  ]
-    .filter(Boolean)
-    .join('   ')
-  if (cLine) {
-    text(cLine, margin, 8, { color: grey })
-    y -= 11
-  }
-
-  y -= 8
-  text('TAX INVOICE', width / 2 - 34, 12, { bold: true })
-  y -= 18
-  line()
-  y -= 12
-
-  // Meta
-  text(`Invoice No: ${invoice['invoice_number'] ?? ''}`, margin, 9, { bold: true })
-  text(`Date: ${invoice['invoice_date'] ?? ''}`, width - margin, 9, { align: 'right' })
-  y -= 20
-
-  // Bill to
-  text('Bill To', margin, 9, { bold: true, color: grey })
-  y -= 12
-  const billLines = [
-    invoice['customer_name_snapshot'],
-    invoice['contact_person'] ? `Attn: ${invoice['contact_person']}` : '',
-    invoice['customer_address_snapshot'],
-    invoice['customer_gst_snapshot'] ? `GSTIN: ${invoice['customer_gst_snapshot']}` : '',
-  ].filter(Boolean)
-  for (const l of billLines) {
-    text(String(l), margin, 9)
-    y -= 12
-  }
-
-  y -= 8
-  line()
-  y -= 14
-
-  // Table header
-  const cols = { sr: margin, desc: margin + 26, hsn: 330, qty: 395, rate: 455, amt: width - margin }
-  text('#', cols.sr, 8, { bold: true, color: grey })
-  text('Description', cols.desc, 8, { bold: true, color: grey })
-  text('HSN', cols.hsn, 8, { bold: true, color: grey })
-  text('Qty', cols.qty, 8, { bold: true, color: grey, align: 'right' })
-  text('Rate', cols.rate, 8, { bold: true, color: grey, align: 'right' })
-  text('Amount', cols.amt, 8, { bold: true, color: grey, align: 'right' })
-  y -= 6
-  line()
-  y -= 14
-
-  items.forEach((it, i) => {
-    if (y < 140) {
-      nextPage()
-    }
-    const desc = clean(it['description'] ?? '')
-    const wrapped: string[] = []
+  const wrap = (s: string, maxW: number, size = 8, f = font) => {
+    const out: string[] = []
     let cur = ''
-    for (const word of desc.split(/\s+/)) {
-      const test = cur ? `${cur} ${word}` : word
-      if (font.widthOfTextAtSize(test, 9) > 285) {
-        if (cur) wrapped.push(cur)
+    for (const word of clean(s).split(/\s+/)) {
+      const t = cur ? `${cur} ${word}` : word
+      if (f.widthOfTextAtSize(t, size) > maxW) {
+        if (cur) out.push(cur)
         cur = word
-      } else cur = test
+      } else cur = t
     }
-    if (cur) wrapped.push(cur)
-    if (!wrapped.length) wrapped.push('')
+    if (cur) out.push(cur)
+    return out.length ? out : ['']
+  }
 
-    text(String(i + 1), cols.sr, 9)
-    text(wrapped[0]!, cols.desc, 9)
-    text(String(it['hsn_code'] ?? ''), cols.hsn, 9)
-    text(`${it['quantity'] ?? 0} ${it['uom'] ?? ''}`.trim(), cols.qty, 9, { align: 'right' })
-    text(inr(it['unit_rate']), cols.rate, 9, { align: 'right' })
-    text(inr(it['total_amount']), cols.amt, 9, { align: 'right' })
-    y -= 12
-    for (const extra of wrapped.slice(1)) {
-      text(extra, cols.desc, 9)
-      y -= 12
-    }
-    y -= 4
+  // cell: draws border box + text
+  const cell = (
+    x: number,
+    yTop: number,
+    w: number,
+    h: number,
+    txt: string,
+    o: { bold?: boolean; align?: 'left' | 'right' | 'center'; fill?: any; size?: number; color?: any } = {},
+  ) => {
+    page.drawRectangle({
+      x,
+      y: yTop - h,
+      width: w,
+      height: h,
+      borderColor: black,
+      borderWidth: 0.6,
+      color: o.fill,
+    })
+    const size = o.size ?? 8
+    const ty = yTop - h + (h - size) / 2 + 1
+    if (o.align === 'right') draw(txt, x + w - 3, ty, size, { bold: o.bold, align: 'right', color: o.color })
+    else if (o.align === 'center') draw(txt, x, ty, size, { bold: o.bold, align: 'center', width: w, color: o.color })
+    else draw(txt, x + 3, ty, size, { bold: o.bold, color: o.color })
+  }
+
+  // ---------- HEADER ----------
+  draw(c['name'] ?? 'ABJAD ENGINEERING WORKS', L, y - 14, 15, { bold: true })
+  y -= 18
+  const addr =
+    [c['address'], c['city'], c['state'] ? `(${c['state']})` : '', c['pincode']].filter(Boolean).join(', ') ||
+    'UNIT NO. 008, G-WING, UDYOG BHAVAN -2, PLOT NO. K-3, MIDC ANAND NAGER AMBERNATH (E) PIN 421 506'
+  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W, 8)
+  for (const l of headLines) {
+    draw(l, L, y - 9, 8)
+    y -= 10
+  }
+  const phone = [c['mobile'], c['alt_mobile']].filter(Boolean).join(' / ')
+  if (phone) {
+    draw(`Mobile: ${phone}`, L, y - 9, 8)
+    y -= 10
+  }
+  if (c['email']) {
+    draw(`Email: ${c['email']}`, L, y - 9, 8, { italic: true, color: rgb(0.1, 0.2, 0.7) })
+    y -= 10
+  }
+
+  // ---------- TITLE BANNER ----------
+  y -= 4
+  page.drawRectangle({ x: L, y: y - 22, width: W, height: 22, color: blue })
+  const typeLabel = TYPE_LABELS[String(invoice['invoice_type'])] ?? 'TAX INVOICE'
+  draw(typeLabel, L, y - 16, 15, { bold: true, align: 'center', width: W, color: white })
+  y -= 26
+
+  // ---------- CUSTOMER + BILL META ----------
+  const cw = [0.15, 0.45, 0.15, 0.1, 0.08, 0.07].map((f) => f * W)
+  const cx = cw.reduce<number[]>((a, w, i) => [...a, (a[i] ?? L) + (i ? cw[i - 1]! : 0)], [L])
+  const rowH = 14
+  cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
+  cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
+  cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
+  cell(cx[3]!, y, cw[3]!, rowH, invoice['invoice_number'] ?? '')
+  cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
+  cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 7 })
+  y -= rowH
+
+  const challanDates: string[] | null = invoice['challan_dates'] ?? null
+  const challanDateTxt =
+    challanDates && challanDates.length
+      ? challanDates.map((d) => formatDate(d)).join(', ')
+      : invoice['challan_date']
+        ? formatDate(invoice['challan_date'])
+        : '-'
+
+  const addrH = rowH * 3
+  cell(cx[0]!, y, cw[0]!, addrH, '', { bold: true })
+  draw('Address', cx[0]! + 3, y - 11, 8, { bold: true })
+  const addrLines = wrap(invoice['customer_address_snapshot'] ?? '-', cw[1]! - 6, 8).slice(0, 3)
+  page.drawRectangle({ x: cx[1]!, y: y - addrH, width: cw[1]!, height: addrH, borderColor: black, borderWidth: 0.6 })
+  addrLines.forEach((l, i) => draw(l, cx[1]! + 3, y - 11 - i * 11, 8))
+
+  const rightX = cx[2]!
+  const rightW = cw[2]! + cw[3]! + cw[4]! + cw[5]!
+  cell(rightX, y, cw[2]!, rowH, 'Challan No.', { bold: true })
+  cell(rightX + cw[2]!, y, cw[3]!, rowH, invoice['challan_number'] ?? '')
+  cell(rightX + cw[2]! + cw[3]!, y, cw[4]!, rowH, 'Date', { bold: true })
+  cell(rightX + cw[2]! + cw[3]! + cw[4]!, y, cw[5]!, rowH, challanDateTxt, { size: 6 })
+  cell(rightX, y - rowH, rightW * 0.45, rowH, 'PO No. /OS CH NO.', { bold: true })
+  cell(rightX + rightW * 0.45, y - rowH, rightW * 0.55, rowH, invoice['po_number'] ?? '')
+  cell(rightX, y - rowH * 2, rightW * 0.45, rowH, 'PO DATE', { bold: true })
+  cell(
+    rightX + rightW * 0.45,
+    y - rowH * 2,
+    rightW * 0.55,
+    rowH,
+    invoice['po_date'] ? formatDate(invoice['po_date']) : '',
+  )
+  y -= addrH
+
+  // ---------- BUYER + COMPANY DETAILS ----------
+  const half = W / 2
+  const lw = 0.3 * half
+  const vw = half - lw
+  cell(L, y, half, rowH, 'BUYER DETAILS', { bold: true, align: 'center', fill: grey })
+  cell(L + half, y, half, rowH, 'COMPANY DETAILS', { bold: true, align: 'center', fill: grey })
+  y -= rowH
+  cell(L, y, lw, rowH, 'GSTIN NO.', { bold: true })
+  cell(L + lw, y, vw, rowH, invoice['customer_gst_snapshot'] ?? '')
+  cell(L + half, y, lw, rowH, 'GSTIN NO.', { bold: true })
+  cell(L + half + lw, y, vw, rowH, c['gst_number'] ?? '')
+  y -= rowH
+  cell(L, y, lw, rowH, 'W/O No.', { bold: true })
+  cell(L + lw, y, vw, rowH, invoice['work_order_number'] ?? '')
+  cell(L + half, y, lw, rowH, 'PAN NO.', { bold: true })
+  cell(L + half + lw, y, vw, rowH, c['pan_number'] ?? '')
+  y -= rowH
+  cell(L, y, lw, rowH, 'GST ARN NO.', { bold: true })
+  cell(L + lw, y, W - lw, rowH, invoice['gst_arn'] ?? '')
+  y -= rowH
+
+  // ---------- LINE ITEMS ----------
+  const iw = [0.06, 0.1, 0.42, 0.09, 0.08, 0.12, 0.13].map((f) => f * W)
+  const ix: number[] = []
+  iw.reduce((acc, w, i) => {
+    ix[i] = acc
+    return acc + w
+  }, L)
+  const heads = ['Sr. No.', 'HSN /SAC', 'Item Description', 'Qty. (Nos)', 'UOM', 'Unit Rate(Rs)', 'Total Amt.(Rs)']
+  heads.forEach((h, i) => cell(ix[i]!, y, iw[i]!, rowH + 4, h, { bold: true, align: 'center', fill: grey, size: 7 }))
+  y -= rowH + 4
+
+  // totals from accepted quantities
+  const lineTotals: number[] = []
+  let netValue = 0
+  let itemDiscounts = 0
+  let taxTotal = 0
+  items.forEach((it) => {
+    const accepted = num(it['quantity']) - num(it['rejected_quantity'])
+    const gross = accepted * num(it['unit_rate'])
+    const disc = (gross * num(it['discount_pct'])) / 100
+    const net = gross - disc
+    const tax = (net * num(it['tax_pct'])) / 100
+    lineTotals.push(net + tax)
+    netValue += net
+    itemDiscounts += disc
+    taxTotal += tax
   })
 
-  y -= 2
-  line()
-  y -= 14
+  items.forEach((it, i) => {
+    const rejected = num(it['rejected_quantity'])
+    const billedQty = num(it['quantity']) - rejected
+    let desc = String(it['description'] ?? '')
+    if (rejected > 0) desc += ` (Delivered ${num(it['quantity'])}, rejected ${rejected})`
+    const lines = wrap(desc, iw[2]! - 6, 8)
+    const h = Math.max(rowH, lines.length * 10 + 4)
+    cell(ix[0]!, y, iw[0]!, h, String(it['sr_no'] ?? i + 1), { align: 'center' })
+    cell(ix[1]!, y, iw[1]!, h, it['hsn_code'] ?? '', { align: 'center' })
+    page.drawRectangle({ x: ix[2]!, y: y - h, width: iw[2]!, height: h, borderColor: black, borderWidth: 0.6 })
+    lines.forEach((l, li) => draw(l, ix[2]! + 3, y - 11 - li * 10, 8))
+    cell(ix[3]!, y, iw[3]!, h, billedQty.toFixed(0).padStart(2, '0'), { align: 'right' })
+    cell(ix[4]!, y, iw[4]!, h, it['uom'] ?? 'NOS', { align: 'center' })
+    cell(ix[5]!, y, iw[5]!, h, money(it['unit_rate']), { align: 'right' })
+    cell(ix[6]!, y, iw[6]!, h, money(lineTotals[i] ?? num(it['total_amount'])), { align: 'right' })
+    y -= h
+  })
+  for (let f = items.length; f < 8; f++) {
+    iw.forEach((w, i) => cell(ix[i]!, y, w, rowH, ''))
+    y -= rowH
+  }
 
-  const totals: Array<[string, any]> = [
-    ['Subtotal', invoice['subtotal']],
-    ['Discount', invoice['discount_amount']],
-    ['CGST', invoice['cgst_amount']],
-    ['SGST', invoice['sgst_amount']],
-    ['IGST', invoice['igst_amount']],
-    ['Freight', invoice['freight']],
-    ['Packing', invoice['packing_charges']],
-    ['Delivery', invoice['delivery_charges']],
-    ['Transportation', invoice['transportation_charges']],
-    ['Other Charges', invoice['other_charges']],
-    ['Round Off', invoice['round_off']],
+  // ---------- BANK + TOTALS ----------
+  const charges = num(invoice['freight']) + num(invoice['packing_charges']) + num(invoice['other_charges'])
+  const subtotal = netValue + charges
+  const preRound = subtotal + taxTotal
+  const grandTotal = Math.round(preRound)
+  const isIgst = Boolean(invoice['is_igst'])
+  const sgst = isIgst ? 0 : taxTotal / 2
+  const cgst = isIgst ? 0 : taxTotal / 2
+  const igst = isIgst ? taxTotal : 0
+  const taxPct = items[0]?.['tax_pct'] ? Number(items[0]['tax_pct']) : 0
+
+  const bankW = W * 0.55
+  const tLabelW = (W - bankW) * 0.6
+  const tRateW = (W - bankW) * 0.15
+  const tValW = W - bankW - tLabelW - tRateW
+
+  const totalRows: Array<[string, string, string, boolean?]> = [
+    ['Net Value (Rs.)', '', money(netValue), true],
+    ['Discount', '', money(itemDiscounts)],
+    ['Freight', '', money(invoice['freight'])],
+    ['P & F Charges', '', money(invoice['packing_charges'])],
+    ['Sub Total', '', money(subtotal)],
+    ['SGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(sgst)],
+    ['CGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(cgst)],
+    ['IGST', isIgst ? (taxPct ? `${taxPct}%` : '') : '----', money(igst)],
+    ['Sub Total', '', money(subtotal + taxTotal)],
+    ['Round Off', '', money(grandTotal - preRound)],
+    ['Grand Total (Rs)', '', money(grandTotal), true],
   ]
-  for (const [label, val] of totals) {
-    if (val === null || val === undefined || Number(val) === 0) continue
-    text(label, cols.rate, 9, { align: 'right', color: grey })
-    text(inr(val), cols.amt, 9, { align: 'right' })
-    y -= 13
-  }
-  y -= 2
-  text('Grand Total', cols.rate, 10, { align: 'right', bold: true })
-  text(inr(invoice['grand_total']), cols.amt, 10, { align: 'right', bold: true })
-  y -= 24
+  const blockH = totalRows.length * rowH
+  const bankTop = y
+  page.drawRectangle({ x: L, y: y - blockH, width: bankW, height: blockH, borderColor: black, borderWidth: 0.6 })
+  const bank: Array<[string, any]> = [
+    ['BANK NAME', c['bank_name']],
+    ['A/C NO.', c['bank_account']],
+    ['BRANCH IFSC', c['bank_ifsc']],
+    ['BRANCH NAME', c['bank_branch']],
+  ]
+  bank.forEach(([k, v], i) => {
+    draw(k, L + 5, bankTop - 14 - i * 12, 8, { bold: true })
+    draw(String(v ?? ''), L + 90, bankTop - 14 - i * 12, 8)
+  })
 
-  if (company?.['bank_name']) {
-    text('Bank Details', margin, 9, { bold: true, color: grey })
-    y -= 12
-    const bank = [
-      company['bank_name'],
-      company['bank_account'] ? `A/c: ${company['bank_account']}` : '',
-      company['bank_ifsc'] ? `IFSC: ${company['bank_ifsc']}` : '',
-      company['bank_branch'] ? `Branch: ${company['bank_branch']}` : '',
-    ].filter(Boolean)
-    for (const l of bank) {
-      text(String(l), margin, 8)
-      y -= 11
-    }
-  }
+  const tx = L + bankW
+  totalRows.forEach(([label, rate, val, strong]) => {
+    cell(tx, y, tLabelW, rowH, label, { bold: !!strong, fill: strong && label.startsWith('Grand') ? grey : undefined })
+    cell(tx + tLabelW, y, tRateW, rowH, rate, { align: 'center' })
+    cell(tx + tLabelW + tRateW, y, tValW, rowH, val, { align: 'right', bold: !!strong })
+    y -= rowH
+  })
 
-  if (company?.['declaration']) {
-    y -= 8
-    text(String(company['declaration']).slice(0, 300), margin, 7, { color: grey })
-  }
+  // ---------- IN WORDS ----------
+  cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 7 })
+  y -= rowH
+
+  // ---------- FOOTER ----------
+  const footL = W * 0.6
+  const footH = rowH * 3
+  cell(L, y, footL, rowH, 'Delivery : By Road', { bold: false })
+  cell(L, y - rowH, footL, rowH, 'Payment : 100% against Performa Invoice')
+  cell(
+    L,
+    y - rowH * 2,
+    footL,
+    rowH,
+    `Contact Person  ${c['contact_person'] ?? '-'}   Mob. No.  ${[c['mobile'], c['alt_mobile']].filter(Boolean).join(' / ')}`,
+    { size: 7 },
+  )
+  page.drawRectangle({ x: L + footL, y: y - footH, width: W - footL, height: footH, borderColor: black, borderWidth: 0.6 })
+  draw(`For ${c['name'] ?? 'ABJAD ENGINEERING WORKS'}`, L + footL + 5, y - 12, 8, { bold: true, color: red })
+  draw('Authorised Signatory', L + footL + 5, y - footH + 6, 8, { bold: true })
+  y -= footH + 10
+
+  // ---------- DECLARATION ----------
+  draw('DECLARATION.', L, y, 7, { bold: true })
+  y -= 9
+  const decl =
+    c['declaration'] ??
+    'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
+  wrap(decl, W, 7).forEach((l) => {
+    draw(l, L, y, 7)
+    y -= 9
+  })
 
   return await pdf.save()
 }
