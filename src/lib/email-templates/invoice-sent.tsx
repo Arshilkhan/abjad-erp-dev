@@ -68,8 +68,8 @@ export const template = {
     invoiceNumber: '12-fluid-tech',
     invoiceDate: '2026-08-29',
     companyName: 'Fluid Tech Systems',
-    pdfUrl: 'https://example.com/invoice.pdf',
     senderName: 'ABJAD Engineering Works',
+
   },
 } satisfies TemplateEntry
 
