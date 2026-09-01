@@ -21,7 +21,7 @@ function InvoicesLayout() {
 }
 
 function InvoicesIndex() {
-  const { folders, isLoading } = useInvoiceFolders();
+  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation"] });
   const [q, setQ] = useState("");
   const [view, setView] = useState<"folders" | "all">("folders");
 

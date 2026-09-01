@@ -21,7 +21,7 @@ export type InvoiceFolder = {
   lastDate: string | null;
 };
 
-export function useInvoiceFolders() {
+export function useInvoiceFolders(opts?: { only?: string[]; exclude?: string[] }) {
   const invoicesQ = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
@@ -30,6 +30,7 @@ export function useInvoiceFolders() {
       return data ?? [];
     },
   });
+
 
   const customersQ = useQuery({
     queryKey: ["customers-folder-map"],
@@ -45,7 +46,11 @@ export function useInvoiceFolders() {
 
   const folders = new Map<string, InvoiceFolder>();
   for (const r of invoicesQ.data ?? []) {
+    const t = String(r.invoice_type);
+    if (opts?.only && !opts.only.includes(t)) continue;
+    if (opts?.exclude && opts.exclude.includes(t)) continue;
     const name = (r.customer_id ? map.get(r.customer_id) : "") || (r.customer_name_snapshot ?? "").trim() || UNFILED;
+
     const slug = folderSlug(name);
     let f = folders.get(slug);
     if (!f) {
