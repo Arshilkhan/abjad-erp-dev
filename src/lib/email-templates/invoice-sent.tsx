@@ -81,6 +81,6 @@ const text = { fontSize: '14px', lineHeight: '22px', color: '#374151', margin: '
 const card = { backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', margin: '16px 0' }
 const row = { fontSize: '14px', color: '#111827', margin: '0 0 6px' }
 const label = { display: 'inline-block', width: '110px', color: '#6b7280' }
-const button = { backgroundColor: '#111827', color: '#ffffff', borderRadius: '6px', padding: '12px 20px', fontSize: '14px', textDecoration: 'none', display: 'inline-block' }
+
 const hr = { borderColor: '#e5e7eb', margin: '20px 0' }
 const muted = { fontSize: '12px', color: '#6b7280', margin: '0 0 4px' }
