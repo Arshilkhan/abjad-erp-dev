@@ -1,4 +1,3 @@
-// Indian number formatting (lakhs/crores) and rupee helpers
 export function formatINR(amount: number | null | undefined, opts?: { withSymbol?: boolean; decimals?: number }): string {
   const n = Number(amount ?? 0);
   const decimals = opts?.decimals ?? 2;
@@ -17,7 +16,6 @@ export function formatCompactINR(amount: number | null | undefined): string {
   return `₹${n.toFixed(0)}`;
 }
 
-// Convert number to Indian rupees in words
 const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
   "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
 const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
