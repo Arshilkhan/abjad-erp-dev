@@ -16,6 +16,8 @@ const serverEnv = loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), 
 Object.assign(process.env, serverEnv);
 
 export default defineConfig({
+  // Deploy on Vercel: build emits .vercel/output via the nitro vercel preset.
+  nitro: { preset: "vercel" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
