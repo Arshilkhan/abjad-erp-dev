@@ -50,35 +50,31 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
       supabase.from('company_profile').select('*').limit(1).maybeSingle(),
     ])
 
-    // Build the PDF and upload it (privileged write to the private bucket)
+    // Build the PDF and attach it directly to the email
     const { buildInvoicePdf } = await import('./invoice-pdf-build.server')
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
     const pdfBytes = await buildInvoicePdf(invoice, items ?? [], company ?? null)
 
-    const path = `${invoice.id}.pdf`
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from('invoice-pdfs')
-      .upload(path, pdfBytes, { contentType: 'application/pdf', upsert: true })
-    if (uploadError) return { sent: false as const, reason: 'pdf_upload_failed', email }
+    let binary = ''
+    const bytes = new Uint8Array(pdfBytes)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
+    const pdfBase64 = btoa(binary)
 
-    const { data: signed, error: signError } = await supabaseAdmin.storage
-      .from('invoice-pdfs')
-      .createSignedUrl(path, 60 * 60 * 24 * 30) // 30 days
-    if (signError || !signed?.signedUrl) {
-      return { sent: false as const, reason: 'pdf_url_failed', email }
-    }
-
-    const { sendTemplateEmail } = await import('@/lib/email-templates/send-email')
-    const result = await sendTemplateEmail('invoice-sent', email, {
-      idempotencyKey: `invoice-sent-${invoice.id}`,
+    const { sendResendEmail } = await import('@/lib/email-templates/send-email-resend')
+    await sendResendEmail('invoice-sent', email, {
       templateData: {
         invoiceNumber: invoice.invoice_number,
         invoiceDate: invoice.invoice_date,
         companyName,
-        pdfUrl: signed.signedUrl,
       },
+      attachments: [
+        {
+          filename: `${invoice.invoice_number || invoice.id}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf',
+        },
+      ],
     })
 
-    if (!result.sent) return { sent: false as const, reason: result.reason, email }
     return { sent: true as const, email }
+
   })

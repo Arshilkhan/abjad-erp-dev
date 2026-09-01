@@ -6,7 +6,7 @@ import {
   Heading,
   Hr,
   Html,
-  Button,
+  
   Preview,
   Section,
   Text,
@@ -17,7 +17,6 @@ interface Props {
   invoiceNumber?: string
   invoiceDate?: string
   companyName?: string
-  pdfUrl?: string
   senderName?: string
 }
 
@@ -25,9 +24,9 @@ const Email = ({
   invoiceNumber = '',
   invoiceDate = '',
   companyName = '',
-  pdfUrl = '',
   senderName = 'ABJAD Engineering Works',
 }: Props) => (
+
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>{`Invoice ${invoiceNumber} from ${senderName}`}</Preview>
@@ -50,14 +49,9 @@ const Email = ({
             </Text>
           ) : null}
         </Section>
-        {pdfUrl ? (
-          <Section style={{ margin: '20px 0' }}>
-            <Button style={button} href={pdfUrl}>
-              Download invoice PDF
-            </Button>
-          </Section>
-        ) : null}
+        <Text style={text}>The invoice PDF is attached to this email.</Text>
         <Hr style={hr} />
+
         <Text style={muted}>Thank you for your business.</Text>
         <Text style={muted}>{senderName}</Text>
       </Container>
@@ -74,8 +68,8 @@ export const template = {
     invoiceNumber: '12-fluid-tech',
     invoiceDate: '2026-08-29',
     companyName: 'Fluid Tech Systems',
-    pdfUrl: 'https://example.com/invoice.pdf',
     senderName: 'ABJAD Engineering Works',
+
   },
 } satisfies TemplateEntry
 
@@ -87,6 +81,6 @@ const text = { fontSize: '14px', lineHeight: '22px', color: '#374151', margin: '
 const card = { backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px', margin: '16px 0' }
 const row = { fontSize: '14px', color: '#111827', margin: '0 0 6px' }
 const label = { display: 'inline-block', width: '110px', color: '#6b7280' }
-const button = { backgroundColor: '#111827', color: '#ffffff', borderRadius: '6px', padding: '12px 20px', fontSize: '14px', textDecoration: 'none', display: 'inline-block' }
+
 const hr = { borderColor: '#e5e7eb', margin: '20px 0' }
 const muted = { fontSize: '12px', color: '#6b7280', margin: '0 0 4px' }
