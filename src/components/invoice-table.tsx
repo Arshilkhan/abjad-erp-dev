@@ -15,6 +15,26 @@ export const statusStyles: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive border-transparent",
 };
 
+export const typeStyles: Record<string, { label: string; className: string }> = {
+  tax_invoice: { label: "Tax Invoice", className: "bg-[color:oklch(0.93_0.05_255)] text-[color:oklch(0.40_0.14_255)] border-transparent" },
+  proforma: { label: "Proforma", className: "bg-[color:oklch(0.94_0.06_300)] text-[color:oklch(0.40_0.14_300)] border-transparent" },
+  quotation: { label: "Quotation", className: "bg-[color:oklch(0.94_0.07_75)] text-[color:oklch(0.40_0.15_75)] border-transparent" },
+  purchase_order: { label: "Purchase Order", className: "bg-[color:oklch(0.93_0.05_210)] text-[color:oklch(0.38_0.13_210)] border-transparent" },
+  delivery_challan: { label: "Delivery Challan", className: "bg-[color:oklch(0.92_0.06_155)] text-[color:oklch(0.35_0.14_155)] border-transparent" },
+  credit_note: { label: "Credit Note", className: "bg-[color:oklch(0.93_0.06_25)] text-[color:oklch(0.42_0.15_25)] border-transparent" },
+  debit_note: { label: "Debit Note", className: "bg-[color:oklch(0.93_0.05_35)] text-[color:oklch(0.42_0.14_35)] border-transparent" },
+};
+
+export function InvoiceTypeBadge({ type }: { type: string }) {
+  const t = typeStyles[type];
+  return (
+    <Badge variant="outline" className={`text-[10px] font-semibold uppercase tracking-wide ${t?.className ?? ""}`}>
+      {t?.label ?? String(type).replace(/_/g, " ")}
+    </Badge>
+  );
+}
+
+
 export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boolean }) {
   const qc = useQueryClient();
   return (
