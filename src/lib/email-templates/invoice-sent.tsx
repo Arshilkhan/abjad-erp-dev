@@ -17,7 +17,6 @@ interface Props {
   invoiceNumber?: string
   invoiceDate?: string
   companyName?: string
-  pdfUrl?: string
   senderName?: string
 }
 
@@ -25,9 +24,9 @@ const Email = ({
   invoiceNumber = '',
   invoiceDate = '',
   companyName = '',
-  pdfUrl = '',
   senderName = 'ABJAD Engineering Works',
 }: Props) => (
+
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>{`Invoice ${invoiceNumber} from ${senderName}`}</Preview>
