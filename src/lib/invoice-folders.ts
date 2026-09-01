@@ -21,7 +21,7 @@ export type InvoiceFolder = {
   lastDate: string | null;
 };
 
-export function useInvoiceFolders() {
+export function useInvoiceFolders(opts?: { only?: string[]; exclude?: string[] }) {
   const invoicesQ = useQuery({
     queryKey: ["invoices"],
     queryFn: async () => {
@@ -30,6 +30,7 @@ export function useInvoiceFolders() {
       return data ?? [];
     },
   });
+
 
   const customersQ = useQuery({
     queryKey: ["customers-folder-map"],
