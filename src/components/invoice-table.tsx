@@ -63,7 +63,7 @@ export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boo
               <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.invoice_number}</Link>
               {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
             </TableCell>
-            <TableCell><span className="text-xs uppercase tracking-wider text-muted-foreground">{String(r.invoice_type).replace(/_/g, " ")}</span></TableCell>
+            <TableCell><InvoiceTypeBadge type={String(r.invoice_type)} /></TableCell>
             <TableCell>{r.customer_name_snapshot ?? "—"}</TableCell>
             <TableCell>{formatDate(r.invoice_date)}</TableCell>
             <TableCell className="text-right tabular-nums font-semibold">{formatINR(r.grand_total)}</TableCell>
