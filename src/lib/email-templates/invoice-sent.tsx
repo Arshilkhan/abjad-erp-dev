@@ -49,14 +49,9 @@ const Email = ({
             </Text>
           ) : null}
         </Section>
-        {pdfUrl ? (
-          <Section style={{ margin: '20px 0' }}>
-            <Button style={button} href={pdfUrl}>
-              Download invoice PDF
-            </Button>
-          </Section>
-        ) : null}
+        <Text style={text}>The invoice PDF is attached to this email.</Text>
         <Hr style={hr} />
+
         <Text style={muted}>Thank you for your business.</Text>
         <Text style={muted}>{senderName}</Text>
       </Container>
