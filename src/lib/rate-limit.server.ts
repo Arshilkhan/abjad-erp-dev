@@ -1,8 +1,8 @@
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
-
 /**
  * Simple fixed-window rate limiter backed by the `rate_limits` table.
  * Throws when the caller exceeded `limit` hits inside `windowSeconds`.
+ * Fails open when the privileged client is unavailable (e.g. no service-role
+ * key in a self-hosted deployment) so core features keep working.
  */
 export async function enforceRateLimit(
   bucket: string,
@@ -10,9 +10,23 @@ export async function enforceRateLimit(
   limit: number,
   windowSeconds: number,
 ): Promise<void> {
+  if (!process.env['SUPABASE_SERVICE_ROLE_KEY'] || !process.env['SUPABASE_URL']) {
+    console.warn('[rate-limit] privileged client unavailable, skipping limit check')
+    return
+  }
+
+  let supabaseAdmin: typeof import('@/integrations/supabase/client.server')['supabaseAdmin']
+  try {
+    ;({ supabaseAdmin } = await import('@/integrations/supabase/client.server'))
+  } catch (e) {
+    console.error('[rate-limit] admin client unavailable', e)
+    return
+  }
+
   const since = new Date(Date.now() - windowSeconds * 1000).toISOString()
 
   const { count, error } = await supabaseAdmin
+
     .from('rate_limits')
     .select('id', { count: 'exact', head: true })
     .eq('bucket', bucket)
