@@ -127,10 +127,55 @@ function normalize(raw: any): ExtractedInvoice {
   };
 }
 
-export async function extractInvoiceFromPdf(fileData: string): Promise<ExtractedInvoice> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) throw new Error("AI is not configured for this project.");
+function apiError(status: number, body: string): Error {
+  let message = body;
+  try {
+    message = JSON.parse(body)?.error?.message ?? JSON.parse(body)?.message ?? body;
+  } catch { /* keep raw body */ }
+  if (status === 429) return new Error("AI is rate limited right now — please retry in a moment.");
+  if (status === 402 || status === 403) return new Error(message || "AI usage is currently blocked right now.");
+  return new Error(`Could not read the PDF: ${message?.slice(0, 300) || status}`);
+}
 
+function parseContent(content: string): ExtractedInvoice {
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("The AI could not find invoice data in that PDF.");
+  return normalize(JSON.parse(match[0]));
+}
+
+async function extractWithGemini(fileData: string, apiKey: string): Promise<ExtractedInvoice> {
+  const base64 = fileData.includes(",") ? fileData.slice(fileData.indexOf(",") + 1) : fileData;
+  const model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: PROMPT },
+              { inline_data: { mime_type: "application/pdf", data: base64 } },
+            ],
+          },
+        ],
+        generationConfig: { responseMimeType: "application/json", temperature: 0 },
+      }),
+    },
+  );
+
+  if (!res.ok) throw apiError(res.status, await res.text());
+
+  const json: any = await res.json();
+  const content: string = (json?.candidates?.[0]?.content?.parts ?? [])
+    .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+    .join("");
+  return parseContent(content);
+}
+
+async function extractWithLovableGateway(fileData: string, apiKey: string): Promise<ExtractedInvoice> {
   const res = await fetch(GATEWAY, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey },
@@ -148,20 +193,19 @@ export async function extractInvoiceFromPdf(fileData: string): Promise<Extracted
     }),
   });
 
-  if (!res.ok) {
-    const body = await res.text();
-    let message = body;
-    try {
-      message = JSON.parse(body)?.error?.message ?? JSON.parse(body)?.message ?? body;
-    } catch { /* keep raw body */ }
-    if (res.status === 429) throw new Error("AI is rate limited right now — please retry in a moment.");
-    if (res.status === 402 || res.status === 403) throw new Error(message || "AI usage is currently blocked for this workspace.");
-    throw new Error(`Could not read the PDF: ${message?.slice(0, 300) || res.status}`);
-  }
+  if (!res.ok) throw apiError(res.status, await res.text());
 
   const json: any = await res.json();
-  const content: string = json?.choices?.[0]?.message?.content ?? "";
-  const match = content.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("The AI could not find invoice data in that PDF.");
-  return normalize(JSON.parse(match[0]));
+  return parseContent(json?.choices?.[0]?.message?.content ?? "");
 }
+
+export async function extractInvoiceFromPdf(fileData: string): Promise<ExtractedInvoice> {
+  const geminiKey = process.env["GEMINI_API_KEY"] || process.env["GOOGLE_API_KEY"];
+  if (geminiKey) return await extractWithGemini(fileData, geminiKey);
+
+  const lovableKey = process.env["LOVABLE_API_KEY"];
+  if (lovableKey) return await extractWithLovableGateway(fileData, lovableKey);
+
+  throw new Error("AI is not configured: add GEMINI_API_KEY to this deployment's environment variables.");
+}
+
