@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatINR, formatCompactINR, formatDate } from "@/lib/format";
+import { formatINR, formatCompactINR, formatDate, billNo } from "@/lib/format";
 import {
   IndianRupee, TrendingUp, AlertCircle, Users, Package,
   FileSpreadsheet, ShoppingCart,
@@ -184,7 +184,7 @@ function Dashboard() {
                 {data!.recent.map((inv: any) => (
                   <li key={inv.id} className="flex items-center justify-between px-5 py-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-sm">{inv.invoice_number}</p>
+                      <p className="truncate font-medium text-sm">{billNo(inv.invoice_number)}</p>
                       <p className="truncate text-xs text-muted-foreground">{inv.customer_name_snapshot ?? "—"} • {formatDate(inv.invoice_date)}</p>
                     </div>
                     <div className="text-right">

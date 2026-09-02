@@ -55,3 +55,11 @@ export function formatDate(d: string | Date | null | undefined): string {
   const date = typeof d === "string" ? new Date(d) : d;
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+/** Displays only the bill number portion of a stored invoice number ("2-jhon" -> "2"). */
+export function billNo(invoiceNumber: string | null | undefined): string {
+  const s = String(invoiceNumber ?? "").trim();
+  if (!s) return "";
+  const m = /^(\d+)(?:[-_].*)?$/.exec(s);
+  return m ? m[1]! : s;
+}

@@ -1,3 +1,4 @@
+import { billNo } from "@/lib/format";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -46,7 +47,7 @@ export function GlobalSearch() {
       .map((r: any) => ({
         kind: "invoice",
         id: r.id,
-        primary: r.invoice_number,
+        primary: billNo(r.invoice_number),
         secondary: [r.customer_name_snapshot, String(r.invoice_type ?? "").replace(/_/g, " ")].filter(Boolean).join(" • "),
       }));
 

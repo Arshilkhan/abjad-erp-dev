@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { formatINR, formatDate, amountInWords } from "@/lib/format";
+import { formatINR, formatDate, amountInWords, billNo } from "@/lib/format";
 import { ArrowLeft, Printer, Copy, Send, Pencil, Ban, PackageX, History as HistoryIcon } from "lucide-react";
 import aewLogo from "@/assets/aew-logo.jpg";
 import { toast } from "sonner";
@@ -169,7 +169,7 @@ function InvoiceDetail() {
           {!isCancelled && (
             <CancelInvoiceDialog
               invoiceId={id}
-              invoiceNumber={invoice.invoice_number}
+              invoiceNumber={billNo(invoice.invoice_number)}
               onCancelled={() => qc.invalidateQueries({ queryKey: ["invoice", id] })}
               trigger={
                 <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"><Ban className="mr-1 h-4 w-4" /> Cancel Invoice</Button>
@@ -286,7 +286,7 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             <td className={`${cellBorder} p-1 ${label} w-[15%] align-top`}>CUSTOMER NAME</td>
             <td className={`${cellBorder} p-1 ${val} w-[45%] align-top`}>{invoice.customer_name_snapshot ?? "—"}</td>
             <td className={`${cellBorder} p-1 ${label} w-[15%]`}>Bill No.</td>
-            <td className={`${cellBorder} p-1 ${val} w-[10%]`}>{invoice.invoice_number}</td>
+            <td className={`${cellBorder} p-1 ${val} w-[10%]`}>{billNo(invoice.invoice_number)}</td>
             <td className={`${cellBorder} p-1 ${label} w-[8%]`}>Date</td>
             <td className={`${cellBorder} p-1 ${val} w-[12%]`}>{formatDate(invoice.invoice_date)}</td>
           </tr>

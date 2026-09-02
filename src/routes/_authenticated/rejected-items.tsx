@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatINR, formatDate } from "@/lib/format";
+import { formatINR, formatDate, billNo } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/rejected-items")({
   head: () => ({ meta: [{ title: "Rejected Items — ABJAD ERP" }] }),
@@ -61,7 +61,7 @@ function RejectionsList() {
               <TableRow key={r.id}>
                 <TableCell className="text-xs">{formatDate(r.created_at)}</TableCell>
                 <TableCell className="font-mono text-xs">
-                  <Link to="/invoices/$id" params={{ id: r.invoice_id }} className="text-primary hover:underline">{r.invoices?.invoice_number ?? "—"}</Link>
+                  <Link to="/invoices/$id" params={{ id: r.invoice_id }} className="text-primary hover:underline">{billNo(r.invoices?.invoice_number) || "—"}</Link>
                 </TableCell>
                 <TableCell>{r.invoices?.customer_name_snapshot ?? "—"}</TableCell>
                 <TableCell className="max-w-[220px] truncate">{r.invoice_items?.description ?? "—"}</TableCell>

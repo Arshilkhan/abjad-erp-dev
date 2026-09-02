@@ -93,3 +93,50 @@ export async function sendResendEmail(
   const result = (await response.json().catch(() => ({}))) as { id?: string }
   return { sent: true, id: result.id }
 }
+
+/** Sends a ready-made HTML email through Resend (no template registry lookup). */
+export async function sendResendHtmlEmail(opts: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  replyTo?: string
+  attachments?: ResendAttachment[]
+}): Promise<SendResendEmailResult> {
+  const apiKey = process.env['RESEND_API_KEY']
+  if (!apiKey) throw new Error('RESEND_API_KEY is not configured')
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      from: `${SITE_NAME} <${FROM_ADDRESS}>`,
+      to: [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      ...(opts.text ? { text: opts.text } : {}),
+      ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+      ...(opts.attachments?.length
+        ? {
+            attachments: opts.attachments.map((a) => ({
+              filename: a.filename,
+              content: a.content,
+              ...(a.contentType ? { content_type: a.contentType } : {}),
+            })),
+          }
+        : {}),
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    console.error(`[resend] send failed [${response.status}]: ${errorBody}`)
+    throw new Error(`Resend request failed [${response.status}]: ${errorBody}`)
+  }
+
+  const result = (await response.json().catch(() => ({}))) as { id?: string }
+  return { sent: true, id: result.id }
+}

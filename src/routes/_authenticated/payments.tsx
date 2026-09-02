@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { formatINR, formatDate } from "@/lib/format";
+import { formatINR, formatDate, billNo } from "@/lib/format";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -86,7 +86,7 @@ function PaymentsPage() {
                     const due = Number(r.grand_total) - Number(r.amount_paid);
                     return (
                       <TableRow key={r.id}>
-                        <TableCell className="font-mono">{r.invoice_number}</TableCell>
+                        <TableCell className="font-mono">{billNo(r.invoice_number)}</TableCell>
                         <TableCell>{r.customer_name_snapshot ?? "—"}</TableCell>
                         <TableCell>{formatDate(r.invoice_date)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatINR(r.grand_total)}</TableCell>
@@ -126,7 +126,7 @@ function PaymentsPage() {
                   {history.map((p: any) => (
                     <TableRow key={p.id}>
                       <TableCell>{formatDate(p.payment_date)}</TableCell>
-                      <TableCell className="font-mono">{p.invoices?.invoice_number}</TableCell>
+                      <TableCell className="font-mono">{billNo(p.invoices?.invoice_number)}</TableCell>
                       <TableCell>{p.invoices?.customer_name_snapshot ?? "—"}</TableCell>
                       <TableCell className="uppercase text-xs">{p.mode}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{p.reference ?? "—"}</TableCell>
@@ -187,7 +187,7 @@ function RecordPaymentDialog({ open, onClose, invoice, onSaved }: { open: boolea
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record Payment — {invoice.invoice_number}</DialogTitle>
+          <DialogTitle>Record Payment — {billNo(invoice.invoice_number)}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3">
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
