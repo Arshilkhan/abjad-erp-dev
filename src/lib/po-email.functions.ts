@@ -41,14 +41,33 @@ export const sendPoEmail = createServerFn({ method: 'POST' })
     const email: string | null = vendor?.email ?? null
     if (!email) return { sent: false as const, reason: 'no_email' }
 
-    const { buildPOHtml } = await import('./po-print')
-    const html = buildPOHtml(po, items ?? [], company ?? null, vendor)
+    const { buildPoPdf } = await import('./po-pdf-build.server')
+    const pdfBytes = await buildPoPdf(po, items ?? [], company ?? null, vendor)
+
+    let binary = ''
+    const bytes = new Uint8Array(pdfBytes)
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
+    const pdfBase64 = btoa(binary)
+
+    const vendorName = po.vendor_name_snapshot ?? vendor?.vendor_name ?? 'Supplier'
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827">
+      <p>Dear ${vendorName},</p>
+      <p>Please find attached our Purchase Order <strong>${po.po_number}</strong>.</p>
+      <p>Regards,<br/>${company?.name ?? 'ABJAD Engineering Works'}</p>
+    </div>`
 
     const { sendResendHtmlEmail } = await import('@/lib/email-templates/send-email-resend')
     await sendResendHtmlEmail({
       to: email,
-      subject: `Purchase Order ${po.po_number}${company?.name ? ` — ${company.name}` : ''}`,
+      subject: `Purchase Order ${po.po_number}${company?.name ? ` - ${company.name}` : ''}`,
       html,
+      attachments: [
+        {
+          filename: `PO-${String(po.po_number ?? po.id).replace(/[^A-Za-z0-9._-]/g, '_')}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf',
+        },
+      ],
     })
 
     if (po.status === 'draft') {
