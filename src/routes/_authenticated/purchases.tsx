@@ -228,6 +228,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<POLine[]>([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
   const [saving, setSaving] = useState(false);
+  const emailPo = useServerFn(sendPoEmail);
 
   const isNewVendor = !vendorId && !!(vendor.vendor_name ?? "").trim();
 
@@ -569,8 +570,8 @@ function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; o
         <DialogFooter className="gap-2">
           <Button variant="ghost" onClick={onClose}>Close</Button>
           <Button variant="outline" onClick={download}><Download className="mr-1 h-4 w-4" /> Download PDF</Button>
-          <Button onClick={sendToVendor} disabled={!vendor?.email} title={vendor?.email ? `Send to ${vendor.email}` : "No vendor email on file"}>
-            <Mail className="mr-1 h-4 w-4" /> Send to Vendor
+          <Button onClick={sendToVendor} disabled={!vendor?.email || sending} title={vendor?.email ? `Send to ${vendor.email}` : "No vendor email on file"}>
+            <Mail className="mr-1 h-4 w-4" /> {sending ? "Sending…" : "Send to Vendor"}
           </Button>
         </DialogFooter>
       </DialogContent>
