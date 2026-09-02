@@ -145,7 +145,7 @@ function parseContent(content: string): ExtractedInvoice {
 
 async function extractWithGemini(fileData: string, apiKey: string): Promise<ExtractedInvoice> {
   const base64 = fileData.includes(",") ? fileData.slice(fileData.indexOf(",") + 1) : fileData;
-  const model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+  const model = process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
