@@ -12,6 +12,9 @@ import { logInvoiceEvent } from "@/lib/invoice-history";
 import { InvoiceHistoryTab } from "@/components/invoice-history-tab";
 import { RejectedItemsPanel } from "@/components/rejected-items-panel";
 import { Badge } from "@/components/ui/badge";
+import { useServerFn } from "@tanstack/react-start";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf-download.functions";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/invoices/$id/")({
   head: () => ({ meta: [{ title: "Invoice — ABJAD ERP" }] }),
@@ -31,6 +34,28 @@ function InvoiceDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const getPdf = useServerFn(downloadInvoicePdf);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const res: any = await getPdf({ data: { invoiceId: id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not generate the invoice PDF");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -176,7 +201,7 @@ function InvoiceDetail() {
               }
             />
           )}
-          <Button size="sm" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" /> Print / PDF</Button>
+          <Button size="sm" onClick={downloadPdf} disabled={downloading}><Printer className="mr-1 h-4 w-4" /> {downloading ? "Preparing…" : "Download PDF"}</Button>
         </div>
       </div>
 
