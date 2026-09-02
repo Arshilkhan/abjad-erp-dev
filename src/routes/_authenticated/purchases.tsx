@@ -317,7 +317,6 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
 
       if (send) {
         const { data: company } = await supabase.from("company_profile").select("*").limit(1).maybeSingle();
-        printPOHtml(buildPOHtml(po, items, company, vendor));
         if (vendor.email) {
           try {
             const res: any = await emailPo({ data: { poId: po.id } });
