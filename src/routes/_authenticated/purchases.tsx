@@ -16,7 +16,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatINR, formatDate } from "@/lib/format";
 import { TypeaheadInput, type TypeaheadOption } from "@/components/typeahead-input";
 import { Plus, Trash2, Download, Mail } from "lucide-react";
-import { buildPOHtml, printPOHtml, buildPOMailto } from "@/lib/po-print";
+import { buildPOHtml, printPOHtml } from "@/lib/po-print";
+import { useServerFn } from "@tanstack/react-start";
+import { sendPoEmail } from "@/lib/po-email.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/purchases")({
@@ -316,8 +318,13 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         const { data: company } = await supabase.from("company_profile").select("*").limit(1).maybeSingle();
         printPOHtml(buildPOHtml(po, items, company, vendor));
         if (vendor.email) {
-          window.open(buildPOMailto(po, vendor.email, company?.name), "_blank");
-          toast.success("PO saved & email draft opened — attach the downloaded PDF");
+          try {
+            const res: any = await emailPo({ data: { poId: po.id } });
+            if (res?.sent) toast.success(`PO emailed to ${res.email}`);
+            else toast.warning(`PO saved, but the email was not sent (${res?.reason ?? "unknown"})`);
+          } catch (e: any) {
+            toast.error(`PO saved, but the email could not be sent: ${e?.message ?? "unknown error"}`);
+          }
         } else {
           toast.warning("PO saved and marked sent, but this vendor has no email on file");
         }
@@ -467,16 +474,26 @@ function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; o
     }
   };
 
+  const emailPo = useServerFn(sendPoEmail);
+  const [sending, setSending] = useState(false);
+
   const sendToVendor = async () => {
     const email = vendor?.email;
     if (!email) return toast.error("This vendor has no email address on file");
-    download();
-    window.open(buildPOMailto(po, email, company?.name), "_blank");
-    if (po.status === "draft") {
-      await supabase.from("purchase_orders").update({ status: "sent" }).eq("id", po.id);
-      onSent?.();
+    setSending(true);
+    try {
+      const res: any = await emailPo({ data: { poId: po.id } });
+      if (res?.sent) {
+        toast.success(`Purchase order emailed to ${res.email}`);
+        onSent?.();
+      } else {
+        toast.warning(`Could not send the purchase order (${res?.reason ?? "unknown"})`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not send the purchase order");
+    } finally {
+      setSending(false);
     }
-    toast.success(`Email draft opened for ${email} — attach the downloaded PDF`);
   };
 
   return (
