@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatINR, formatDate } from "@/lib/format";
+import { formatINR, formatDate, billNo } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/customer-credits")({
@@ -73,7 +73,7 @@ function CustomerCreditsPage() {
                   <TableCell>{r.customers?.name ?? "—"}</TableCell>
                   <TableCell className="font-mono text-xs">
                     {r.source_invoice_id ? (
-                      <Link to="/invoices/$id" params={{ id: r.source_invoice_id }} className="text-primary hover:underline">{r.invoices?.invoice_number ?? "—"}</Link>
+                      <Link to="/invoices/$id" params={{ id: r.source_invoice_id }} className="text-primary hover:underline">{billNo(r.invoices?.invoice_number) || "—"}</Link>
                     ) : "—"}
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">{formatINR(r.credit_amount)}</TableCell>

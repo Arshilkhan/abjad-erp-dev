@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatINR, formatDate } from "@/lib/format";
+import { formatINR, formatDate, billNo } from "@/lib/format";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 
@@ -110,7 +110,7 @@ function SalesReport() {
           {rows.length === 0 && <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No sales in range.</TableCell></TableRow>}
           {rows.map((r: any, i) => (
             <TableRow key={i}>
-              <TableCell className="font-mono">{r.invoice_number}</TableCell>
+              <TableCell className="font-mono">{billNo(r.invoice_number)}</TableCell>
               <TableCell>{formatDate(r.invoice_date)}</TableCell>
               <TableCell className="text-xs uppercase">{r.invoice_type}</TableCell>
               <TableCell>{r.customer_name_snapshot}</TableCell>
@@ -158,7 +158,7 @@ function CancelledReport() {
         </TableRow></TableHeader>
         <TableBody>{rows.map((r: any, i) => (
           <TableRow key={i}>
-            <TableCell className="font-mono text-xs">{r.invoice_number}</TableCell>
+            <TableCell className="font-mono text-xs">{billNo(r.invoice_number)}</TableCell>
             <TableCell>{formatDate(r.invoice_date)}</TableCell>
             <TableCell>{r.customer_name_snapshot}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(r.grand_total)}</TableCell>
@@ -183,7 +183,7 @@ function RejectedReport() {
   });
   const flat = (rows as any[]).map((r: any) => ({
     date: formatDate(r.created_at),
-    invoice: r.invoices?.invoice_number,
+    invoice: billNo(r.invoices?.invoice_number),
     customer: r.invoices?.customer_name_snapshot,
     item: r.invoice_items?.description,
     quantity: r.rejected_quantity,
@@ -232,7 +232,7 @@ function CreditsReport() {
   const flat = (rows as any[]).map((r: any) => ({
     date: formatDate(r.created_at),
     customer: r.customers?.name,
-    invoice: r.invoices?.invoice_number,
+    invoice: billNo(r.invoices?.invoice_number),
     credit_amount: r.credit_amount,
     status: r.status,
     notes: r.notes,
@@ -304,7 +304,7 @@ function ChargesReport() {
         </TableRow></TableHeader>
         <TableBody>{(rows as any[]).map((r: any, i: number) => (
           <TableRow key={i}>
-            <TableCell className="font-mono text-xs">{r.invoice_number}</TableCell>
+            <TableCell className="font-mono text-xs">{billNo(r.invoice_number)}</TableCell>
             <TableCell>{formatDate(r.invoice_date)}</TableCell>
             <TableCell>{r.customer_name_snapshot}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(r.freight)}</TableCell>
@@ -354,7 +354,7 @@ function ImportsReport() {
         </TableRow></TableHeader>
         <TableBody>{(rows as any[]).map((r: any, i: number) => (
           <TableRow key={i}>
-            <TableCell className="font-mono text-xs">{r.invoice_number}</TableCell>
+            <TableCell className="font-mono text-xs">{billNo(r.invoice_number)}</TableCell>
             <TableCell>{formatDate(r.invoice_date)}</TableCell>
             <TableCell>{r.customer_name_snapshot}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(r.grand_total)}</TableCell>
@@ -403,7 +403,7 @@ function GstReport() {
           {rows.length === 0 && <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No tax invoices in range.</TableCell></TableRow>}
           {rows.map((r: any, i) => (
             <TableRow key={i}>
-              <TableCell className="font-mono">{r.invoice_number}</TableCell>
+              <TableCell className="font-mono">{billNo(r.invoice_number)}</TableCell>
               <TableCell>{formatDate(r.invoice_date)}</TableCell>
               <TableCell className="font-mono text-xs">{r.customer_gst_snapshot ?? "—"}</TableCell>
               <TableCell className="text-xs">{r.place_of_supply ?? "—"}</TableCell>
@@ -550,7 +550,7 @@ function OutstandingReport() {
           {enriched.length === 0 && <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">Nothing outstanding.</TableCell></TableRow>}
           {enriched.map((r: any, i: number) => (
             <TableRow key={i}>
-              <TableCell className="font-mono">{r.invoice_number}</TableCell>
+              <TableCell className="font-mono">{billNo(r.invoice_number)}</TableCell>
               <TableCell>{formatDate(r.invoice_date)}</TableCell>
               <TableCell>{r.customer_name_snapshot}</TableCell>
               <TableCell className="text-right tabular-nums">{formatINR(r.grand_total)}</TableCell>

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { formatINR, formatDate } from "@/lib/format";
+import { formatINR, formatDate, billNo } from "@/lib/format";
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 
@@ -66,7 +66,7 @@ function CancelledInvoicesPage() {
               {filtered.map((r: any) => (
                 <TableRow key={r.id} className="hover:bg-muted/40">
                   <TableCell className="font-mono text-sm">
-                    <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">{r.invoice_number}</Link>
+                    <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">{billNo(r.invoice_number)}</Link>
                   </TableCell>
                   <TableCell>{r.customer_name_snapshot ?? "—"}</TableCell>
                   <TableCell>{formatDate(r.invoice_date)}</TableCell>

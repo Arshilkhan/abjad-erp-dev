@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import { amountInWords, formatDate } from '@/lib/format'
+import { amountInWords, formatDate, billNo } from '@/lib/format'
 import { AEW_LOGO_BASE64 } from '@/assets/aew-logo-base64'
 
 type Row = Record<string, any>
@@ -201,7 +201,7 @@ export async function buildInvoicePdf(
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
   cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
-  cell(cx[3]!, y, cw[3]!, rowH, invoice['invoice_number'] ?? '')
+  cell(cx[3]!, y, cw[3]!, rowH, billNo(invoice['invoice_number']))
   cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
   cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 7 })
   y -= rowH
