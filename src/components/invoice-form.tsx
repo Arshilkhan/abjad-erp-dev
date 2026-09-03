@@ -66,6 +66,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [customerText, setCustomerText] = useState<string>("");
   const [custCompany, setCustCompany] = useState("");
   // Contact person mirrors the customer name — no separate input.
+  const [custAddress, setCustAddress] = useState("");
   const [custMobile, setCustMobile] = useState("");
   const [custEmail, setCustEmail] = useState("");
   const [custGst, setCustGst] = useState("");
@@ -187,6 +188,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     if (!customer) return;
     setCustomerText(customer.customer_name || customer.company_name || "");
     setCustCompany(customer.company_name ?? "");
+    setCustAddress((customer as any).billing_address ?? "");
 
     setCustMobile((customer as any).mobile ?? "");
     setCustEmail((customer as any).email ?? "");
@@ -277,6 +279,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         const patch: any = {};
         if (custCompany.trim() && custCompany !== (cust.company_name ?? "")) patch.company_name = custCompany.trim();
         if (nameTyped && nameTyped !== (cust.contact_person ?? "")) patch.contact_person = nameTyped;
+        if (custAddress.trim() && custAddress !== (cust.billing_address ?? "")) patch.billing_address = custAddress.trim();
         if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
         if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
         if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
@@ -292,6 +295,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             customer_name: nameTyped,
             company_name: custCompany.trim() || null,
             contact_person: nameTyped || null,
+            billing_address: custAddress.trim() || null,
             mobile: custMobile.trim() || null,
             email: custEmail.trim() || null,
             gst_number: custGst.trim() || null,
@@ -345,7 +349,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         customer_id: cust.id,
         customer_name_snapshot: cust.company_name || cust.customer_name,
         customer_gst_snapshot: cust.gst_number,
-        customer_address_snapshot: cust.billing_address,
+        customer_address_snapshot: custAddress.trim() || cust.billing_address,
         po_number: null,
         po_date: null,
         challan_number: isChallan ? challanNumber || null : null,
@@ -512,7 +516,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         setCustomerId(match?.id ?? "");
         setCustomerText(d.customer_name);
       }
-      if (d.company_name) setCustCompany(d.company_name);
+      // The imported invoice only names the buyer, so company name mirrors it.
+      if (d.customer_name || d.company_name) setCustCompany(d.customer_name || d.company_name);
       if (d.mobile) setCustMobile(d.mobile);
       const footerMobiles = (d.footer_contact_mobiles ?? []).length > 0 ? d.footer_contact_mobiles!.join(" / ") : "";
       if (footerMobiles && !d.mobile) setCustMobile(footerMobiles);
@@ -656,6 +661,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Company Name *</Label>
               <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Address</Label>
+              <Textarea rows={2} value={custAddress} onChange={(e) => setCustAddress(e.target.value)} placeholder="Customer billing address" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Mobile</Label>

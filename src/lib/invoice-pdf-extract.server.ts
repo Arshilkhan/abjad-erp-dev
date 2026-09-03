@@ -88,7 +88,8 @@ function normalize(raw: any): ExtractedInvoice {
   const items = Array.isArray(raw?.items) ? raw.items : [];
   return {
     customer_name: str(raw?.customer_name),
-    company_name: str(raw?.company_name),
+    // The buyer's company name is kept identical to the customer name; users can edit it manually.
+    company_name: str(raw?.customer_name) || str(raw?.company_name),
     contact_person: str(raw?.contact_person),
     mobile: str(raw?.mobile),
     email: str(raw?.email),
