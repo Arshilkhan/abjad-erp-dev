@@ -28,9 +28,9 @@ export async function buildInvoicePdf(
   company: Row | null,
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
-  const font = await pdf.embedFont(StandardFonts.TimesRoman)
-  const bold = await pdf.embedFont(StandardFonts.TimesRomanBold)
-  const italic = await pdf.embedFont(StandardFonts.TimesRomanItalic)
+  const font = await pdf.embedFont(StandardFonts.Helvetica)
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const italic = await pdf.embedFont(StandardFonts.HelveticaOblique)
 
   const page = pdf.addPage([595.28, 841.89])
   const M = 28
@@ -50,7 +50,7 @@ export async function buildInvoicePdf(
     s: string,
     x: number,
     yy: number,
-    size = 8,
+    size = 9.5,
     o: {
       bold?: boolean
       italic?: boolean
@@ -66,7 +66,7 @@ export async function buildInvoicePdf(
     if (!str) return
     let fittedSize = size
     const maxWidth = o.maxWidth
-    const minSize = o.minSize ?? 5
+    const minSize = o.minSize ?? 6.5
     if (maxWidth && maxWidth > 0) {
       while (fittedSize > minSize && f.widthOfTextAtSize(str, fittedSize) > maxWidth) {
         fittedSize -= 0.5
@@ -87,7 +87,7 @@ export async function buildInvoicePdf(
     page.drawText(str, { x: x0, y: yy, size: fittedSize, font: f, color: o.color ?? black })
   }
 
-  const wrap = (s: string, maxW: number, size = 8, f = font) => {
+  const wrap = (s: string, maxW: number, size = 9.5, f = font) => {
     const out: string[] = []
     let cur = ''
     for (const word of clean(s).split(/\s+/)) {
@@ -132,7 +132,7 @@ export async function buildInvoicePdf(
       borderWidth: 0.6,
       color: o.fill,
     })
-    const size = o.size ?? 8
+    const size = o.size ?? 9.5
     const ty = yTop - h + (h - size) / 2 + 1
     const maxWidth = Math.max(0, w - 6)
     if (o.align === 'right') draw(txt, x + w - 3, ty, size, { bold: o.bold, align: 'right', color: o.color, maxWidth })
@@ -150,18 +150,18 @@ export async function buildInvoicePdf(
   const addr =
     [c['address'], c['city'], c['state'] ? `(${c['state']})` : '', c['pincode']].filter(Boolean).join(', ') ||
     'UNIT NO. 008, G-WING, UDYOG BHAVAN -2, PLOT NO. K-3, MIDC ANAND NAGER AMBERNATH (E) PIN 421 506'
-  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W - 130, 8)
+  const headLines = wrap(`OFFICE & WORKS: ${addr}`, W - 130, 9)
   for (const l of headLines) {
-    draw(l, L, y - 9, 8)
+    draw(l, L, y - 10, 9)
     y -= 10
   }
   const phone = [c['mobile'], c['alt_mobile']].filter(Boolean).join(' / ')
   if (phone) {
-    draw(`Mobile: ${phone}`, L, y - 9, 8, { maxWidth: W - 130 })
+    draw(`Mobile: ${phone}`, L, y - 10, 9, { maxWidth: W - 130 })
     y -= 10
   }
   if (c['email']) {
-    draw(`Email: ${c['email']}`, L, y - 9, 8, {
+    draw(`Email: ${c['email']}`, L, y - 10, 9, {
       italic: true,
       color: rgb(0.1, 0.2, 0.7),
       maxWidth: W - 130,
@@ -169,7 +169,7 @@ export async function buildInvoicePdf(
     y -= 10
   }
   if (c['website']) {
-    draw(`Website: ${c['website']}`, L, y - 9, 8, {
+    draw(`Website: ${c['website']}`, L, y - 10, 9, {
       italic: true,
       color: rgb(0.1, 0.2, 0.7),
       maxWidth: W - 130,
@@ -207,13 +207,13 @@ export async function buildInvoicePdf(
     cx[i] = acc
     return acc + w
   }, L)
-  const rowH = 14
+  const rowH = 16
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
   cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
   cell(cx[3]!, y, cw[3]!, rowH, billNo(invoice['invoice_number']))
   cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
-  cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 7 })
+  cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 8.5 })
   y -= rowH
 
   const challanDates: string[] | null = invoice['challan_dates'] ?? null
@@ -226,17 +226,17 @@ export async function buildInvoicePdf(
 
   const addrH = rowH * 3
   cell(cx[0]!, y, cw[0]!, addrH, '', { bold: true })
-  draw('Address', cx[0]! + 3, y - 11, 8, { bold: true })
-  const addrLines = wrap(invoice['customer_address_snapshot'] ?? '-', cw[1]! - 6, 8).slice(0, 3)
+  draw('Address', cx[0]! + 3, y - 12, 9.5, { bold: true })
+  const addrLines = wrap(invoice['customer_address_snapshot'] ?? '-', cw[1]! - 6, 9.5).slice(0, 3)
   page.drawRectangle({ x: cx[1]!, y: y - addrH, width: cw[1]!, height: addrH, borderColor: black, borderWidth: 0.6 })
-  addrLines.forEach((l, i) => draw(l, cx[1]! + 3, y - 11 - i * 11, 8))
+  addrLines.forEach((l, i) => draw(l, cx[1]! + 3, y - 13 - i * 12, 9.5))
 
   const rightX = cx[2]!
   const rightW = cw[2]! + cw[3]! + cw[4]! + cw[5]!
   cell(rightX, y, cw[2]!, rowH, 'Challan No.', { bold: true })
   cell(rightX + cw[2]!, y, cw[3]!, rowH, invoice['challan_number'] ?? '')
   cell(rightX + cw[2]! + cw[3]!, y, cw[4]!, rowH, 'Date', { bold: true })
-  cell(rightX + cw[2]! + cw[3]! + cw[4]!, y, cw[5]!, rowH, challanDateTxt, { size: 6 })
+  cell(rightX + cw[2]! + cw[3]! + cw[4]!, y, cw[5]!, rowH, challanDateTxt, { size: 7.5 })
   cell(rightX, y - rowH, rightW * 0.45, rowH, 'PO No. /OS CH NO.', { bold: true })
   cell(rightX + rightW * 0.45, y - rowH, rightW * 0.55, rowH, invoice['po_number'] ?? '')
   cell(rightX, y - rowH * 2, rightW * 0.45, rowH, 'PO DATE', { bold: true })
@@ -278,7 +278,7 @@ export async function buildInvoicePdf(
     return acc + w
   }, L)
   const heads = ['Sr. No.', 'HSN /SAC', 'Item Description', 'Qty. (Nos)', 'UOM', 'Unit Rate(Rs)', 'Total Amt.(Rs)']
-  heads.forEach((h, i) => cell(ix[i]!, y, iw[i]!, rowH + 4, h, { bold: true, align: 'center', fill: grey, size: 7 }))
+  heads.forEach((h, i) => cell(ix[i]!, y, iw[i]!, rowH + 4, h, { bold: true, align: 'center', fill: grey, size: 8 }))
   y -= rowH + 4
 
   // totals from accepted quantities
@@ -303,12 +303,12 @@ export async function buildInvoicePdf(
     const billedQty = num(it['quantity']) - rejected
     let desc = String(it['description'] ?? '')
     if (rejected > 0) desc += ` (Delivered ${num(it['quantity'])}, rejected ${rejected})`
-    const lines = wrap(desc, iw[2]! - 6, 8)
-    const h = Math.max(rowH, lines.length * 10 + 4)
+    const lines = wrap(desc, iw[2]! - 6, 9.5)
+    const h = Math.max(rowH, lines.length * 11 + 5)
     cell(ix[0]!, y, iw[0]!, h, String(it['sr_no'] ?? i + 1), { align: 'center' })
     cell(ix[1]!, y, iw[1]!, h, it['hsn_code'] ?? '', { align: 'center' })
     page.drawRectangle({ x: ix[2]!, y: y - h, width: iw[2]!, height: h, borderColor: black, borderWidth: 0.6 })
-    lines.forEach((l, li) => draw(l, ix[2]! + 3, y - 11 - li * 10, 8))
+    lines.forEach((l, li) => draw(l, ix[2]! + 3, y - 12 - li * 11, 9.5))
     cell(ix[3]!, y, iw[3]!, h, billedQty.toFixed(0).padStart(2, '0'), { align: 'right' })
     cell(ix[4]!, y, iw[4]!, h, it['uom'] ?? 'NOS', { align: 'center' })
     cell(ix[5]!, y, iw[5]!, h, money(it['unit_rate']), { align: 'right' })
@@ -359,8 +359,8 @@ export async function buildInvoicePdf(
     ['BRANCH NAME', c['bank_branch']],
   ]
   bank.forEach(([k, v], i) => {
-    draw(k, L + 5, bankTop - 14 - i * 12, 8, { bold: true, maxWidth: 80 })
-    draw(String(v ?? ''), L + 90, bankTop - 14 - i * 12, 8, { maxWidth: bankW - 95 })
+    draw(k, L + 5, bankTop - 15 - i * 14, 9.5, { bold: true, maxWidth: 80 })
+    draw(String(v ?? ''), L + 90, bankTop - 15 - i * 14, 9.5, { maxWidth: bankW - 95 })
   })
 
   const tx = L + bankW
@@ -372,7 +372,7 @@ export async function buildInvoicePdf(
   })
 
   // ---------- IN WORDS ----------
-  cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 7 })
+  cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 8.5 })
   y -= rowH
 
   // ---------- FOOTER ----------
@@ -386,25 +386,25 @@ export async function buildInvoicePdf(
     footL,
     rowH,
     `Contact Person  ${c['contact_person'] ?? '-'}   Mob. No.  ${[c['mobile'], c['alt_mobile']].filter(Boolean).join(' / ')}`,
-    { size: 7 },
+    { size: 8.5 },
   )
   page.drawRectangle({ x: L + footL, y: y - footH, width: W - footL, height: footH, borderColor: black, borderWidth: 0.6 })
-  draw(`For ${c['name'] ?? 'ABJAD ENGINEERING WORKS'}`, L + footL + 5, y - 12, 8, {
+  draw(`For ${c['name'] ?? 'ABJAD ENGINEERING WORKS'}`, L + footL + 5, y - 13, 9.5, {
     bold: true,
     color: red,
     maxWidth: W - footL - 10,
   })
-  draw('Authorised Signatory', L + footL + 5, y - footH + 6, 8, { bold: true })
+  draw('Authorised Signatory', L + footL + 5, y - footH + 6, 9.5, { bold: true })
   y -= footH + 10
 
   // ---------- DECLARATION ----------
-  draw('DECLARATION.', L, y, 7, { bold: true })
+  draw('DECLARATION.', L, y, 8, { bold: true })
   y -= 9
   const decl =
     c['declaration'] ??
     'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
-  wrap(decl, W, 7).forEach((l) => {
-    draw(l, L, y, 7)
+  wrap(decl, W, 8).forEach((l) => {
+    draw(l, L, y, 8)
     y -= 9
   })
 
