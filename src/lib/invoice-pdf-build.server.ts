@@ -168,20 +168,30 @@ export async function buildInvoicePdf(
     })
     y -= 10
   }
+  if (c['website']) {
+    draw(`Website: ${c['website']}`, L, y - 9, 8, {
+      italic: true,
+      color: rgb(0.1, 0.2, 0.7),
+      maxWidth: W - 130,
+    })
+    y -= 10
+  }
 
   // ---------- LOGO ----------
+  const logoH = 58
   try {
     const b64 = AEW_LOGO_BASE64
     if (b64) {
       const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))
       const img = await pdf.embedJpg(bytes)
-      const h = 58
-      const w = (img.width / img.height) * h
-      page.drawImage(img, { x: R - w, y: 841.89 - M - h, width: w, height: h })
+      const w = (img.width / img.height) * logoH
+      page.drawImage(img, { x: R - w, y: 841.89 - M - logoH, width: w, height: logoH })
     }
   } catch {
     // logo optional
   }
+  // Never let the content start above the logo's bottom edge.
+  y = Math.min(y, 841.89 - M - logoH - 4)
 
   // ---------- TITLE BANNER ----------
   y -= 4
