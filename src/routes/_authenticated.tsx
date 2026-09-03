@@ -36,11 +36,14 @@ function AuthedLayout() {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur">
             <SidebarTrigger />
             <GlobalSearch />
-            {canAccess("invoices") && (
-              <Button asChild size="sm" className="ml-auto shrink-0">
-                <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
-              </Button>
-            )}
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              <ThemeToggle />
+              {canAccess("invoices") && (
+                <Button asChild size="sm">
+                  <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
+                </Button>
+              )}
+            </div>
           </header>
           <main className="flex-1 p-6">
             {allowed ? (
