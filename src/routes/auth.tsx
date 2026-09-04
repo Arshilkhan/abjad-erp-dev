@@ -58,6 +58,48 @@ function AuthPage() {
     nav({ to: "/dashboard" });
   };
 
+  const sendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) return toast.error(describe(error));
+    toast.success("Verification code sent to your email");
+    setMode("forgot-otp");
+  };
+
+  const verifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({ email, token: otp.trim(), type: "recovery" });
+    setBusy(false);
+    if (error) return toast.error(describe(error));
+    toast.success("Code verified");
+    setMode("forgot-new");
+  };
+
+  const updatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters");
+    if (newPassword !== confirmPassword) return toast.error("Passwords do not match");
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setBusy(false);
+      return toast.error(describe(error));
+    }
+    await supabase.auth.signOut();
+    setBusy(false);
+    toast.success("Password updated. Please sign in.");
+    setPassword("");
+    setOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setMode("signin");
+  };
+
   return (
     <div className="grid min-h-screen md:grid-cols-[45fr_55fr]">
       <div className="relative hidden flex-col overflow-hidden bg-primary px-14 py-12 text-primary-foreground md:flex">
