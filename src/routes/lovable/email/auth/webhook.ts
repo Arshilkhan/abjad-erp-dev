@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "Abjad-ERP-live"
+const SITE_NAME = "ABJAD ERP"
 const SENDER_DOMAIN = "notify.abjadengineeringworks.in"
 const ROOT_DOMAIN = "abjadengineeringworks.in"
 const FROM_DOMAIN = "abjadengineeringworks.in"
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
       POST: ({ request }) => {
         const handler = createAuthEmailHandler({
           apiKey: process.env['LOVABLE_API_KEY']!,
-          from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+          from: `"${SITE_NAME}" <noreply@${FROM_DOMAIN}>`,
           senderDomain: SENDER_DOMAIN,
           sendUrl: process.env['LOVABLE_SEND_URL'],
           emails: {
@@ -60,6 +60,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
                 React.createElement(RecoveryEmail, {
                   siteName: SITE_NAME,
                   confirmationUrl: data.url,
+                  token: data.token ?? '',
                 }),
             },
             email_change: {
