@@ -76,6 +76,18 @@ const button = {
   padding: '12px 20px',
   textDecoration: 'none',
 }
+const codeBox = {
+  fontSize: '32px',
+  fontWeight: 'bold' as const,
+  letterSpacing: '8px',
+  textAlign: 'center' as const,
+  color: '#000000',
+  backgroundColor: '#f4f4f5',
+  border: '1px solid #e4e4e7',
+  borderRadius: '8px',
+  padding: '16px 0',
+  margin: '0 0 25px',
+}
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
 // Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
 const darkModeCss = `
