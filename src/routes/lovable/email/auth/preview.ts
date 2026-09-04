@@ -18,7 +18,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Abjad-ERP-live"
+const SITE_NAME = "ABJAD ERP"
 const ROOT_DOMAIN = "abjadengineeringworks.in"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
@@ -42,6 +42,7 @@ const SAMPLE_DATA: Record<string, object> = {
   recovery: {
     siteName: SITE_NAME,
     confirmationUrl: SAMPLE_PROJECT_URL,
+    token: '123456',
   },
   invite: {
     siteName: SITE_NAME,
