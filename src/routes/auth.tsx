@@ -162,39 +162,165 @@ function AuthPage() {
 
       <div className="flex items-center justify-center bg-background p-6 md:p-10">
         <div className="w-full max-w-[400px]">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Enter your credentials to access your account.</p>
-          </div>
-          <form onSubmit={signIn} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="e1">Email address</Label>
-              <Input
-                id="e1"
-                type="email"
-                required
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11 rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="p1">Password</Label>
-              <Input
-                id="p1"
-                type="password"
-                required
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 rounded-lg"
-              />
-            </div>
-            <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
+          {mode === "signin" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Enter your credentials to access your account.</p>
+              </div>
+              <form onSubmit={signIn} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="e1">Email address</Label>
+                  <Input
+                    id="e1"
+                    type="email"
+                    required
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="p1">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => setMode("forgot-email")}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <Input
+                    id="p1"
+                    type="password"
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 rounded-lg"
+                  />
+                </div>
+                <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>
+                  {busy ? "Signing in…" : "Sign in"}
+                </Button>
+              </form>
+            </>
+          )}
+
+          {mode === "forgot-email" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight">Reset your password</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Enter your email address and we'll send you a verification code.
+                </p>
+              </div>
+              <form onSubmit={sendOtp} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="fe">Email address</Label>
+                  <Input
+                    id="fe"
+                    type="email"
+                    required
+                    placeholder="name@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 rounded-lg"
+                  />
+                </div>
+                <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>
+                  {busy ? "Sending code…" : "Send verification code"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setMode("signin")}
+                  className="w-full text-center text-sm font-medium text-primary hover:underline"
+                >
+                  Back to sign in
+                </button>
+              </form>
+            </>
+          )}
+
+          {mode === "forgot-otp" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  We sent a 6-digit verification code to <span className="font-medium text-foreground">{email}</span>.
+                </p>
+              </div>
+              <form onSubmit={verifyOtp} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Verification code</Label>
+                  <Input
+                    id="otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    required
+                    maxLength={6}
+                    placeholder="Enter 6-digit code"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="h-11 rounded-lg tracking-[0.3em]"
+                  />
+                </div>
+                <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy || otp.length !== 6}>
+                  {busy ? "Verifying…" : "Verify code"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot-email")}
+                  className="w-full text-center text-sm font-medium text-primary hover:underline"
+                >
+                  Use a different email
+                </button>
+              </form>
+            </>
+          )}
+
+          {mode === "forgot-new" && (
+            <>
+              <div className="mb-8">
+                <h1 className="text-2xl font-semibold tracking-tight">Set a new password</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Choose a strong password of at least 8 characters.</p>
+              </div>
+              <form onSubmit={updatePassword} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="np1">New password</Label>
+                  <Input
+                    id="np1"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-11 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="np2">Confirm password</Label>
+                  <Input
+                    id="np2"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="h-11 rounded-lg"
+                  />
+                </div>
+                <Button type="submit" className="h-11 w-full rounded-lg text-base font-medium" disabled={busy}>
+                  {busy ? "Updating…" : "Update password"}
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
