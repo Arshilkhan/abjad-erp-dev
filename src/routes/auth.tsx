@@ -36,8 +36,10 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) nav({ to: "/dashboard" });
-  }, [user, loading, nav]);
+    // Don't redirect during the password-recovery flow: verifyOtp(recovery)
+    // establishes a recovery session which must land on the new-password screen.
+    if (!loading && user && mode === "signin") nav({ to: "/dashboard" });
+  }, [user, loading, mode, nav]);
 
   const describe = (error: unknown) => {
     const err = error as { message?: string; status?: number } | null;
