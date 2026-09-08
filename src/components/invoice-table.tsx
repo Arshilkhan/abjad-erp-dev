@@ -60,7 +60,9 @@ export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boo
         {rows.map((r: any) => (
           <TableRow key={r.id} className={`hover:bg-muted/40 ${r.status === "cancelled" ? "opacity-60" : ""}`}>
             <TableCell className="font-mono text-sm font-medium">
-              <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">{billNo(r.invoice_number)}</Link>
+              <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">
+                {billNo(r.invoice_number) || (r.challan_number ? `CH ${r.challan_number}` : "—")}
+              </Link>
               {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
             </TableCell>
             <TableCell><InvoiceTypeBadge type={String(r.invoice_type)} /></TableCell>
