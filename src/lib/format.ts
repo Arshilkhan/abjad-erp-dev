@@ -50,16 +50,25 @@ export function amountInWords(amount: number): string {
   return out + " Only";
 }
 
+/** DD-MM-YYYY */
 export function formatDate(d: string | Date | null | undefined): string {
   if (!d) return "-";
   const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  if (Number.isNaN(date.getTime())) return "-";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${date.getFullYear()}`;
+}
+
+/** Delivery challans are stored with a "dc-" prefixed reference and carry no bill number. */
+export function isChallanNumber(invoiceNumber: string | null | undefined): boolean {
+  return /^dc-/i.test(String(invoiceNumber ?? "").trim());
 }
 
 /** Displays only the bill number portion of a stored invoice number ("2-jhon" -> "2"). */
 export function billNo(invoiceNumber: string | null | undefined): string {
   const s = String(invoiceNumber ?? "").trim();
-  if (!s) return "";
+  if (!s || isChallanNumber(s)) return "";
   const m = /^(\d+)(?:[-_].*)?$/.exec(s);
   return m ? m[1]! : s;
 }
