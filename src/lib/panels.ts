@@ -4,6 +4,7 @@ export const PANELS = [
   { key: "cancelled-invoices", label: "Cancelled Invoices", url: "/cancelled-invoices" },
   { key: "invoice-import", label: "Import Invoice", url: "/invoices/import" },
   { key: "quotations", label: "Quotations", url: "/quotations" },
+  { key: "challans", label: "Challans", url: "/challans" },
   { key: "customers", label: "Customers", url: "/customers" },
   { key: "products", label: "Products", url: "/products" },
   { key: "inventory", label: "Inventory", url: "/inventory" },
