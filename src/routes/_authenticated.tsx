@@ -6,7 +6,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+
 import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -37,7 +37,6 @@ function AuthedLayout() {
             <SidebarTrigger />
             <GlobalSearch />
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <ThemeToggle />
               {canAccess("invoices") && (
                 <Button asChild size="sm">
                   <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
