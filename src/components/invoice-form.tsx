@@ -404,9 +404,11 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             .replace(/^-+|-+$/g, "") || "customer";
 
         const { data: existing } = await supabase.from("invoices").select("invoice_number");
+        // Delivery challans never consume a bill number; they get their own "dc-" reference.
+        const seqRe = isChallan ? /^dc-(\d+)-/i : /^(\d+)-/;
         let seq = 0;
         for (const row of existing ?? []) {
-          const m = /^(\d+)-/.exec(row.invoice_number ?? "");
+          const m = seqRe.exec(row.invoice_number ?? "");
           if (m) seq = Math.max(seq, Number(m[1]));
         }
 
@@ -414,7 +416,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         let lastErr: any = null;
         for (let attempt = 0; attempt < 25; attempt++) {
           seq += 1;
-          const invoice_number = `${seq}-${slug}`;
+          const invoice_number = isChallan ? `dc-${seq}-${slug}` : `${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
           if (importMode) {
             insertPayload.is_imported = true;
