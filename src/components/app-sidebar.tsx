@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSpreadsheet, Users, Package, Warehouse,
   ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard, Upload,
-  UserCog,
+  UserCog, Truck,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
