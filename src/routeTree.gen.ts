@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedCancelledInvoicesRouteImport } from './routes/_authenticated/cancelled-invoices'
+import { Route as AuthenticatedChallansRouteImport } from './routes/_authenticated/challans'
 import { Route as AuthenticatedCustomerCreditsRouteImport } from './routes/_authenticated/customer-credits'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -61,6 +62,11 @@ const AuthenticatedCancelledInvoicesRoute =
     path: '/cancelled-invoices',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedChallansRoute = AuthenticatedChallansRouteImport.update({
+  id: '/challans',
+  path: '/challans',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedCustomerCreditsRoute =
   AuthenticatedCustomerCreditsRouteImport.update({
     id: '/customer-credits',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
+  '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
+  '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
+  '/_authenticated/challans': typeof AuthenticatedChallansRoute
   '/_authenticated/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/cancelled-invoices'
+    | '/challans'
     | '/customer-credits'
     | '/customers'
     | '/dashboard'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/cancelled-invoices'
+    | '/challans'
     | '/customer-credits'
     | '/customers'
     | '/dashboard'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/cancelled-invoices'
+    | '/_authenticated/challans'
     | '/_authenticated/customer-credits'
     | '/_authenticated/customers'
     | '/_authenticated/dashboard'
@@ -388,6 +400,13 @@ declare module '@tanstack/react-router' {
       path: '/cancelled-invoices'
       fullPath: '/cancelled-invoices'
       preLoaderRoute: typeof AuthenticatedCancelledInvoicesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/challans': {
+      id: '/_authenticated/challans'
+      path: '/challans'
+      fullPath: '/challans'
+      preLoaderRoute: typeof AuthenticatedChallansRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/customer-credits': {
@@ -564,6 +583,7 @@ const AuthenticatedInvoicesRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedCancelledInvoicesRoute: typeof AuthenticatedCancelledInvoicesRoute
+  AuthenticatedChallansRoute: typeof AuthenticatedChallansRoute
   AuthenticatedCustomerCreditsRoute: typeof AuthenticatedCustomerCreditsRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -581,6 +601,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCancelledInvoicesRoute: AuthenticatedCancelledInvoicesRoute,
+  AuthenticatedChallansRoute: AuthenticatedChallansRoute,
   AuthenticatedCustomerCreditsRoute: AuthenticatedCustomerCreditsRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
