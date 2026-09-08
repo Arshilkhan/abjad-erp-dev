@@ -18,6 +18,7 @@ const main = [
   { title: "Cancelled Invoices", url: "/cancelled-invoices", icon: Ban, panel: "cancelled-invoices" },
   { title: "Import Invoice", url: "/invoices/import", icon: Upload, panel: "invoice-import" },
   { title: "Quotations", url: "/quotations", icon: FileSpreadsheet, panel: "quotations" },
+  { title: "Challans", url: "/challans", icon: Truck, panel: "challans" },
   { title: "Customers", url: "/customers", icon: Users, panel: "customers" },
   { title: "Products", url: "/products", icon: Package, panel: "products" },
   { title: "Inventory", url: "/inventory", icon: Warehouse, panel: "inventory" },
