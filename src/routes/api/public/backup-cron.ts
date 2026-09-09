@@ -14,7 +14,8 @@ export const Route = createFileRoute('/api/public/backup-cron')({
 })
 
 async function handle(request: Request): Promise<Response> {
-  const secret = process.env['BACKUP_CRON_SECRET']
+  // Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; both names are accepted.
+  const secret = process.env['BACKUP_CRON_SECRET'] || process.env['CRON_SECRET']
   if (!secret) return Response.json({ error: 'Cron secret not configured' }, { status: 500 })
 
   const provided =

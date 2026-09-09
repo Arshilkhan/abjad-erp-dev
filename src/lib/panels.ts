@@ -14,6 +14,7 @@ export const PANELS = [
   { key: "payments", label: "Payments", url: "/payments" },
   { key: "reports", label: "Reports", url: "/reports" },
   { key: "settings", label: "Settings", url: "/settings" },
+  { key: "backups", label: "Backups", url: "/backups" },
 ] as const;
 
 export type PanelKey = (typeof PANELS)[number]["key"];
