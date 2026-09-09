@@ -219,6 +219,17 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     queryKey: ["vendors-select"],
     queryFn: async () => (await supabase.from("vendors").select("*").order("vendor_name")).data ?? [],
   });
+  const { data: products = [] } = useQuery({
+    queryKey: ["products-po-select"],
+    queryFn: async () => (await supabase.from("products").select("*").order("product_name")).data ?? [],
+  });
+  const productOptions: TypeaheadOption[] = products.map((p: any) => ({
+    id: p.id,
+    label: p.product_name ?? "",
+    sublabel: p.hsn_code ?? undefined,
+  }));
+
+
 
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
