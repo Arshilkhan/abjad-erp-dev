@@ -209,7 +209,9 @@ function PurchaseOrdersTab() {
   );
 }
 
-type POLine = { description: string; hsn: string; qty: number; rate: number; tax_pct: number };
+type POLine = { product_id: string | null; product_name: string; description: string; hsn: string; qty: number; rate: number; tax_pct: number };
+
+const emptyLine = (): POLine => ({ product_id: null, product_name: "", description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 });
 
 function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
