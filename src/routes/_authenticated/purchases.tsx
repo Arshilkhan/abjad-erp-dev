@@ -270,7 +270,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     if (!poNumber.trim()) return toast.error("PO number required");
     const name = (vendor.vendor_name ?? "").trim();
     if (!name) return toast.error("Vendor name is required");
-    if (lines.some((l) => !l.description)) return toast.error("Every line needs a description");
+    if (lines.some((l) => !l.product_name.trim() && !l.description.trim()))
+      return toast.error("Every line needs a product name");
     setSaving(true);
 
     try {
