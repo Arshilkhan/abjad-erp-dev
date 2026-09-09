@@ -583,10 +583,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         }
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/invoices">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back
-              </Link>
+            <Button variant="outline" onClick={() => router.history.back()}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
             <Button variant="outline" onClick={() => save.mutate("draft")} disabled={save.isPending}>
               Save Draft
