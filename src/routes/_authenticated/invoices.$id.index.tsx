@@ -177,8 +177,8 @@ function InvoiceDetail() {
     <>
       {/* Toolbar — hidden on print */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/invoices"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Link>
+        <Button variant="ghost" size="sm" onClick={() => router.history.back()}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
         </Button>
         <div className="flex flex-wrap gap-2">
           {isCancelled && <Badge variant="outline" className="border-destructive bg-destructive/10 text-destructive uppercase">Cancelled</Badge>}
