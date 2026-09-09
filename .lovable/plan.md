@@ -1,26 +1,27 @@
-# Fix "Google Drive connection failed (failed)"
+# Add backup tables to your own database
 
-## What the code is telling us
+## Why the Drive connection failed
 
-The word `failed` is the app's catch-all: Google accepted the sign-in and sent you back, but the final step on our side threw an error. That means no Google setting is at fault, and no Google variable is missing — the ones on your Vercel list (client ID, client secret, redirect URI) are all there and were used successfully to get this far.
+The Google sign-in worked, but the last step saves the connection into three tables that only exist in Lovable's cloud — not in your own database (abjad-erp-live). Since your live site uses your own database, the save fails.
 
-Two things can throw at that final step:
+## Fix: run one SQL script in your database
 
-1. The three backup tables (`google_drive_credentials`, `backup_settings`, `backup_history`) were created in the development database, but may not exist in the live `abjad-erp-live` database. Saving the connection then fails.
-2. Google returned no long-term permission because the account had already approved the app before. In that case it must be removed from the account's app permissions and connected again.
+1. Create a ready-to-run SQL file, `erp-migration/backup-tables.sql`, containing the exact table definitions for:
+   - **google_drive_credentials** — stores the Google connection (server-only, not readable by any app user)
+   - **backup_settings** — your backup schedule (admins can read/change)
+   - **backup_history** — list of past backups (admins can read)
+   - Access rules matching the rest of your ERP (admin-only via your existing `is_admin` function) and the standard updated-at triggers
+2. You open your Supabase project → SQL Editor → paste the script → Run. (I can't run it for you because I don't have access to your own project — it's outside Lovable's cloud.)
+3. No manual records to add — the script seeds the single settings row itself.
 
-Right now the page hides which one it is, so the first job is to stop swallowing the message.
+## After running it
 
-## Plan
+- Go to the live site → Backups → Connect Google Drive → approve with ajkhan902@gmail.com.
+- The connection should now save and show as connected.
+- Then try "Back up now" once to confirm the ZIP lands in Google Drive.
 
-1. Show the real reason instead of the word "failed": pass a short, safe error message back to the Backups page and display it in the toast, and log the full detail on the server.
-2. Check the live database for the three backup tables. If they are missing, apply the same migration there (tables, grants, row-level security, admin-only policies) — no changes to existing ERP tables.
-3. Add a clear message for the "no long-term permission" case telling you to remove ABJAD ERP from the backup account's Google permissions page and press Connect again.
-4. Reconnect on the live site and confirm the page flips to Connected, then run "Back up now" once to confirm the ZIP lands in the "ABJAD ERP Backups" folder.
+## Technical details
 
-## Technical notes
-
-- Files touched: `src/routes/api/google-drive/callback.ts` (forward `reason` in the redirect query), `src/routes/_authenticated/backups.tsx` (render the reason), `src/lib/google-drive.server.ts` (clearer thrown messages only).
-- Reason strings stay generic; no token, secret, or database detail is ever put in a URL or shown in the browser.
-- Migration for the live project, only if the tables are absent — `CREATE TABLE` + `GRANT ... TO service_role` + `ENABLE ROW LEVEL SECURITY` + admin-read policies for settings/history; credentials table stays service-role only.
-- No schema changes to invoices or any existing table.
+- SQL is identical to the migration already applied to Lovable's cloud (`supabase/migrations/20260909112247_....sql`): 3 tables, GRANTs, RLS policies, triggers, one seed row.
+- No changes to app code, and nothing else in your database is touched.
+- If the connection still fails after this, the next step is to surface the real error message on the Backups page instead of "(failed)" — small follow-up change.
