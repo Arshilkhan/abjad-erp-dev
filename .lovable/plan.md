@@ -23,6 +23,6 @@ If you prefer this, say so and I will plan that instead.
 ## Technical details
 
 - `vercel.json`: `schedule` changes from `0 * * * *` to `0 0 * * *`.
-- `src/routes/api/public/backup-cron.ts`: remove the `now.getUTCHours() !== s.hour_utc` early return; keep the secret check, the `frequency === 'off'` skip, and the minimum-gap guard (daily gap lowered to 20h so a drifting daily trigger is never skipped).
+- `src/routes/api/public/backup-cron.ts`: remove the `now.getUTCHours() !== s.hour_utc` early return; keep the secret check, the `frequency === 'off'` skip, and the minimum-gap guard (thresholds: 40h / 6.5d / 27d so a drifting trigger is never skipped early). The existing `daily` setting value is relabelled "Every 2 days" in the UI and uses the 40h gap — no database change needed.
 - `src/routes/_authenticated/backups.tsx`: replace the hour `Select` with static help text; `saveBackupSettings` keeps sending the stored `hour_utc` unchanged.
 - No database migration, no change to the Google Drive connection, and no change to any other part of the ERP.
