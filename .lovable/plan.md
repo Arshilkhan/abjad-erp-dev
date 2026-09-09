@@ -7,10 +7,10 @@ The deployment fails because the automatic backup is set to check every hour, an
 Switch the Vercel schedule to once a day, and let the backup itself decide whether today is a backup day.
 
 - Change the scheduled job to run once daily (at 00:00 UTC, Vercel may fire it any time within that hour).
-- The backup checker stops requiring an exact hour match. Instead:
-  - Daily: run every time the job fires.
-  - Weekly: run if the last successful backup was 6.5+ days ago.
-  - Monthly: run if the last successful backup was 27+ days ago.
+- The backup checker stops requiring an exact hour match. The frequency choices on the Backups page become: Off / Every 2 days / Every week / Every month. A backup runs when the job fires and the previous backup is old enough:
+  - Every 2 days: run if the last backup was 40+ hours ago.
+  - Every week: run if the last backup was 6.5+ days ago.
+  - Every month: run if the last backup was 27+ days ago.
 - On the Backups page, the "Hour (UTC)" picker becomes informational only. It will be replaced with a short note: "Automatic backups run once a day, at a time chosen by the host." The saved value is kept in the database so nothing breaks if you later move to a paid plan.
 - You can still press "Back up now" at any moment for an immediate backup.
 
