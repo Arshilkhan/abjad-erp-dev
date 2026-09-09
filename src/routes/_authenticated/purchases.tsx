@@ -228,7 +228,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const setV = (k: string, v: any) => setVendor((f: any) => ({ ...f, [k]: v }));
   const [isIgst, setIsIgst] = useState(false);
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<POLine[]>([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+  const [lines, setLines] = useState<POLine[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const emailPo = useServerFn(sendPoEmail);
 
@@ -241,7 +241,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     setVendor({ ...v });
   };
 
-  const addLine = () => setLines((l) => [...l, { description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+  const addLine = () => setLines((l) => [...l, emptyLine()]);
   const rmLine = (i: number) => setLines((l) => l.filter((_, idx) => idx !== i));
   const setLine = (i: number, k: keyof POLine, v: any) => setLines((l) => l.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
 
@@ -335,7 +335,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }
 
       setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
-      setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+      setLines([emptyLine()]);
       onSaved(); onClose();
     } catch (e: any) {
       console.error("PO save failed", e);
