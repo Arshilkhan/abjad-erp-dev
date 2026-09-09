@@ -34,11 +34,11 @@ async function handle(request: Request): Promise<Response> {
   if (!s || s.frequency === 'off') return Response.json({ skipped: 'disabled' })
 
   const now = new Date()
-  if (now.getUTCHours() !== s.hour_utc) return Response.json({ skipped: 'not_scheduled_hour' })
-
+  // Vercel Hobby allows only one cron run per day (within the hour), so the
+  // stored hour is ignored; the frequency gap decides whether today is a run day.
   const last = s.last_run_at ? new Date(s.last_run_at) : null
   const minGapMs =
-    s.frequency === 'daily' ? 20 * 3600_000 : s.frequency === 'weekly' ? 6.5 * 86_400_000 : 27 * 86_400_000
+    s.frequency === 'daily' ? 40 * 3600_000 : s.frequency === 'weekly' ? 6.5 * 86_400_000 : 27 * 86_400_000
   if (last && now.getTime() - last.getTime() < minGapMs) return Response.json({ skipped: 'too_soon' })
 
   await supabaseAdmin.from('backup_settings').update({ last_run_at: now.toISOString() }).eq('id', s.id)
