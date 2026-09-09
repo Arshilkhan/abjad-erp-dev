@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedBackupsRouteImport } from './routes/_authenticated/backups'
 import { Route as AuthenticatedCancelledInvoicesRouteImport } from './routes/_authenticated/cancelled-invoices'
 import { Route as AuthenticatedChallansRouteImport } from './routes/_authenticated/challans'
 import { Route as AuthenticatedCustomerCreditsRouteImport } from './routes/_authenticated/customer-credits'
@@ -57,6 +58,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedBackupsRoute = AuthenticatedBackupsRouteImport.update({
+  id: '/backups',
+  path: '/backups',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedCancelledInvoicesRoute =
   AuthenticatedCancelledInvoicesRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -259,6 +267,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/backups': typeof AuthenticatedBackupsRoute
   '/_authenticated/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/_authenticated/challans': typeof AuthenticatedChallansRoute
   '/_authenticated/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/backups'
     | '/cancelled-invoices'
     | '/challans'
     | '/customer-credits'
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/backups'
     | '/cancelled-invoices'
     | '/challans'
     | '/customer-credits'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/backups'
     | '/_authenticated/cancelled-invoices'
     | '/_authenticated/challans'
     | '/_authenticated/customer-credits'
@@ -420,6 +432,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/backups': {
+      id: '/_authenticated/backups'
+      path: '/backups'
+      fullPath: '/backups'
+      preLoaderRoute: typeof AuthenticatedBackupsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/cancelled-invoices': {
       id: '/_authenticated/cancelled-invoices'
@@ -622,6 +641,7 @@ const AuthenticatedInvoicesRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedBackupsRoute: typeof AuthenticatedBackupsRoute
   AuthenticatedCancelledInvoicesRoute: typeof AuthenticatedCancelledInvoicesRoute
   AuthenticatedChallansRoute: typeof AuthenticatedChallansRoute
   AuthenticatedCustomerCreditsRoute: typeof AuthenticatedCustomerCreditsRoute
@@ -640,6 +660,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedBackupsRoute: AuthenticatedBackupsRoute,
   AuthenticatedCancelledInvoicesRoute: AuthenticatedCancelledInvoicesRoute,
   AuthenticatedChallansRoute: AuthenticatedChallansRoute,
   AuthenticatedCustomerCreditsRoute: AuthenticatedCustomerCreditsRoute,
