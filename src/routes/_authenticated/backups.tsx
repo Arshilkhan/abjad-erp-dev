@@ -168,22 +168,17 @@ function BackupsPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="off">Off</SelectItem>
-                    <SelectItem value="daily">Every day</SelectItem>
+                    <SelectItem value="daily">Every 2 days</SelectItem>
                     <SelectItem value="weekly">Every week</SelectItem>
                     <SelectItem value="monthly">Every month</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Hour (UTC)</Label>
-                <Select value={hour} onValueChange={setHour} disabled={frequency === "off"}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>{String(i).padStart(2, "0")}:00</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs">Time</Label>
+                <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                  Automatic backups run once a day, at a time chosen by the host.
+                </p>
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
