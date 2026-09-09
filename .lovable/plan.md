@@ -1,27 +1,29 @@
-# Add backup tables to your own database
+# Run the backup-tables migration directly on abjad-erp-live
 
-## Why the Drive connection failed
+## Goal
+Create the three backup tables (`google_drive_credentials`, `backup_settings`, `backup_history`) in your own Supabase project (`abjad-erp-live`) so the live Backups page can save the Google Drive connection and backup history.
 
-The Google sign-in worked, but the last step saves the connection into three tables that only exist in Lovable's cloud — not in your own database (abjad-erp-live). Since your live site uses your own database, the save fails.
+## How we'll do it securely
 
-## Fix: run one SQL script in your database
+I won't ask you to paste credentials in chat. Instead:
 
-1. Create a ready-to-run SQL file, `erp-migration/backup-tables.sql`, containing the exact table definitions for:
-   - **google_drive_credentials** — stores the Google connection (server-only, not readable by any app user)
-   - **backup_settings** — your backup schedule (admins can read/change)
-   - **backup_history** — list of past backups (admins can read)
-   - Access rules matching the rest of your ERP (admin-only via your existing `is_admin` function) and the standard updated-at triggers
-2. You open your Supabase project → SQL Editor → paste the script → Run. (I can't run it for you because I don't have access to your own project — it's outside Lovable's cloud.)
-3. No manual records to add — the script seeds the single settings row itself.
+1. You add two secrets to this Lovable project through the secure secret form:
+   - `LIVE_SUPABASE_URL` — your abjad-erp-live project URL
+   - `LIVE_SUPABASE_SERVICE_ROLE_KEY` — the service-role key for that project
+2. I create a one-time server-side migration runner that reads those secrets and connects directly to abjad-erp-live.
+3. The runner executes the same backup-tables SQL that was already prepared.
+4. I verify the tables exist by querying the live database.
+5. I delete the temporary runner file so the secret isn't used by any ongoing code.
 
-## After running it
+## What will be created in abjad-erp-live
 
-- Go to the live site → Backups → Connect Google Drive → approve with ajkhan902@gmail.com.
-- The connection should now save and show as connected.
-- Then try "Back up now" once to confirm the ZIP lands in Google Drive.
+- `public.google_drive_credentials` — stores the Google refresh/access token and Drive folder ID. No app-user access; server-only via service role.
+- `public.backup_settings` — single row for backup frequency and last run time. Readable/editable by admins.
+- `public.backup_history` — record of each backup run. Readable by admins.
+- GRANT statements, RLS policies, updated-at triggers, and one seed row for `backup_settings`.
 
-## Technical details
+## Important notes
 
-- SQL is identical to the migration already applied to Lovable's cloud (`supabase/migrations/20260909112247_....sql`): 3 tables, GRANTs, RLS policies, triggers, one seed row.
-- No changes to app code, and nothing else in your database is touched.
-- If the connection still fails after this, the next step is to surface the real error message on the Backups page instead of "(failed)" — small follow-up change.
+- The existing project secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) must keep pointing to the Lovable Cloud backend so the workspace preview keeps working. We'll use different names (`LIVE_*`).
+- After the tables exist, go to the live Backups page, connect Google Drive with `ajkhan902@gmail.com`, and try "Back up now".
+- The temporary migration runner will be removed immediately after verification.
