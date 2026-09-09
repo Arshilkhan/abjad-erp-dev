@@ -425,6 +425,26 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
               <tbody>
                 {lines.map((l, i) => (
                   <tr key={i} className="border-t">
+                    <td className="p-1">
+                      <TypeaheadInput
+                        value={l.product_name}
+                        options={productOptions}
+                        placeholder="Product name"
+                        onChange={(v) => setLines((ls) => ls.map((r, idx) => idx === i ? { ...r, product_name: v, product_id: null } : r))}
+                        onSelect={(opt) => {
+                          const p: any = products.find((x: any) => x.id === opt.id);
+                          setLines((ls) => ls.map((r, idx) => idx === i ? {
+                            ...r,
+                            product_id: opt.id,
+                            product_name: opt.label,
+                            description: r.description || (p?.description ?? ""),
+                            hsn: r.hsn || (p?.hsn_code ?? ""),
+                            rate: r.rate || Number(p?.purchase_price ?? 0),
+                            tax_pct: p?.gst_percentage != null ? Number(p.gst_percentage) : r.tax_pct,
+                          } : r));
+                        }}
+                      />
+                    </td>
                     <td className="p-1"><Input value={l.description} onChange={(e) => setLine(i, "description", e.target.value)} /></td>
                     <td className="p-1"><Input value={l.hsn} onChange={(e) => setLine(i, "hsn", e.target.value)} /></td>
                     <td className="p-1"><Input type="number" value={l.qty} onChange={(e) => setLine(i, "qty", Number(e.target.value))} /></td>
