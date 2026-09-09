@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSpreadsheet, Users, Package, Warehouse,
   ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard, Upload,
-  UserCog, Truck,
+  UserCog, Truck, CloudUpload,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -81,6 +81,16 @@ export function AppSidebar() {
                     <Link to="/settings">
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/backups")}>
+                    <Link to="/backups">
+                      <CloudUpload className="h-4 w-4" />
+                      <span>Backups</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
