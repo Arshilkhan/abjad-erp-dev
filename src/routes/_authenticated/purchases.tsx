@@ -321,7 +321,9 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }
       const items = lines.map((l, i) => ({
         purchase_order_id: po.id, sr_no: i + 1,
-        description: l.description, hsn_code: l.hsn || null,
+        product_id: l.product_id,
+        description: [l.product_name.trim(), l.description.trim()].filter(Boolean).join(" — "),
+        hsn_code: l.hsn || null,
         quantity: Number(l.qty) || 0, unit_rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0,
         tax_amount: Number(l.qty) * Number(l.rate) * Number(l.tax_pct) / 100,
         total_amount: Number(l.qty) * Number(l.rate) * (1 + Number(l.tax_pct) / 100),
