@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -57,6 +57,7 @@ function computeItem(it: LineItem) {
 
 export function InvoiceForm({ editId, importMode }: { editId?: string; importMode?: boolean }) {
   const nav = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const isEdit = !!editId;
   const qc = useQueryClient();
@@ -583,10 +584,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         }
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/invoices">
-                <ArrowLeft className="mr-1 h-4 w-4" /> Back
-              </Link>
+            <Button variant="outline" onClick={() => router.history.back()}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
             <Button variant="outline" onClick={() => save.mutate("draft")} disabled={save.isPending}>
               Save Draft
@@ -691,8 +690,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   <SelectItem value="proforma">Proforma</SelectItem>
                   <SelectItem value="quotation">Quotation</SelectItem>
                   <SelectItem value="delivery_challan">Delivery Challan</SelectItem>
-                  <SelectItem value="credit_note">Credit Note</SelectItem>
-                  <SelectItem value="debit_note">Debit Note</SelectItem>
                 </SelectContent>
               </Select>
             </div>

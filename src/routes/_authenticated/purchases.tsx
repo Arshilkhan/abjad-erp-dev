@@ -209,7 +209,9 @@ function PurchaseOrdersTab() {
   );
 }
 
-type POLine = { description: string; hsn: string; qty: number; rate: number; tax_pct: number };
+type POLine = { product_id: string | null; product_name: string; description: string; hsn: string; qty: number; rate: number; tax_pct: number };
+
+const emptyLine = (): POLine => ({ product_id: null, product_name: "", description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 });
 
 function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
@@ -217,6 +219,17 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     queryKey: ["vendors-select"],
     queryFn: async () => (await supabase.from("vendors").select("*").order("vendor_name")).data ?? [],
   });
+  const { data: products = [] } = useQuery({
+    queryKey: ["products-po-select"],
+    queryFn: async () => (await supabase.from("products").select("*").order("product_name")).data ?? [],
+  });
+  const productOptions: TypeaheadOption[] = products.map((p: any) => ({
+    id: p.id,
+    label: p.product_name ?? "",
+    sublabel: p.hsn_code ?? undefined,
+  }));
+
+
 
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10));
@@ -226,7 +239,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
   const setV = (k: string, v: any) => setVendor((f: any) => ({ ...f, [k]: v }));
   const [isIgst, setIsIgst] = useState(false);
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<POLine[]>([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+  const [lines, setLines] = useState<POLine[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const emailPo = useServerFn(sendPoEmail);
 
@@ -239,7 +252,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     setVendor({ ...v });
   };
 
-  const addLine = () => setLines((l) => [...l, { description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+  const addLine = () => setLines((l) => [...l, emptyLine()]);
   const rmLine = (i: number) => setLines((l) => l.filter((_, idx) => idx !== i));
   const setLine = (i: number, k: keyof POLine, v: any) => setLines((l) => l.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
 
@@ -257,7 +270,8 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
     if (!poNumber.trim()) return toast.error("PO number required");
     const name = (vendor.vendor_name ?? "").trim();
     if (!name) return toast.error("Vendor name is required");
-    if (lines.some((l) => !l.description)) return toast.error("Every line needs a description");
+    if (lines.some((l) => !l.product_name.trim() && !l.description.trim()))
+      return toast.error("Every line needs a product name");
     setSaving(true);
 
     try {
@@ -307,7 +321,9 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }
       const items = lines.map((l, i) => ({
         purchase_order_id: po.id, sr_no: i + 1,
-        description: l.description, hsn_code: l.hsn || null,
+        product_id: l.product_id,
+        description: [l.product_name.trim(), l.description.trim()].filter(Boolean).join(" — "),
+        hsn_code: l.hsn || null,
         quantity: Number(l.qty) || 0, unit_rate: Number(l.rate) || 0, tax_pct: Number(l.tax_pct) || 0,
         tax_amount: Number(l.qty) * Number(l.rate) * Number(l.tax_pct) / 100,
         total_amount: Number(l.qty) * Number(l.rate) * (1 + Number(l.tax_pct) / 100),
@@ -333,7 +349,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
       }
 
       setPoNumber(""); setNotes(""); setVendorId(""); setVendor({});
-      setLines([{ description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 }]);
+      setLines([emptyLine()]);
       onSaved(); onClose();
     } catch (e: any) {
       console.error("PO save failed", e);
@@ -396,6 +412,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
                 <tr>
+                  <th className="p-2 text-left">Product Name</th>
                   <th className="p-2 text-left">Description</th>
                   <th className="p-2 w-20">HSN</th>
                   <th className="p-2 w-20">Qty</th>
@@ -408,6 +425,26 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
               <tbody>
                 {lines.map((l, i) => (
                   <tr key={i} className="border-t">
+                    <td className="p-1">
+                      <TypeaheadInput
+                        value={l.product_name}
+                        options={productOptions}
+                        placeholder="Product name"
+                        onChange={(v) => setLines((ls) => ls.map((r, idx) => idx === i ? { ...r, product_name: v, product_id: null } : r))}
+                        onSelect={(opt) => {
+                          const p: any = products.find((x: any) => x.id === opt.id);
+                          setLines((ls) => ls.map((r, idx) => idx === i ? {
+                            ...r,
+                            product_id: opt.id,
+                            product_name: opt.label,
+                            description: r.description || (p?.description ?? ""),
+                            hsn: r.hsn || (p?.hsn_code ?? ""),
+                            rate: r.rate || Number(p?.purchase_price ?? 0),
+                            tax_pct: p?.gst_percentage != null ? Number(p.gst_percentage) : r.tax_pct,
+                          } : r));
+                        }}
+                      />
+                    </td>
                     <td className="p-1"><Input value={l.description} onChange={(e) => setLine(i, "description", e.target.value)} /></td>
                     <td className="p-1"><Input value={l.hsn} onChange={(e) => setLine(i, "hsn", e.target.value)} /></td>
                     <td className="p-1"><Input type="number" value={l.qty} onChange={(e) => setLine(i, "qty", Number(e.target.value))} /></td>
