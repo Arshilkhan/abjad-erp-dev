@@ -690,8 +690,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   <SelectItem value="proforma">Proforma</SelectItem>
                   <SelectItem value="quotation">Quotation</SelectItem>
                   <SelectItem value="delivery_challan">Delivery Challan</SelectItem>
-                  <SelectItem value="credit_note">Credit Note</SelectItem>
-                  <SelectItem value="debit_note">Debit Note</SelectItem>
                 </SelectContent>
               </Select>
             </div>
