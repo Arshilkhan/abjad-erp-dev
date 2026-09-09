@@ -412,6 +412,7 @@ function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () =>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
                 <tr>
+                  <th className="p-2 text-left">Product Name</th>
                   <th className="p-2 text-left">Description</th>
                   <th className="p-2 w-20">HSN</th>
                   <th className="p-2 w-20">Qty</th>
