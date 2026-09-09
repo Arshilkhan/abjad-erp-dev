@@ -33,6 +33,7 @@ const typeLabels: Record<string, string> = {
 function InvoiceDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
+  const router = useRouter();
   const qc = useQueryClient();
   const getPdf = useServerFn(downloadInvoicePdf);
   const [downloading, setDownloading] = useState(false);
