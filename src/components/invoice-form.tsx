@@ -57,6 +57,7 @@ function computeItem(it: LineItem) {
 
 export function InvoiceForm({ editId, importMode }: { editId?: string; importMode?: boolean }) {
   const nav = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const isEdit = !!editId;
   const qc = useQueryClient();
