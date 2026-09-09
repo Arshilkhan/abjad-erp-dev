@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      backup_history: {
+        Row: {
+          created_by: string | null
+          drive_file_id: string | null
+          drive_link: string | null
+          error: string | null
+          file_name: string | null
+          file_size: number | null
+          finished_at: string | null
+          id: string
+          invoice_count: number | null
+          started_at: string
+          status: string
+          trigger_source: string
+        }
+        Insert: {
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_link?: string | null
+          error?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          finished_at?: string | null
+          id?: string
+          invoice_count?: number | null
+          started_at?: string
+          status?: string
+          trigger_source?: string
+        }
+        Update: {
+          created_by?: string | null
+          drive_file_id?: string | null
+          drive_link?: string | null
+          error?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          finished_at?: string | null
+          id?: string
+          invoice_count?: number | null
+          started_at?: string
+          status?: string
+          trigger_source?: string
+        }
+        Relationships: []
+      }
+      backup_settings: {
+        Row: {
+          created_at: string
+          frequency: string
+          hour_utc: number
+          id: string
+          last_run_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: string
+          hour_utc?: number
+          id?: string
+          last_run_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          hour_utc?: number
+          id?: string
+          last_run_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_profile: {
         Row: {
           address: string | null
@@ -227,6 +299,42 @@ export type Database = {
           shipping_address?: string | null
           state?: string | null
           state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      google_drive_credentials: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          account_email: string | null
+          connected_by: string | null
+          created_at: string
+          folder_id: string | null
+          id: string
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          account_email?: string | null
+          connected_by?: string | null
+          created_at?: string
+          folder_id?: string | null
+          id?: string
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          account_email?: string | null
+          connected_by?: string | null
+          created_at?: string
+          folder_id?: string | null
+          id?: string
+          refresh_token?: string
           updated_at?: string
         }
         Relationships: []

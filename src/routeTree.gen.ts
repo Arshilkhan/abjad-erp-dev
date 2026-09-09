@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedBackupsRouteImport } from './routes/_authenticated/backups'
 import { Route as AuthenticatedCancelledInvoicesRouteImport } from './routes/_authenticated/cancelled-invoices'
 import { Route as AuthenticatedChallansRouteImport } from './routes/_authenticated/challans'
 import { Route as AuthenticatedCustomerCreditsRouteImport } from './routes/_authenticated/customer-credits'
@@ -30,6 +31,8 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedInvoicesImportRouteImport } from './routes/_authenticated/invoices.import'
 import { Route as AuthenticatedInvoicesNewRouteImport } from './routes/_authenticated/invoices.new'
+import { Route as ApiGoogleDriveCallbackRouteImport } from './routes/api/google-drive/callback'
+import { Route as ApiPublicBackupCronRouteImport } from './routes/api/public/backup-cron'
 import { Route as AuthenticatedInvoicesIdIndexRouteImport } from './routes/_authenticated/invoices.$id.index'
 import { Route as AuthenticatedInvoicesIdEditRouteImport } from './routes/_authenticated/invoices.$id.edit'
 import { Route as AuthenticatedInvoicesFolderCompanyRouteImport } from './routes/_authenticated/invoices.folder.$company'
@@ -55,6 +58,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedBackupsRoute = AuthenticatedBackupsRouteImport.update({
+  id: '/backups',
+  path: '/backups',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedCancelledInvoicesRoute =
   AuthenticatedCancelledInvoicesRouteImport.update({
@@ -146,6 +154,16 @@ const AuthenticatedInvoicesNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedInvoicesRoute,
   } as any)
+const ApiGoogleDriveCallbackRoute = ApiGoogleDriveCallbackRouteImport.update({
+  id: '/api/google-drive/callback',
+  path: '/api/google-drive/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBackupCronRoute = ApiPublicBackupCronRouteImport.update({
+  id: '/api/public/backup-cron',
+  path: '/api/public/backup-cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedInvoicesIdIndexRoute =
   AuthenticatedInvoicesIdIndexRouteImport.update({
     id: '/$id/',
@@ -185,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -202,6 +221,8 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRoute
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
+  '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -213,6 +234,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/challans': typeof AuthenticatedChallansRoute
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -230,6 +252,8 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersRoute
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
+  '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -243,6 +267,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/backups': typeof AuthenticatedBackupsRoute
   '/_authenticated/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
   '/_authenticated/challans': typeof AuthenticatedChallansRoute
   '/_authenticated/customer-credits': typeof AuthenticatedCustomerCreditsRoute
@@ -260,6 +285,8 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/_authenticated/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
+  '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/_authenticated/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -273,6 +300,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/backups'
     | '/cancelled-invoices'
     | '/challans'
     | '/customer-credits'
@@ -290,6 +318,8 @@ export interface FileRouteTypes {
     | '/users'
     | '/invoices/import'
     | '/invoices/new'
+    | '/api/google-drive/callback'
+    | '/api/public/backup-cron'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -301,6 +331,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/backups'
     | '/cancelled-invoices'
     | '/challans'
     | '/customer-credits'
@@ -318,6 +349,8 @@ export interface FileRouteTypes {
     | '/users'
     | '/invoices/import'
     | '/invoices/new'
+    | '/api/google-drive/callback'
+    | '/api/public/backup-cron'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -330,6 +363,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/backups'
     | '/_authenticated/cancelled-invoices'
     | '/_authenticated/challans'
     | '/_authenticated/customer-credits'
@@ -347,6 +381,8 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_authenticated/invoices/import'
     | '/_authenticated/invoices/new'
+    | '/api/google-drive/callback'
+    | '/api/public/backup-cron'
     | '/_authenticated/invoices/$id/edit'
     | '/_authenticated/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -360,6 +396,8 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiGoogleDriveCallbackRoute: typeof ApiGoogleDriveCallbackRoute
+  ApiPublicBackupCronRoute: typeof ApiPublicBackupCronRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -394,6 +432,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/backups': {
+      id: '/_authenticated/backups'
+      path: '/backups'
+      fullPath: '/backups'
+      preLoaderRoute: typeof AuthenticatedBackupsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/cancelled-invoices': {
       id: '/_authenticated/cancelled-invoices'
@@ -514,6 +559,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoicesNewRouteImport
       parentRoute: typeof AuthenticatedInvoicesRoute
     }
+    '/api/google-drive/callback': {
+      id: '/api/google-drive/callback'
+      path: '/api/google-drive/callback'
+      fullPath: '/api/google-drive/callback'
+      preLoaderRoute: typeof ApiGoogleDriveCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/backup-cron': {
+      id: '/api/public/backup-cron'
+      path: '/api/public/backup-cron'
+      fullPath: '/api/public/backup-cron'
+      preLoaderRoute: typeof ApiPublicBackupCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/invoices/$id/': {
       id: '/_authenticated/invoices/$id/'
       path: '/$id'
@@ -582,6 +641,7 @@ const AuthenticatedInvoicesRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedBackupsRoute: typeof AuthenticatedBackupsRoute
   AuthenticatedCancelledInvoicesRoute: typeof AuthenticatedCancelledInvoicesRoute
   AuthenticatedChallansRoute: typeof AuthenticatedChallansRoute
   AuthenticatedCustomerCreditsRoute: typeof AuthenticatedCustomerCreditsRoute
@@ -600,6 +660,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedBackupsRoute: AuthenticatedBackupsRoute,
   AuthenticatedCancelledInvoicesRoute: AuthenticatedCancelledInvoicesRoute,
   AuthenticatedChallansRoute: AuthenticatedChallansRoute,
   AuthenticatedCustomerCreditsRoute: AuthenticatedCustomerCreditsRoute,
@@ -626,6 +687,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiGoogleDriveCallbackRoute: ApiGoogleDriveCallbackRoute,
+  ApiPublicBackupCronRoute: ApiPublicBackupCronRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
