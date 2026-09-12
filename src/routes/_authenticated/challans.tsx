@@ -45,7 +45,7 @@ function ChallansPage() {
         <CardContent className="p-0">
           {!isLoading && rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No challans yet. <Link to="/invoices/new" className="text-primary hover:underline">Create one</Link> with type “Delivery Challan”.
+              No challans yet. <Link to="/invoices/new" search={{ type: "delivery_challan" }} className="text-primary hover:underline">Create one</Link> with type “Delivery Challan”.
             </p>
           ) : (
             <InvoiceTable rows={rows} isLoading={isLoading} />

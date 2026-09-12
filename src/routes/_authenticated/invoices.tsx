@@ -66,7 +66,7 @@ function InvoicesIndex() {
         <p className="py-10 text-center text-muted-foreground">Loading…</p>
       ) : visibleFolders.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">
-          No company folders yet. <Link to="/invoices/new" className="text-primary hover:underline">Create an invoice</Link> to start one.
+          No company folders yet. <Link to="/invoices/new" search={{ type: "tax_invoice" }} className="text-primary hover:underline">Create an invoice</Link> to start one.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

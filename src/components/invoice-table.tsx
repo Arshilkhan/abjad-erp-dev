@@ -54,7 +54,7 @@ export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boo
         {isLoading && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
         {!isLoading && rows.length === 0 && (
           <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-            No documents here yet. <Link to="/invoices/new" className="text-primary hover:underline">Create one</Link>.
+            No documents here yet. <Link to="/invoices/new" search={{ type: "tax_invoice" }} className="text-primary hover:underline">Create one</Link>.
           </TableCell></TableRow>
         )}
         {rows.map((r: any) => (

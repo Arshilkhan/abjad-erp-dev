@@ -7,7 +7,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
  */
 export const sendInvoiceEmail = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { invoiceId: string }) => {
+  .inputValidator((input: { invoiceId: string; recipientEmail?: string }) => {
     if (!input?.invoiceId) throw new Error('invoiceId is required')
     return input
   })
