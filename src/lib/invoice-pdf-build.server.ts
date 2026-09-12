@@ -208,6 +208,14 @@ export async function buildInvoicePdf(
   const typeLabel = TYPE_LABELS[String(invoice['invoice_type'])] ?? 'TAX INVOICE'
   draw(typeLabel, L, y - 16, 15, { bold: true, align: 'center', width: W, color: white })
   y -= 26
+  const docType = String(invoice['invoice_type'] ?? 'tax_invoice')
+  const isChallanDoc = docType === 'delivery_challan' || docType === 'challan'
+  const isQuotationDoc = docType === 'quotation'
+  const isProformaDoc = docType === 'proforma'
+  if (isProformaDoc) {
+    draw('PROFORMA INVOICE - NOT A TAX INVOICE', L, y - 9, 9, { bold: true, align: 'center', width: W })
+    y -= 13
+  }
 
   // ---------- CUSTOMER + BILL META ----------
   const cw = [0.15, 0.38, 0.14, 0.13, 0.07, 0.13].map((f) => f * W)
@@ -219,8 +227,8 @@ export async function buildInvoicePdf(
   const rowH = 16
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
-  cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
-  cell(cx[3]!, y, cw[3]!, rowH, billNo(invoice['invoice_number']))
+  cell(cx[2]!, y, cw[2]!, rowH, NUMBER_LABELS[docType] ?? 'Invoice No.', { bold: true })
+  cell(cx[3]!, y, cw[3]!, rowH, String(invoice['document_no'] ?? billNo(invoice['invoice_number'])))
   cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
   cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 8.5 })
   y -= rowH
