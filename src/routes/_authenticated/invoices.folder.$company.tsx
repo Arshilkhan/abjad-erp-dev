@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/invoices/folder/$company")
 
 function FolderPage() {
   const { company } = useParams({ from: "/_authenticated/invoices/folder/$company" });
-  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation"] });
+  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
   const [q, setQ] = useState("");
   const folder = folders.find((f) => f.slug === company);
 
