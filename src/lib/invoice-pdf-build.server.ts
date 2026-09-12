@@ -17,6 +17,15 @@ const TYPE_LABELS: Record<string, string> = {
   purchase_order: 'PURCHASE ORDER',
 }
 
+const NUMBER_LABELS: Record<string, string> = {
+  tax_invoice: 'Invoice No.',
+  proforma: 'Proforma No.',
+  quotation: 'Quotation No.',
+  delivery_challan: 'Challan No.',
+  challan: 'Challan No.',
+  purchase_order: 'PO No.',
+}
+
 /**
  * Builds the A4 invoice PDF using the same layout as the on-screen
  * printable invoice: bordered tables, blue title banner, buyer/company
