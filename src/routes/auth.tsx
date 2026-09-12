@@ -204,7 +204,6 @@ function AuthPage() {
                     id="e1"
                     type="email"
                     required
-                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-11 rounded-lg"
@@ -226,7 +225,6 @@ function AuthPage() {
                       id="p1"
                       type={showPassword ? "text" : "password"}
                       required
-                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11 rounded-lg pr-11"
@@ -266,7 +264,6 @@ function AuthPage() {
                     id="fe"
                     type="email"
                     required
-                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-11 rounded-lg"
