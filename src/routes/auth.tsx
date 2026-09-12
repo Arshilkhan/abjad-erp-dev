@@ -107,7 +107,7 @@ function AuthPage() {
   };
 
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr] bg-background md:grid-cols-[45fr_55fr] md:grid-rows-1">
+    <div className="grid h-screen grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background md:grid-cols-[45fr_55fr] md:grid-rows-1">
       <div className="relative hidden flex-col overflow-hidden bg-primary px-14 py-12 text-primary-foreground md:flex">
         <div className="absolute inset-0">
           <svg
@@ -189,7 +189,7 @@ function AuthPage() {
         <div className="absolute bottom-5 right-12 h-12 w-12 rotate-12 border border-primary-foreground/10" />
       </div>
 
-      <div className="flex items-start justify-center bg-background px-6 py-8 md:items-center md:p-10">
+      <div className="flex min-h-0 items-start justify-center overflow-hidden bg-background px-6 py-8 md:items-center md:p-10">
         <div className="w-full max-w-[400px]">
           {mode === "signin" && (
             <>
