@@ -19,6 +19,10 @@ import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
+import { documentDefinition, type DocumentType } from "@/lib/document-types";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LineItem {
   sr_no: number;
@@ -55,7 +59,7 @@ function computeItem(it: LineItem) {
   return { discount_amount, tax_amount, total_amount, net };
 }
 
-export function InvoiceForm({ editId, importMode }: { editId?: string; importMode?: boolean }) {
+export function InvoiceForm({ editId, importMode, initialType = "tax_invoice" }: { editId?: string; importMode?: boolean; initialType?: DocumentType }) {
   const nav = useNavigate();
   const router = useRouter();
   const { user } = useAuth();
@@ -72,7 +76,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [custEmail, setCustEmail] = useState("");
   const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
-  const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
+  const [invoiceType, setInvoiceType] = useState<DocumentType>(initialType);
   const [challanNumber, setChallanNumber] = useState("");
   const [challanDates, setChallanDates] = useState<string[]>([]);
   const [challanDateInput, setChallanDateInput] = useState("");
@@ -87,9 +91,34 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
   const [notes, setNotes] = useState("");
+  const [custState, setCustState] = useState("");
+  const [custStateCode, setCustStateCode] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [customerReference, setCustomerReference] = useState("");
+  const [validUntil, setValidUntil] = useState("");
+  const [expectedDelivery, setExpectedDelivery] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [poNumber, setPoNumber] = useState("");
+  const [poDate, setPoDate] = useState("");
+  const [reasonForMovement, setReasonForMovement] = useState("Delivery / Supply");
+  const [transporterName, setTransporterName] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [lrGrNumber, setLrGrNumber] = useState("");
+  const [ewayBillNumber, setEwayBillNumber] = useState("");
+  const [placeOfDispatch, setPlaceOfDispatch] = useState("");
+  const [placeOfDelivery, setPlaceOfDelivery] = useState("");
+  const [relatedInvoiceNumber, setRelatedInvoiceNumber] = useState("");
+  const [relatedInvoiceDate, setRelatedInvoiceDate] = useState("");
+  const [termsConditions, setTermsConditions] = useState("");
+  const [recipientOpen, setRecipientOpen] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [hydrated, setHydrated] = useState(false);
   const isChallan = invoiceType === "delivery_challan";
+  const isQuotation = invoiceType === "quotation";
+  const isProforma = invoiceType === "proforma";
+  const isTaxInvoice = invoiceType === "tax_invoice";
+  const definition = documentDefinition(invoiceType);
 
   const addChallanDate = () => {
     const d = challanDateInput;
@@ -105,7 +134,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         await supabase
           .from("customers")
           .select(
-            "id, customer_name, company_name, gst_number, billing_address, state, state_code, contact_person, mobile, email",
+            "id, customer_name, company_name, gst_number, billing_address, shipping_address, state, state_code, place_of_supply, contact_person, mobile, email",
           )
       ).data ?? [],
   });
@@ -161,6 +190,25 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
     setNotes(inv.notes ?? "");
+    setShippingAddress((inv as any).shipping_address_snapshot ?? "");
+    setCustState((inv as any).customer_state_snapshot ?? "");
+    setCustStateCode((inv as any).customer_state_code_snapshot ?? "");
+    setCustomerReference((inv as any).customer_reference ?? "");
+    setValidUntil((inv as any).valid_until ?? "");
+    setExpectedDelivery((inv as any).expected_delivery ?? "");
+    setDueDate((inv as any).due_date ?? "");
+    setPoNumber(inv.po_number ?? "");
+    setPoDate(inv.po_date ?? "");
+    setReasonForMovement((inv as any).reason_for_movement ?? "Delivery / Supply");
+    setTransporterName((inv as any).transporter_name ?? "");
+    setVehicleNumber((inv as any).vehicle_number ?? "");
+    setLrGrNumber((inv as any).lr_gr_number ?? "");
+    setEwayBillNumber((inv as any).eway_bill_number ?? "");
+    setPlaceOfDispatch((inv as any).place_of_dispatch ?? "");
+    setPlaceOfDelivery((inv as any).place_of_delivery ?? "");
+    setRelatedInvoiceNumber((inv as any).related_invoice_number ?? "");
+    setRelatedInvoiceDate((inv as any).related_invoice_date ?? "");
+    setTermsConditions((inv as any).terms_conditions ?? "");
     setItems(
       existing.items.length
         ? existing.items.map((it: any, i: number) => ({
@@ -194,6 +242,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setCustMobile((customer as any).mobile ?? "");
     setCustEmail((customer as any).email ?? "");
     setCustGst(customer.gst_number ?? "");
+    setCustState((customer as any).state ?? "");
+    setCustStateCode((customer as any).state_code ?? "");
+    setShippingAddress((customer as any).shipping_address ?? "");
+    setPlaceOfDelivery((customer as any).shipping_address ?? (customer as any).billing_address ?? "");
   }, [customerId, customer]);
 
   const totals = useMemo(() => {
@@ -252,7 +304,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     mutationFn: async (status: "draft" | "sent") => {
       const nameTyped = customerText.trim();
       if (!custCompany.trim()) throw new Error("Please enter a company name");
-      if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
+      if (isTaxInvoice && settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
       if (isChallan && settings?.mandatory_challan_number && !challanNumber)
         throw new Error("Challan Number is mandatory");
 
@@ -284,6 +336,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         if (custMobile.trim() && custMobile !== (cust.mobile ?? "")) patch.mobile = custMobile.trim();
         if (custEmail.trim() && custEmail !== (cust.email ?? "")) patch.email = custEmail.trim();
         if (custGst.trim() && custGst !== (cust.gst_number ?? "")) patch.gst_number = custGst.trim();
+        if (custState.trim() && custState !== (cust.state ?? "")) patch.state = custState.trim();
+        if (custStateCode.trim() && custStateCode !== (cust.state_code ?? "")) patch.state_code = custStateCode.trim();
+        if (shippingAddress.trim() && shippingAddress !== (cust.shipping_address ?? "")) patch.shipping_address = shippingAddress.trim();
         if (Object.keys(patch).length) {
           const { data, error } = await supabase.from("customers").update(patch).eq("id", cust.id).select().single();
           if (error) throw error;
@@ -300,6 +355,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             mobile: custMobile.trim() || null,
             email: custEmail.trim() || null,
             gst_number: custGst.trim() || null,
+            state: custState.trim() || null,
+            state_code: custStateCode.trim() || null,
+            shipping_address: shippingAddress.trim() || null,
             created_by: user?.id ?? null,
           })
           .select()
@@ -351,14 +409,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         customer_name_snapshot: cust.company_name || cust.customer_name,
         customer_gst_snapshot: cust.gst_number,
         customer_address_snapshot: custAddress.trim() || cust.billing_address,
-        po_number: null,
-        po_date: null,
-        challan_number: isChallan ? challanNumber || null : null,
-        challan_date: isChallan ? challanDates[0] || invoiceDate : null,
-        challan_dates: isChallan ? (challanDates.length ? challanDates : [invoiceDate]) : [],
+        po_number: (isTaxInvoice || isChallan) ? poNumber || null : null,
+        po_date: (isTaxInvoice || isChallan) ? poDate || null : null,
+        challan_number: isTaxInvoice ? challanNumber || null : null,
+        challan_date: isTaxInvoice ? challanDates[0] || null : isChallan ? invoiceDate : null,
+        challan_dates: isTaxInvoice ? challanDates : isChallan ? [invoiceDate] : [],
 
         work_order_number: workOrder || null,
-        place_of_supply: cust.state ?? null,
+        place_of_supply: isTaxInvoice ? cust.place_of_supply || custState || null : null,
         is_igst: isIGST,
         net_value: totals.net,
         discount_amount: totals.disc + Number(discountExtra || 0),
@@ -375,10 +433,28 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         grand_total: totals.grand,
         amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
-        payment_terms: paymentTerms || null,
+        payment_terms: isChallan ? null : paymentTerms || null,
         contact_person: nameTyped || null,
         contact_mobile: custMobile || null,
         notes: notes || null,
+        shipping_address_snapshot: (isTaxInvoice || isProforma) ? shippingAddress || null : isChallan ? placeOfDelivery || null : null,
+        customer_state_snapshot: custState || null,
+        customer_state_code_snapshot: custStateCode || null,
+        customer_reference: (isQuotation || isProforma) ? customerReference || null : null,
+        valid_until: (isQuotation || isProforma) ? validUntil || null : null,
+        expected_delivery: (isQuotation || isProforma) ? expectedDelivery || null : null,
+        due_date: isTaxInvoice ? dueDate || null : null,
+        reason_for_movement: isChallan ? reasonForMovement : null,
+        transporter_name: isChallan ? transporterName || null : null,
+        vehicle_number: isChallan ? vehicleNumber || null : null,
+        lr_gr_number: isChallan ? lrGrNumber || null : null,
+        eway_bill_number: isChallan ? ewayBillNumber || null : null,
+        place_of_dispatch: isChallan ? placeOfDispatch || null : null,
+        place_of_delivery: isChallan ? placeOfDelivery || null : null,
+        related_invoice_number: isChallan ? relatedInvoiceNumber || null : null,
+        related_invoice_date: isChallan ? relatedInvoiceDate || null : null,
+        terms_conditions: isChallan ? null : termsConditions || null,
+        email_recipient: status === "sent" ? recipientEmail.trim() || custEmail.trim() || null : null,
         status,
       };
 
@@ -397,42 +473,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         const { error: dErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
-        // Invoice number format: <sequence>-<company-name-slug>, e.g. 1-fluid-tech
-        const slug =
-          (custCompany || cust.company_name || cust.customer_name || customerText || "customer")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "") || "customer";
-
-        const { data: existing } = await supabase.from("invoices").select("invoice_number");
-        // Delivery challans never consume a bill number; they get their own "dc-" reference.
-        const seqRe = isChallan ? /^dc-(\d+)-/i : /^(\d+)-/;
-        let seq = 0;
-        for (const row of existing ?? []) {
-          const m = seqRe.exec(row.invoice_number ?? "");
-          if (m) seq = Math.max(seq, Number(m[1]));
+        const invoice_number = `${status === "draft" ? "draft" : "pending"}-${crypto.randomUUID()}`;
+        const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
+        if (importMode || pdfImported) {
+          insertPayload.is_imported = true;
+          insertPayload.import_source = "manual";
         }
-
-        let inserted: any = null;
-        let lastErr: any = null;
-        for (let attempt = 0; attempt < 25; attempt++) {
-          seq += 1;
-          const invoice_number = isChallan ? `dc-${seq}-${slug}` : `${seq}-${slug}`;
-          const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
-          if (importMode || pdfImported) {
-            insertPayload.is_imported = true;
-            insertPayload.import_source = "manual";
-          }
-          const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
-          if (!error) {
-            inserted = inv;
-            lastErr = null;
-            break;
-          }
-          lastErr = error;
-          if (error.code !== "23505") break;
-        }
-        if (!inserted) throw lastErr ?? new Error("Could not generate a unique invoice number");
+        const { data: inserted, error: insertError } = await supabase.from("invoices").insert(insertPayload).select().single();
+        if (insertError || !inserted) throw insertError ?? new Error("Could not create document");
         invId = inserted.id;
         invNumber = inserted.invoice_number;
       }
@@ -474,7 +522,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
       if (status === "sent") {
         try {
-          const res: any = await sendEmail({ data: { invoiceId: inv.id } });
+          const res: any = await sendEmail({ data: { invoiceId: inv.id, recipientEmail: recipientEmail.trim() } });
           if (res?.sent) {
             toast.success(`Invoice emailed to ${res.email}`);
             await logInvoiceEvent(inv.id, "sent", `Invoice emailed to ${res.email}`);
@@ -573,17 +621,17 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       <PageHeader
         title={
           isEdit
-            ? `Edit Invoice${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
+            ? `Edit ${definition.title}${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
             : importMode
               ? "Import Invoice"
-              : "New Invoice"
+              : `New ${definition.title}`
         }
         description={
           importMode
             ? "Record an invoice that was created outside the software. It'll be tagged 'Imported' and behaves like a normal invoice."
             : isEdit
               ? "Update customer, line items, taxes, charges, delivery and payment details."
-              : "Create a GST tax invoice. Field visibility and mandatory rules follow your Settings."
+              : `Create a ${definition.title.toLowerCase()} with the fields and totals relevant to this document.`
         }
         actions={
           <div className="flex gap-2">
@@ -593,7 +641,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <Button variant="outline" onClick={() => save.mutate("draft")} disabled={save.isPending}>
               Save Draft
             </Button>
-            <Button onClick={() => save.mutate("sent")} disabled={save.isPending}>
+            <Button onClick={() => { setRecipientEmail(custEmail); setRecipientOpen(true); }} disabled={save.isPending}>
               {save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save & Send"}
             </Button>
           </div>
@@ -603,7 +651,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
        <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-            <CardTitle className="text-base">Invoice Details</CardTitle>
+            <CardTitle className="text-base">{definition.detailsTitle}</CardTitle>
              {!isEdit && (
                <>
                  <input
@@ -674,7 +722,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Input value={custCompany} onChange={(e) => setCustCompany(e.target.value)} />
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Address</Label>
+              <Label className="text-xs">Billing Address</Label>
               <Textarea rows={2} value={custAddress} onChange={(e) => setCustAddress(e.target.value)} placeholder="Customer billing address" />
             </div>
             <div className="space-y-1.5">
@@ -690,92 +738,56 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               <Input className="font-mono" value={custGst} onChange={(e) => setCustGst(e.target.value.toUpperCase())} />
             </div>
             <div className="space-y-1.5">
+              <Label className="text-xs">State</Label>
+              <Input value={custState} onChange={(e) => setCustState(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">State Code</Label>
+              <Input value={custStateCode} onChange={(e) => setCustStateCode(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
-              <Select value={invoiceType} onValueChange={setInvoiceType}>
+              <Select value={invoiceType} onValueChange={(value) => setInvoiceType(value as DocumentType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tax_invoice">Tax Invoice</SelectItem>
-                  <SelectItem value="proforma">Proforma</SelectItem>
+                  <SelectItem value="proforma">Proforma Invoice</SelectItem>
                   <SelectItem value="quotation">Quotation</SelectItem>
                   <SelectItem value="delivery_challan">Delivery Challan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {!isChallan && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Date</Label>
-                <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{definition.dateLabel}</Label>
+              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+            </div>
 
             {isChallan && (
               <>
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs">
-                    Challan Numbers (comma separated)
-                    {settings?.mandatory_challan_number && " *"}
-                  </Label>
-                  <Input
-                    value={challanNumber}
-                    placeholder="DC-001, DC-002, DC-003"
-                    onChange={(e) => setChallanNumber(e.target.value)}
-                  />
-                  {challanNumber.trim() && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {challanNumber
-                        .split(",")
-                        .map((n) => n.trim())
-                        .filter(Boolean)
-                        .map((n, i) => (
-                          <span key={`${n}-${i}`} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                            {n}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs">Challan Dates</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      value={challanDateInput}
-                      onChange={(e) => setChallanDateInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addChallanDate();
-                        }
-                      }}
-                    />
-                    <Button type="button" variant="secondary" onClick={addChallanDate}>
-                      Add
-                    </Button>
-                  </div>
-                  {challanDates.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {challanDates.map((d) => (
-                        <span key={d} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
-                          {d}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${d}`}
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => setChallanDates((prev) => prev.filter((x) => x !== d))}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <div className="col-span-2 space-y-1.5"><Label className="text-xs">Delivery Address</Label><Textarea rows={2} value={placeOfDelivery} onChange={(e) => setPlaceOfDelivery(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">PO Number / Reference</Label><Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">PO Date</Label><Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Related Invoice Number</Label><Input value={relatedInvoiceNumber} onChange={(e) => setRelatedInvoiceNumber(e.target.value)} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Related Invoice Date</Label><Input type="date" value={relatedInvoiceDate} onChange={(e) => setRelatedInvoiceDate(e.target.value)} /></div>
               </>
             )}
 
-            {(settings?.show_work_order || isEdit) && (
+            {(isQuotation || isProforma) && <>
+              <div className="space-y-1.5"><Label className="text-xs">Customer Reference / Enquiry Number</Label><Input value={customerReference} onChange={(e) => setCustomerReference(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Valid Until</Label><Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} /></div>
+            </>}
+            {isTaxInvoice && <>
+              <div className="space-y-1.5"><Label className="text-xs">PO Number / Customer PO Reference</Label><Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">PO Date</Label><Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} /></div>
+              <div className="col-span-2 space-y-1.5"><Label className="text-xs">Ship To / Delivery Address</Label><Textarea rows={2} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Only if different from billing address" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Due Date</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Delivery Challan Number</Label><Input value={challanNumber} onChange={(e) => setChallanNumber(e.target.value)} /></div>
+              <div className="col-span-2 space-y-1.5"><Label className="text-xs">Delivery Challan Dates</Label><div className="flex gap-2"><Input type="date" value={challanDateInput} onChange={(e) => setChallanDateInput(e.target.value)} /><Button type="button" variant="secondary" onClick={addChallanDate}>Add</Button></div>{challanDates.length > 0 && <div className="flex flex-wrap gap-1.5 pt-1">{challanDates.map((date) => <span key={date} className="flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">{date}<Button type="button" variant="ghost" size="icon" className="h-5 w-5" aria-label={`Remove ${date}`} onClick={() => setChallanDates((current) => current.filter((value) => value !== date))}><X className="h-3 w-3" /></Button></span>)}</div>}</div>
+            </>}
+
+            {!isChallan && (settings?.show_work_order || isEdit || isProforma || isTaxInvoice) && (
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs">Work Order Number</Label>
                 <Input value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} />
@@ -827,14 +839,14 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       </div>
 
       <Card className="mt-4">
-        <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Line Items</CardTitle>
           <Button size="sm" variant="outline" onClick={addItem}>
             <Plus className="mr-1 h-4 w-4" /> Add Row
           </Button>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <CardContent className="p-0">
+           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -844,10 +856,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   <th className="p-2 text-left">Description</th>
                   <th className="p-2 text-right w-20">Qty</th>
                   <th className="p-2 text-left w-16">UOM</th>
-                  <th className="p-2 text-right w-24">Rate</th>
-                  <th className="p-2 text-right w-16">Disc%</th>
-                  <th className="p-2 text-right w-16">Tax%</th>
-                  <th className="p-2 text-right w-28">Total</th>
+                   {!isChallan && <><th className="p-2 text-right w-24">Rate</th><th className="p-2 text-right w-16">Disc%</th><th className="p-2 text-right w-16">Tax%</th><th className="p-2 text-right w-28">Total</th></>}
                   <th className="w-8"></th>
                 </tr>
               </thead>
@@ -857,7 +866,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   return (
                     <tr key={idx} className="border-t">
                       <td className="p-1 text-center text-muted-foreground">{it.sr_no}</td>
-                      <td className="p-1">
+                       {!isChallan && <><td className="p-1">
                         <TypeaheadInput
                           value={productTexts[idx] ?? ""}
                           onChange={(v) => {
@@ -873,7 +882,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                           placeholder="Type product…"
                           inputClassName="h-8"
                         />
-                      </td>
+                       </td>
                       <td className="p-1">
                         <Input
                           className="h-8 font-mono text-xs"
@@ -923,7 +932,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                           onChange={(e) => setItem(idx, { tax_pct: Number(e.target.value) })}
                         />
                       </td>
-                      <td className="p-2 text-right tabular-nums font-medium">{formatINR(c.total_amount)}</td>
+                       <td className="p-2 text-right tabular-nums font-medium">{formatINR(c.total_amount)}</td></>}
                       <td className="p-1">
                         <Button
                           size="icon"
@@ -940,6 +949,22 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
               </tbody>
             </table>
           </div>
+           <div className="space-y-3 p-3 md:hidden">
+             {items.map((item, index) => {
+               const computed = computeItem(item);
+               return <div key={index} className="rounded-md border p-3">
+                 <div className="mb-3 flex items-center justify-between"><span className="text-sm font-semibold">Item {item.sr_no}</span><Button size="icon" variant="ghost" onClick={() => removeItem(index)} disabled={items.length === 1} aria-label={`Remove item ${item.sr_no}`}><Trash2 className="h-4 w-4" /></Button></div>
+                 <div className="grid grid-cols-2 gap-3">
+                   <div className="col-span-2 space-y-1"><Label className="text-xs">Product / Item</Label><TypeaheadInput value={productTexts[index] ?? ""} onChange={(value) => { setProductTexts((current) => current.map((text, itemIndex) => itemIndex === index ? value : text)); if (item.product_id) setItem(index, { product_id: null }); }} options={products.map((product: any) => ({ id: product.id, label: product.product_name, sublabel: product.hsn_code ? `HSN ${product.hsn_code}` : "" }))} onSelect={(option) => applyProduct(index, option.id)} placeholder="Type product…" /></div>
+                   <div className="space-y-1"><Label className="text-xs">HSN/SAC</Label><Input value={item.hsn_code} onChange={(event) => setItem(index, { hsn_code: event.target.value })} /></div>
+                   <div className="space-y-1"><Label className="text-xs">UOM</Label><Input value={item.uom} onChange={(event) => setItem(index, { uom: event.target.value })} /></div>
+                   <div className="col-span-2 space-y-1"><Label className="text-xs">Description</Label><Textarea rows={2} value={item.description} onChange={(event) => setItem(index, { description: event.target.value })} /></div>
+                   <div className="space-y-1"><Label className="text-xs">Quantity</Label><Input type="number" value={item.quantity} onChange={(event) => setItem(index, { quantity: Number(event.target.value) })} /></div>
+                   {!isChallan && <><div className="space-y-1"><Label className="text-xs">Rate</Label><Input type="number" value={item.unit_rate} onChange={(event) => setItem(index, { unit_rate: Number(event.target.value) })} /></div><div className="space-y-1"><Label className="text-xs">Discount %</Label><Input type="number" value={item.discount_pct} onChange={(event) => setItem(index, { discount_pct: Number(event.target.value) })} /></div><div className="space-y-1"><Label className="text-xs">Tax %</Label><Input type="number" value={item.tax_pct} onChange={(event) => setItem(index, { tax_pct: Number(event.target.value) })} /></div><div className="col-span-2 text-right text-sm font-semibold">Total {formatINR(computed.total_amount)}</div></>}
+                 </div>
+               </div>;
+             })}
+           </div>
         </CardContent>
       </Card>
 
@@ -949,24 +974,35 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             <CardTitle className="text-base">Additional Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            {(settings?.show_delivery || isEdit) && (
+            {!isChallan && (settings?.show_delivery || isEdit || isQuotation || isProforma || isTaxInvoice) && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Delivery Mode</Label>
                 <Input value={deliveryMode} onChange={(e) => setDeliveryMode(e.target.value)} />
               </div>
             )}
-            <div className="space-y-1.5">
+            {!isChallan && <div className="space-y-1.5">
               <Label className="text-xs">Payment Terms</Label>
               <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-            </div>
+            </div>}
+            {(isQuotation || isProforma) && <div className="space-y-1.5"><Label className="text-xs">Expected Delivery</Label><Input value={expectedDelivery} onChange={(e) => setExpectedDelivery(e.target.value)} /></div>}
+            {isChallan && <>
+              <div className="col-span-2 space-y-1.5"><Label className="text-xs">Reason for Movement</Label><Select value={reasonForMovement} onValueChange={setReasonForMovement}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["Delivery / Supply", "Job Work", "Repair", "Returnable Goods", "Sample / Demo", "Stock Transfer", "Other"].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1.5"><Label className="text-xs">Transporter Name</Label><Input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Vehicle Number</Label><Input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">LR / GR Number</Label><Input value={lrGrNumber} onChange={(e) => setLrGrNumber(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">E-Way Bill Number</Label><Input value={ewayBillNumber} onChange={(e) => setEwayBillNumber(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Place of Dispatch</Label><Input value={placeOfDispatch} onChange={(e) => setPlaceOfDispatch(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Place of Delivery</Label><Input value={placeOfDelivery} onChange={(e) => setPlaceOfDelivery(e.target.value)} /></div>
+            </>}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
+            {!isChallan && <div className="col-span-2 space-y-1.5"><Label className="text-xs">Terms & Conditions</Label><Textarea rows={3} value={termsConditions} onChange={(e) => setTermsConditions(e.target.value)} /></div>}
           </CardContent>
         </Card>
 
-        <Card>
+        {!isChallan && <Card>
           <CardHeader>
             <CardTitle className="text-base">Totals</CardTitle>
           </CardHeader>
@@ -1026,8 +1062,15 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             </div>
             <p className="pt-1 text-xs italic text-muted-foreground">{amountInWords(totals.grand)}</p>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
+      <Dialog open={recipientOpen} onOpenChange={setRecipientOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Send {definition.title}</DialogTitle><DialogDescription>Confirm or edit the customer email before sending the PDF.</DialogDescription></DialogHeader>
+          <div className="space-y-2"><Label htmlFor="recipient-email">Recipient email</Label><Input id="recipient-email" type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="customer@example.com" /></div>
+          <DialogFooter><Button variant="outline" onClick={() => setRecipientOpen(false)}>Cancel</Button><Button onClick={() => { if (!recipientEmail.trim()) { toast.error("Enter a recipient email address"); return; } setRecipientOpen(false); save.mutate("sent"); }} disabled={save.isPending}>Save & Send PDF</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
