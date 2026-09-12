@@ -166,7 +166,7 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden border-b-4 border-warning bg-primary px-6 pb-3 pt-8 text-primary-foreground md:hidden">
+      <div className="relative overflow-hidden border-b-4 border-warning bg-primary px-6 pb-0 pt-8 text-primary-foreground md:hidden">
         <div className="relative z-10 mx-auto max-w-[400px]">
           <div className="mb-7 inline-flex items-center bg-primary-foreground p-2 shadow-sm">
             <img src={logo} alt="ABJAD Engineering Works" className="h-12 w-auto object-contain"/>
