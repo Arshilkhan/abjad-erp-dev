@@ -384,12 +384,19 @@ export async function buildInvoicePdf(
   const blockH = totalRows.length * rowH
   const bankTop = y
   page.drawRectangle({ x: L, y: y - blockH, width: bankW, height: blockH, borderColor: black, borderWidth: 0.6 })
-  const bank: Array<[string, any]> = [
-    ['BANK NAME', c['bank_name']],
-    ['A/C NO.', c['bank_account']],
-    ['BRANCH IFSC', c['bank_ifsc']],
-    ['BRANCH NAME', c['bank_branch']],
-  ]
+  const bank: Array<[string, any]> = isChallanDoc
+    ? [
+        ['RECEIVED BY', ''],
+        ['NAME', ''],
+        ['SIGNATURE', ''],
+        ['DATE / STAMP', ''],
+      ]
+    : [
+        ['BANK NAME', c['bank_name']],
+        ['A/C NO.', c['bank_account']],
+        ['BRANCH IFSC', c['bank_ifsc']],
+        ['BRANCH NAME', c['bank_branch']],
+      ]
   bank.forEach(([k, v], i) => {
     draw(k, L + 5, bankTop - 15 - i * 14, 9.5, { bold: true, maxWidth: 80 })
     draw(String(v ?? ''), L + 90, bankTop - 15 - i * 14, 9.5, { maxWidth: bankW - 95 })
