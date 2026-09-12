@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, FileSpreadsheet, Users, Package, Warehouse,
-  ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard, Upload,
+  ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard,
   UserCog, Truck, CloudUpload,
 } from "lucide-react";
 import {
@@ -16,7 +16,6 @@ const main = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, panel: "dashboard" },
   { title: "Invoices", url: "/invoices", icon: FileText, panel: "invoices" },
   { title: "Cancelled Invoices", url: "/cancelled-invoices", icon: Ban, panel: "cancelled-invoices" },
-  { title: "Import Invoice", url: "/invoices/import", icon: Upload, panel: "invoice-import" },
   { title: "Quotations", url: "/quotations", icon: FileSpreadsheet, panel: "quotations" },
   { title: "Challans", url: "/challans", icon: Truck, panel: "challans" },
   { title: "Customers", url: "/customers", icon: Users, panel: "customers" },
