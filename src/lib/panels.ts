@@ -3,6 +3,7 @@ export const PANELS = [
   { key: "invoices", label: "Invoices", url: "/invoices" },
   { key: "cancelled-invoices", label: "Cancelled Invoices", url: "/cancelled-invoices" },
   { key: "quotations", label: "Quotations", url: "/quotations" },
+  { key: "proformas", label: "Proforma Invoices", url: "/proformas" },
   { key: "challans", label: "Challans", url: "/challans" },
   { key: "customers", label: "Customers", url: "/customers" },
   { key: "products", label: "Products", url: "/products" },

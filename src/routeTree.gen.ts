@@ -23,6 +23,7 @@ import { Route as AuthenticatedInventoryRouteImport } from './routes/_authentica
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
+import { Route as AuthenticatedProformasRouteImport } from './routes/_authenticated/proformas'
 import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authenticated/purchases'
 import { Route as AuthenticatedQuotationsRouteImport } from './routes/_authenticated/quotations'
 import { Route as AuthenticatedRejectedItemsRouteImport } from './routes/_authenticated/rejected-items'
@@ -109,6 +110,11 @@ const AuthenticatedPaymentsRoute = AuthenticatedPaymentsRouteImport.update({
 const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProformasRoute = AuthenticatedProformasRouteImport.update({
+  id: '/proformas',
+  path: '/proformas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedPurchasesRoute = AuthenticatedPurchasesRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/proformas': typeof AuthenticatedProformasRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/proformas': typeof AuthenticatedProformasRoute
   '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
+  '/_authenticated/proformas': typeof AuthenticatedProformasRoute
   '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
   '/_authenticated/quotations': typeof AuthenticatedQuotationsRoute
   '/_authenticated/rejected-items': typeof AuthenticatedRejectedItemsRoute
@@ -310,6 +319,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/payments'
     | '/products'
+    | '/proformas'
     | '/purchases'
     | '/quotations'
     | '/rejected-items'
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/payments'
     | '/products'
+    | '/proformas'
     | '/purchases'
     | '/quotations'
     | '/rejected-items'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices'
     | '/_authenticated/payments'
     | '/_authenticated/products'
+    | '/_authenticated/proformas'
     | '/_authenticated/purchases'
     | '/_authenticated/quotations'
     | '/_authenticated/rejected-items'
@@ -501,6 +513,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof AuthenticatedProductsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/proformas': {
+      id: '/_authenticated/proformas'
+      path: '/proformas'
+      fullPath: '/proformas'
+      preLoaderRoute: typeof AuthenticatedProformasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/purchases': {
@@ -651,6 +670,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRouteWithChildren
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
+  AuthenticatedProformasRoute: typeof AuthenticatedProformasRoute
   AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
   AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRoute
   AuthenticatedRejectedItemsRoute: typeof AuthenticatedRejectedItemsRoute
@@ -670,6 +690,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRouteWithChildren,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
+  AuthenticatedProformasRoute: AuthenticatedProformasRoute,
   AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
   AuthenticatedQuotationsRoute: AuthenticatedQuotationsRoute,
   AuthenticatedRejectedItemsRoute: AuthenticatedRejectedItemsRoute,
