@@ -19,7 +19,7 @@ import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
-import { documentDefinition, type DocumentType } from "@/lib/document-types";
+import { documentDefinition, isDocumentType, type DocumentType } from "@/lib/document-types";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -176,7 +176,7 @@ export function InvoiceForm({ editId, importMode, initialType = "tax_invoice" }:
     const inv = existing.invoice;
     setCustomerId(inv.customer_id ?? "");
     setCustomerText(inv.customer_name_snapshot ?? "");
-    setInvoiceType(inv.invoice_type);
+    if (isDocumentType(inv.invoice_type)) setInvoiceType(inv.invoice_type);
     setInvoiceDate(inv.invoice_date);
     setChallanNumber(inv.challan_number ?? "");
     setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));

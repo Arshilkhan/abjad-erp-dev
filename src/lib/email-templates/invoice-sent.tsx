@@ -18,6 +18,7 @@ interface Props {
   invoiceDate?: string
   companyName?: string
   senderName?: string
+  documentLabel?: string
 }
 
 const Email = ({
@@ -25,18 +26,19 @@ const Email = ({
   invoiceDate = '',
   companyName = '',
   senderName = 'ABJAD Engineering Works',
+  documentLabel = 'Invoice',
 }: Props) => (
 
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`Invoice ${invoiceNumber} from ${senderName}`}</Preview>
+    <Preview>{`${documentLabel} ${invoiceNumber} from ${senderName}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Text style={brand}>{senderName}</Text>
-        <Heading style={h1}>Invoice {invoiceNumber}</Heading>
+        <Heading style={h1}>{documentLabel} {invoiceNumber}</Heading>
         <Section style={card}>
           <Text style={row}>
-            <span style={label}>Invoice No.</span> {invoiceNumber}
+            <span style={label}>{documentLabel} No.</span> {invoiceNumber}
           </Text>
           {invoiceDate ? (
             <Text style={row}>
@@ -45,11 +47,11 @@ const Email = ({
           ) : null}
           {companyName ? (
             <Text style={row}>
-              <span style={label}>Billed to</span> {companyName}
+              <span style={label}>Prepared for</span> {companyName}
             </Text>
           ) : null}
         </Section>
-        <Text style={text}>The invoice PDF is attached to this email.</Text>
+        <Text style={text}>The {documentLabel.toLowerCase()} PDF is attached to this email.</Text>
         <Hr style={hr} />
 
         <Text style={muted}>Thank you for your business.</Text>
@@ -62,7 +64,7 @@ const Email = ({
 export const template = {
   component: Email,
   subject: (data: Record<string, any>) =>
-    `Invoice ${data['invoiceNumber'] ?? ''} from ${data['senderName'] ?? 'ABJAD Engineering Works'}`.trim(),
+    `${data['documentLabel'] ?? 'Invoice'} ${data['invoiceNumber'] ?? ''} from ${data['senderName'] ?? 'ABJAD Engineering Works'}`.trim(),
   displayName: 'Invoice sent to customer',
   previewData: {
     invoiceNumber: '12-fluid-tech',

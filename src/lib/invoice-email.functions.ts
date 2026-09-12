@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
+import { documentDefinition } from '@/lib/document-types'
 
 /**
  * Emails an invoice PDF to the customer on file.
@@ -7,7 +8,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
  */
 export const sendInvoiceEmail = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { invoiceId: string }) => {
+  .inputValidator((input: { invoiceId: string; recipientEmail?: string }) => {
     if (!input?.invoiceId) throw new Error('invoiceId is required')
     return input
   })
@@ -39,6 +40,8 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     } else {
       companyName = invoice.customer_name_snapshot || null
     }
+    const override = data.recipientEmail?.trim()
+    if (override) email = override
     if (!email) return { sent: false as const, reason: 'no_email' }
 
     const [{ data: items }, { data: company }] = await Promise.all([
@@ -62,9 +65,10 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     const { sendResendEmail } = await import('@/lib/email-templates/send-email-resend')
     await sendResendEmail('invoice-sent', email, {
       templateData: {
-        invoiceNumber: invoice.invoice_number,
+        invoiceNumber: String((invoice as any).document_no ?? invoice.invoice_number),
         invoiceDate: invoice.invoice_date,
         companyName,
+        documentLabel: documentDefinition(String(invoice.invoice_type)).title,
       },
       attachments: [
         {

@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatINR, formatDate, billNo } from "@/lib/format";
+import { formatINR, formatDate } from "@/lib/format";
+import { displayedDocumentNumber } from "@/lib/document-types";
 import { Pencil, Ban } from "lucide-react";
 import { CancelInvoiceDialog } from "@/components/cancel-invoice-dialog";
 
@@ -41,7 +42,7 @@ export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boo
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Invoice #</TableHead>
+          <TableHead>Document #</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Customer</TableHead>
           <TableHead>Date</TableHead>
@@ -54,14 +55,14 @@ export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boo
         {isLoading && <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Loading…</TableCell></TableRow>}
         {!isLoading && rows.length === 0 && (
           <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-            No documents here yet. <Link to="/invoices/new" className="text-primary hover:underline">Create one</Link>.
+            No documents here yet. <Link to="/invoices/new" search={{ type: "tax_invoice" }} className="text-primary hover:underline">Create one</Link>.
           </TableCell></TableRow>
         )}
         {rows.map((r: any) => (
           <TableRow key={r.id} className={`hover:bg-muted/40 ${r.status === "cancelled" ? "opacity-60" : ""}`}>
             <TableCell className="font-mono text-sm font-medium">
               <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">
-                {billNo(r.invoice_number) || (r.challan_number ? `CH ${r.challan_number}` : "—")}
+                {displayedDocumentNumber(r) || (r.challan_number ? `CH ${r.challan_number}` : "—")}
               </Link>
               {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
             </TableCell>
