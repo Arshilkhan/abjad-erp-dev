@@ -361,19 +361,26 @@ export async function buildInvoicePdf(
   const tRateW = (W - bankW) * 0.15
   const tValW = W - bankW - tLabelW - tRateW
 
-  const totalRows: Array<[string, string, string, boolean?]> = [
-    ['Net Value (Rs.)', '', money(netValue), true],
-    ['Discount', '', money(itemDiscounts)],
-    ['Freight', '', money(invoice['freight'])],
-    ['P & F Charges', '', money(invoice['packing_charges'])],
-    ['Sub Total', '', money(subtotal)],
-    ['SGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(sgst)],
-    ['CGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(cgst)],
-    ['IGST', isIgst ? (taxPct ? `${taxPct}%` : '') : '----', money(igst)],
-    ['Sub Total', '', money(subtotal + taxTotal)],
-    ['Round Off', '', money(grandTotal - preRound)],
-    ['Grand Total (Rs)', '', money(grandTotal), true],
-  ]
+  const totalQty = items.reduce((s, it) => s + num(it['quantity']), 0)
+  const totalRows: Array<[string, string, string, boolean?]> = isChallanDoc
+    ? [
+        ['Total Quantity', '', totalQty.toFixed(2), true],
+        ['Value of Goods (Rs.)', '', money(netValue)],
+        ['(Not a tax invoice - for movement of goods only)', '', ''],
+      ]
+    : [
+        ['Net Value (Rs.)', '', money(netValue), true],
+        ['Discount', '', money(itemDiscounts)],
+        ['Freight', '', money(invoice['freight'])],
+        ['P & F Charges', '', money(invoice['packing_charges'])],
+        ['Sub Total', '', money(subtotal)],
+        ['SGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(sgst)],
+        ['CGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(cgst)],
+        ['IGST', isIgst ? (taxPct ? `${taxPct}%` : '') : '----', money(igst)],
+        ['Sub Total', '', money(subtotal + taxTotal)],
+        ['Round Off', '', money(grandTotal - preRound)],
+        [isQuotationDoc ? 'Total (Rs)' : 'Grand Total (Rs)', '', money(grandTotal), true],
+      ]
   const blockH = totalRows.length * rowH
   const bankTop = y
   page.drawRectangle({ x: L, y: y - blockH, width: bankW, height: blockH, borderColor: black, borderWidth: 0.6 })
