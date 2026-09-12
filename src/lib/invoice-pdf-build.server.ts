@@ -411,8 +411,10 @@ export async function buildInvoicePdf(
   })
 
   // ---------- IN WORDS ----------
-  cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 8.5 })
-  y -= rowH
+  if (!isChallanDoc) {
+    cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 8.5 })
+    y -= rowH
+  }
 
   // ---------- FOOTER ----------
   const footL = W * 0.6
