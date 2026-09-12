@@ -166,15 +166,13 @@ function AuthPage() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden border-b-4 border-warning bg-primary px-6 pb-10 pt-8 text-primary-foreground md:hidden">
+      <div className="relative overflow-hidden border-b-4 border-warning bg-primary px-6 pb-3 pt-8 text-primary-foreground md:hidden">
         <div className="relative z-10 mx-auto max-w-[400px]">
           <div className="mb-7 inline-flex items-center bg-primary-foreground p-2 shadow-sm">
-            <img src={logo} alt="ABJAD Engineering Works" className="h-12 w-auto object-contain" />
+            <img src={logo} alt="ABJAD Engineering Works" className="h-12 w-auto object-contain"/>
           </div>
           <p className="text-xs font-semibold uppercase text-primary-foreground/70">ABJAD Engineering Works</p>
-          <p className="mt-2 max-w-[300px] text-xl font-semibold leading-snug">
-            Billing and inventory, wherever work takes you.
-          </p>
+          <p className="mt-2 max-w-[300px] text-xl font-semibold leading-snug">Billing and inventory, wherever work takes you.</p>
         </div>
         <div className="absolute -bottom-8 -right-8 h-28 w-28 rotate-12 border-2 border-primary-foreground/10" />
         <div className="absolute bottom-5 right-12 h-12 w-12 rotate-12 border border-primary-foreground/10" />
