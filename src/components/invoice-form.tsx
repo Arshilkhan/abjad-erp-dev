@@ -419,7 +419,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           seq += 1;
           const invoice_number = isChallan ? `dc-${seq}-${slug}` : `${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
-          if (importMode) {
+          if (importMode || pdfImported) {
             insertPayload.is_imported = true;
             insertPayload.import_source = "manual";
           }
@@ -465,7 +465,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       qc.invalidateQueries({ queryKey: ["products-list"] });
       if (isEdit) {
         await logInvoiceEvent(inv.id, "edited", "Invoice edited");
-      } else if (importMode) {
+       } else if (importMode || pdfImported) {
         await logInvoiceEvent(inv.id, "imported", `Imported invoice ${inv.invoice_number}`);
       } else {
         await logInvoiceEvent(inv.id, "created", `Created invoice ${inv.invoice_number}`);
@@ -496,11 +496,13 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const runExtract = useServerFn(extractInvoicePdf);
   const [extracting, setExtracting] = useState(false);
   const [pdfName, setPdfName] = useState("");
+  const [pdfImported, setPdfImported] = useState(false);
 
   const handlePdf = async (file: File) => {
     if (file.type !== "application/pdf") return toast.error("Please choose a PDF file.");
     if (file.size > 15 * 1024 * 1024) return toast.error("PDF is too large (max 15 MB).");
     setPdfName(file.name);
+    setPdfImported(false);
     setExtracting(true);
     try {
       const fileData = await new Promise<string>((resolve, reject) => {
@@ -557,6 +559,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         );
         setProductTexts(d.items.map((it) => it.description));
       }
+      setPdfImported(true);
       toast.success(`Imported ${d.items.length} line item${d.items.length === 1 ? "" : "s"} from the PDF.`);
     } catch (e: any) {
       toast.error(e?.message || "Could not read that PDF.");
@@ -597,41 +600,48 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
+           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
             <CardTitle className="text-base">Invoice Details</CardTitle>
+             {!isEdit && (
+               <>
+                 <input
+                   id="invoice-pdf"
+                   type="file"
+                   accept="application/pdf"
+                   className="hidden"
+                   disabled={extracting}
+                   onChange={(e) => {
+                     const f = e.target.files?.[0];
+                     e.target.value = "";
+                     if (f) void handlePdf(f);
+                   }}
+                 />
+                 <Button type="button" variant="outline" size="sm" disabled={extracting} asChild={!extracting}>
+                   {extracting ? (
+                     <span className="flex items-center">
+                       <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Importing…
+                     </span>
+                   ) : (
+                     <label htmlFor="invoice-pdf" className="cursor-pointer">
+                       <Upload className="mr-1 h-4 w-4" /> Import Invoice
+                     </label>
+                   )}
+                 </Button>
+               </>
+             )}
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {importMode && (
+             {!isEdit && pdfName && (
               <div className="col-span-2 space-y-1.5 md:col-span-4">
-                <Label className="text-xs">Upload Invoice PDF</Label>
                 <div className="flex flex-wrap items-center gap-2 rounded-md border border-dashed p-3">
-                  <input
-                    id="invoice-pdf"
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    disabled={extracting}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = "";
-                      if (f) void handlePdf(f);
-                    }}
-                  />
-                  <Button type="button" variant="outline" size="sm" disabled={extracting} asChild={!extracting}>
-                    {extracting ? (
-                      <span className="flex items-center">
-                        <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Reading PDF…
-                      </span>
-                    ) : (
-                      <label htmlFor="invoice-pdf" className="cursor-pointer">
-                        <Upload className="mr-1 h-4 w-4" /> Choose PDF
-                      </label>
-                    )}
-                  </Button>
                   <span className="text-xs text-muted-foreground">
-                    {pdfName || "Fields and line items below are filled in automatically."}
+                     {extracting
+                       ? `Reading ${pdfName}…`
+                       : pdfImported
+                         ? `${pdfName} imported. Review the details below before saving.`
+                         : `Could not import ${pdfName}. Choose another PDF to try again.`}
                   </span>
                 </div>
               </div>
