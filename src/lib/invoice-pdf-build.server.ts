@@ -419,8 +419,30 @@ export async function buildInvoicePdf(
   // ---------- FOOTER ----------
   const footL = W * 0.6
   const footH = rowH * 3
-  cell(L, y, footL, rowH, 'Delivery : By Road', { bold: false })
-  cell(L, y - rowH, footL, rowH, 'Payment : 100% against Performa Invoice')
+  cell(
+    L,
+    y,
+    footL,
+    rowH,
+    isChallanDoc
+      ? `Transport : ${clean(invoice['transporter_name']) || 'By Road'}   Vehicle : ${clean(invoice['vehicle_number']) || '-'}`
+      : 'Delivery : By Road',
+    { bold: false, size: 8.5 },
+  )
+  cell(
+    L,
+    y - rowH,
+    footL,
+    rowH,
+    isQuotationDoc
+      ? `Validity : ${invoice['valid_until'] ? formatDate(invoice['valid_until']) : 'As agreed'}`
+      : isChallanDoc
+        ? `Reason for movement : ${clean(invoice['reason_for_movement']) || '-'}`
+        : isProformaDoc
+          ? 'Payment : 100% advance against this proforma invoice'
+          : `Payment : ${clean(invoice['payment_terms']) || '100% against invoice'}`,
+    { size: 8.5 },
+  )
   cell(
     L,
     y - rowH * 2,
