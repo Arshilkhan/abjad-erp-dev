@@ -460,12 +460,26 @@ export async function buildInvoicePdf(
   draw('Authorised Signatory', L + footL + 5, y - footH + 6, 9.5, { bold: true })
   y -= footH + 10
 
-  // ---------- DECLARATION ----------
-  draw('DECLARATION.', L, y, 8, { bold: true })
+  // ---------- FOOTER NOTE ----------
+  const noteTitle = isQuotationDoc
+    ? 'TERMS & CONDITIONS.'
+    : isProformaDoc
+      ? 'NOTE.'
+      : isChallanDoc
+        ? 'NOTE.'
+        : 'DECLARATION.'
+  draw(noteTitle, L, y, 8, { bold: true })
   y -= 9
-  const decl =
-    c['declaration'] ??
-    'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
+  const decl = isQuotationDoc
+    ? clean(invoice['terms_conditions']) ||
+      'THIS QUOTATION IS VALID FOR THE PERIOD STATED ABOVE. PRICES ARE SUBJECT TO CHANGE THEREAFTER. TAXES AS APPLICABLE AT THE TIME OF SUPPLY.'
+    : isProformaDoc
+      ? clean(invoice['terms_conditions']) ||
+        'THIS IS A PROFORMA INVOICE AND NOT A TAX INVOICE. IT IS ISSUED FOR ADVANCE PAYMENT PURPOSES ONLY AND DOES NOT CONFER ANY INPUT TAX CREDIT.'
+      : isChallanDoc
+        ? 'GOODS DESPATCHED FOR THE PURPOSE STATED ABOVE. THIS DELIVERY CHALLAN IS NOT A TAX INVOICE AND IS NOT A DEMAND FOR PAYMENT. PLEASE ACKNOWLEDGE RECEIPT.'
+        : clean(c['declaration']) ||
+          'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
   wrap(decl, W, 8).forEach((l) => {
     draw(l, L, y, 8)
     y -= 9
