@@ -39,6 +39,8 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     } else {
       companyName = invoice.customer_name_snapshot || null
     }
+    const override = data.recipientEmail?.trim()
+    if (override) email = override
     if (!email) return { sent: false as const, reason: 'no_email' }
 
     const [{ data: items }, { data: company }] = await Promise.all([
