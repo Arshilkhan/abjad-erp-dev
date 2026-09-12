@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
+import { documentDefinition } from '@/lib/document-types'
 
 /**
  * Emails an invoice PDF to the customer on file.
