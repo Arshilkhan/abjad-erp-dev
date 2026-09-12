@@ -25,6 +25,8 @@ export const Route = createFileRoute("/auth")({
 
 type Mode = "signin" | "forgot-email" | "forgot-otp" | "forgot-new";
 
+const RECOVERY_SESSION_MARKER = "abjad-password-recovery-active";
+
 function AuthPage() {
   const nav = useNavigate();
   const { user, loading } = useAuth();
@@ -38,12 +40,26 @@ function AuthPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checkingRecoveryRefresh, setCheckingRecoveryRefresh] = useState(true);
+
+  useEffect(() => {
+    const clearRecoverySessionAfterRefresh = async () => {
+      if (window.sessionStorage.getItem(RECOVERY_SESSION_MARKER) === "true") {
+        window.sessionStorage.removeItem(RECOVERY_SESSION_MARKER);
+        await supabase.auth.signOut();
+        setMode("signin");
+      }
+      setCheckingRecoveryRefresh(false);
+    };
+
+    void clearRecoverySessionAfterRefresh();
+  }, []);
 
   useEffect(() => {
     // Don't redirect during the password-recovery flow: verifyOtp(recovery)
     // establishes a recovery session which must land on the new-password screen.
-    if (!loading && user && mode === "signin") nav({ to: "/dashboard" });
-  }, [user, loading, mode, nav]);
+    if (!checkingRecoveryRefresh && !loading && user && mode === "signin") nav({ to: "/dashboard" });
+  }, [user, loading, mode, nav, checkingRecoveryRefresh]);
 
   const describe = (error: unknown) => {
     const err = error as { message?: string; status?: number } | null;
@@ -56,6 +72,7 @@ function AuthPage() {
 
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    window.sessionStorage.removeItem(RECOVERY_SESSION_MARKER);
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
@@ -82,6 +99,7 @@ function AuthPage() {
     const { error } = await supabase.auth.verifyOtp({ email, token: otp.trim(), type: "recovery" });
     setBusy(false);
     if (error) return toast.error(describe(error));
+    window.sessionStorage.setItem(RECOVERY_SESSION_MARKER, "true");
     toast.success("Code verified");
     setMode("forgot-new");
   };
@@ -96,6 +114,7 @@ function AuthPage() {
       setBusy(false);
       return toast.error(describe(error));
     }
+    window.sessionStorage.removeItem(RECOVERY_SESSION_MARKER);
     await supabase.auth.signOut();
     setBusy(false);
     toast.success("Password updated. Please sign in.");
@@ -105,6 +124,10 @@ function AuthPage() {
     setConfirmPassword("");
     setMode("signin");
   };
+
+  if (checkingRecoveryRefresh) {
+    return <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Loading…</div>;
+  }
 
   return (
     <div className="grid h-screen grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background md:grid-cols-[45fr_55fr] md:grid-rows-1">
