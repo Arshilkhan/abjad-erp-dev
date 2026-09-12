@@ -21,7 +21,7 @@ function InvoicesLayout() {
 }
 
 function InvoicesIndex() {
-  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
+  const { folders, isLoading } = useInvoiceFolders({ only: ["tax_invoice"] });
   const [q, setQ] = useState("");
   const [view, setView] = useState<"folders" | "all">("folders");
 
@@ -37,7 +37,7 @@ function InvoicesIndex() {
     <>
       <PageHeader
         title="Invoices"
-        description="Documents organised into a folder per company."
+        description="Finalized and draft tax invoices, organised by company."
         actions={
           <div className="flex gap-1 rounded-md border p-0.5">
             <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => setView("folders")}>
