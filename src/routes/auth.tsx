@@ -336,7 +336,6 @@ function AuthPage() {
                       type={showNewPassword ? "text" : "password"}
                       required
                       minLength={8}
-                      placeholder="Enter new password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       className="h-11 rounded-lg pr-11"
@@ -362,7 +361,6 @@ function AuthPage() {
                       type={showConfirmPassword ? "text" : "password"}
                       required
                       minLength={8}
-                      placeholder="Confirm new password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="h-11 rounded-lg pr-11"
