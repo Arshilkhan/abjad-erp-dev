@@ -64,9 +64,10 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     const { sendResendEmail } = await import('@/lib/email-templates/send-email-resend')
     await sendResendEmail('invoice-sent', email, {
       templateData: {
-        invoiceNumber: invoice.invoice_number,
+        invoiceNumber: String((invoice as any).document_no ?? invoice.invoice_number),
         invoiceDate: invoice.invoice_date,
         companyName,
+        documentLabel: documentDefinition(String(invoice.invoice_type)).title,
       },
       attachments: [
         {
