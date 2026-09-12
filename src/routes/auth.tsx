@@ -174,8 +174,6 @@ function AuthPage() {
           <p className="text-xs font-semibold uppercase text-primary-foreground/70">ABJAD Engineering Works</p>
           <p className="mt-2 max-w-[300px] text-xl font-semibold leading-snug">Billing and inventory, wherever work takes you.</p>
         </div>
-        <div className="absolute -bottom-8 -right-8 h-14 w-28 rotate-12 border-2 border-primary-foreground/10" />
-        <div className="absolute bottom-5 right-12 h-6 w-12 rotate-12 border border-primary-foreground/10" />
       </div>
 
       <div className="flex items-start justify-center bg-background px-6 py-8 md:items-center md:p-10">
