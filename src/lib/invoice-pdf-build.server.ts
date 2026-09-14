@@ -17,15 +17,6 @@ const TYPE_LABELS: Record<string, string> = {
   purchase_order: 'PURCHASE ORDER',
 }
 
-const NUMBER_LABELS: Record<string, string> = {
-  tax_invoice: 'Invoice No.',
-  proforma: 'Proforma No.',
-  quotation: 'Quotation No.',
-  delivery_challan: 'Challan No.',
-  challan: 'Challan No.',
-  purchase_order: 'PO No.',
-}
-
 /**
  * Builds the A4 invoice PDF using the same layout as the on-screen
  * printable invoice: bordered tables, blue title banner, buyer/company
@@ -208,14 +199,6 @@ export async function buildInvoicePdf(
   const typeLabel = TYPE_LABELS[String(invoice['invoice_type'])] ?? 'TAX INVOICE'
   draw(typeLabel, L, y - 16, 15, { bold: true, align: 'center', width: W, color: white })
   y -= 26
-  const docType = String(invoice['invoice_type'] ?? 'tax_invoice')
-  const isChallanDoc = docType === 'delivery_challan' || docType === 'challan'
-  const isQuotationDoc = docType === 'quotation'
-  const isProformaDoc = docType === 'proforma'
-  if (isProformaDoc) {
-    draw('PROFORMA INVOICE - NOT A TAX INVOICE', L, y - 9, 9, { bold: true, align: 'center', width: W })
-    y -= 13
-  }
 
   // ---------- CUSTOMER + BILL META ----------
   const cw = [0.15, 0.38, 0.14, 0.13, 0.07, 0.13].map((f) => f * W)
@@ -227,8 +210,8 @@ export async function buildInvoicePdf(
   const rowH = 16
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
-  cell(cx[2]!, y, cw[2]!, rowH, NUMBER_LABELS[docType] ?? 'Invoice No.', { bold: true })
-  cell(cx[3]!, y, cw[3]!, rowH, String(invoice['document_no'] ?? billNo(invoice['invoice_number'])))
+  cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
+  cell(cx[3]!, y, cw[3]!, rowH, billNo(invoice['invoice_number']))
   cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
   cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 8.5 })
   y -= rowH
@@ -361,42 +344,28 @@ export async function buildInvoicePdf(
   const tRateW = (W - bankW) * 0.15
   const tValW = W - bankW - tLabelW - tRateW
 
-  const totalQty = items.reduce((s, it) => s + num(it['quantity']), 0)
-  const totalRows: Array<[string, string, string, boolean?]> = isChallanDoc
-    ? [
-        ['Total Quantity', '', totalQty.toFixed(2), true],
-        ['Value of Goods (Rs.)', '', money(netValue)],
-        ['(Not a tax invoice - for movement of goods only)', '', ''],
-      ]
-    : [
-        ['Net Value (Rs.)', '', money(netValue), true],
-        ['Discount', '', money(itemDiscounts)],
-        ['Freight', '', money(invoice['freight'])],
-        ['P & F Charges', '', money(invoice['packing_charges'])],
-        ['Sub Total', '', money(subtotal)],
-        ['SGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(sgst)],
-        ['CGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(cgst)],
-        ['IGST', isIgst ? (taxPct ? `${taxPct}%` : '') : '----', money(igst)],
-        ['Sub Total', '', money(subtotal + taxTotal)],
-        ['Round Off', '', money(grandTotal - preRound)],
-        [isQuotationDoc ? 'Total (Rs)' : 'Grand Total (Rs)', '', money(grandTotal), true],
-      ]
+  const totalRows: Array<[string, string, string, boolean?]> = [
+    ['Net Value (Rs.)', '', money(netValue), true],
+    ['Discount', '', money(itemDiscounts)],
+    ['Freight', '', money(invoice['freight'])],
+    ['P & F Charges', '', money(invoice['packing_charges'])],
+    ['Sub Total', '', money(subtotal)],
+    ['SGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(sgst)],
+    ['CGST', isIgst ? '----' : taxPct ? `${taxPct / 2}%` : '', money(cgst)],
+    ['IGST', isIgst ? (taxPct ? `${taxPct}%` : '') : '----', money(igst)],
+    ['Sub Total', '', money(subtotal + taxTotal)],
+    ['Round Off', '', money(grandTotal - preRound)],
+    ['Grand Total (Rs)', '', money(grandTotal), true],
+  ]
   const blockH = totalRows.length * rowH
   const bankTop = y
   page.drawRectangle({ x: L, y: y - blockH, width: bankW, height: blockH, borderColor: black, borderWidth: 0.6 })
-  const bank: Array<[string, any]> = isChallanDoc
-    ? [
-        ['RECEIVED BY', ''],
-        ['NAME', ''],
-        ['SIGNATURE', ''],
-        ['DATE / STAMP', ''],
-      ]
-    : [
-        ['BANK NAME', c['bank_name']],
-        ['A/C NO.', c['bank_account']],
-        ['BRANCH IFSC', c['bank_ifsc']],
-        ['BRANCH NAME', c['bank_branch']],
-      ]
+  const bank: Array<[string, any]> = [
+    ['BANK NAME', c['bank_name']],
+    ['A/C NO.', c['bank_account']],
+    ['BRANCH IFSC', c['bank_ifsc']],
+    ['BRANCH NAME', c['bank_branch']],
+  ]
   bank.forEach(([k, v], i) => {
     draw(k, L + 5, bankTop - 15 - i * 14, 9.5, { bold: true, maxWidth: 80 })
     draw(String(v ?? ''), L + 90, bankTop - 15 - i * 14, 9.5, { maxWidth: bankW - 95 })
@@ -411,38 +380,14 @@ export async function buildInvoicePdf(
   })
 
   // ---------- IN WORDS ----------
-  if (!isChallanDoc) {
-    cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 8.5 })
-    y -= rowH
-  }
+  cell(L, y, W, rowH, `In Words. ${amountInWords(grandTotal)}`, { size: 8.5 })
+  y -= rowH
 
   // ---------- FOOTER ----------
   const footL = W * 0.6
   const footH = rowH * 3
-  cell(
-    L,
-    y,
-    footL,
-    rowH,
-    isChallanDoc
-      ? `Transport : ${clean(invoice['transporter_name']) || 'By Road'}   Vehicle : ${clean(invoice['vehicle_number']) || '-'}`
-      : 'Delivery : By Road',
-    { bold: false, size: 8.5 },
-  )
-  cell(
-    L,
-    y - rowH,
-    footL,
-    rowH,
-    isQuotationDoc
-      ? `Validity : ${invoice['valid_until'] ? formatDate(invoice['valid_until']) : 'As agreed'}`
-      : isChallanDoc
-        ? `Reason for movement : ${clean(invoice['reason_for_movement']) || '-'}`
-        : isProformaDoc
-          ? 'Payment : 100% advance against this proforma invoice'
-          : `Payment : ${clean(invoice['payment_terms']) || '100% against invoice'}`,
-    { size: 8.5 },
-  )
+  cell(L, y, footL, rowH, 'Delivery : By Road', { bold: false })
+  cell(L, y - rowH, footL, rowH, 'Payment : 100% against Performa Invoice')
   cell(
     L,
     y - rowH * 2,
@@ -460,26 +405,12 @@ export async function buildInvoicePdf(
   draw('Authorised Signatory', L + footL + 5, y - footH + 6, 9.5, { bold: true })
   y -= footH + 10
 
-  // ---------- FOOTER NOTE ----------
-  const noteTitle = isQuotationDoc
-    ? 'TERMS & CONDITIONS.'
-    : isProformaDoc
-      ? 'NOTE.'
-      : isChallanDoc
-        ? 'NOTE.'
-        : 'DECLARATION.'
-  draw(noteTitle, L, y, 8, { bold: true })
+  // ---------- DECLARATION ----------
+  draw('DECLARATION.', L, y, 8, { bold: true })
   y -= 9
-  const decl = isQuotationDoc
-    ? clean(invoice['terms_conditions']) ||
-      'THIS QUOTATION IS VALID FOR THE PERIOD STATED ABOVE. PRICES ARE SUBJECT TO CHANGE THEREAFTER. TAXES AS APPLICABLE AT THE TIME OF SUPPLY.'
-    : isProformaDoc
-      ? clean(invoice['terms_conditions']) ||
-        'THIS IS A PROFORMA INVOICE AND NOT A TAX INVOICE. IT IS ISSUED FOR ADVANCE PAYMENT PURPOSES ONLY AND DOES NOT CONFER ANY INPUT TAX CREDIT.'
-      : isChallanDoc
-        ? 'GOODS DESPATCHED FOR THE PURPOSE STATED ABOVE. THIS DELIVERY CHALLAN IS NOT A TAX INVOICE AND IS NOT A DEMAND FOR PAYMENT. PLEASE ACKNOWLEDGE RECEIPT.'
-        : clean(c['declaration']) ||
-          'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
+  const decl =
+    c['declaration'] ??
+    'WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT'
   wrap(decl, W, 8).forEach((l) => {
     draw(l, L, y, 8)
     y -= 9

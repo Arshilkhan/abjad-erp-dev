@@ -39,7 +39,7 @@ function AuthedLayout() {
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {canAccess("invoices") && (
                 <Button asChild size="sm">
-                  <Link to="/invoices/new" search={{ type: "tax_invoice" }}><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
+                  <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
                 </Button>
               )}
             </div>

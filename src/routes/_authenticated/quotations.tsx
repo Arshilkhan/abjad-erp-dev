@@ -45,7 +45,7 @@ function QuotationsPage() {
         <CardContent className="p-0">
           {!isLoading && rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No quotations yet. <Link to="/invoices/new" search={{ type: "quotation" }} className="text-primary hover:underline">Create one</Link> with type “Quotation”.
+              No quotations yet. <Link to="/invoices/new" className="text-primary hover:underline">Create one</Link> with type “Quotation”.
             </p>
           ) : (
             <InvoiceTable rows={rows} isLoading={isLoading} />

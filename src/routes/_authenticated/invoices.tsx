@@ -21,7 +21,7 @@ function InvoicesLayout() {
 }
 
 function InvoicesIndex() {
-  const { folders, isLoading } = useInvoiceFolders({ only: ["tax_invoice"] });
+  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
   const [q, setQ] = useState("");
   const [view, setView] = useState<"folders" | "all">("folders");
 
@@ -37,7 +37,7 @@ function InvoicesIndex() {
     <>
       <PageHeader
         title="Invoices"
-        description="Finalized and draft tax invoices, organised by company."
+        description="Documents organised into a folder per company."
         actions={
           <div className="flex gap-1 rounded-md border p-0.5">
             <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => setView("folders")}>
@@ -66,7 +66,7 @@ function InvoicesIndex() {
         <p className="py-10 text-center text-muted-foreground">Loading…</p>
       ) : visibleFolders.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">
-          No company folders yet. <Link to="/invoices/new" search={{ type: "tax_invoice" }} className="text-primary hover:underline">Create an invoice</Link> to start one.
+          No company folders yet. <Link to="/invoices/new" className="text-primary hover:underline">Create an invoice</Link> to start one.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
