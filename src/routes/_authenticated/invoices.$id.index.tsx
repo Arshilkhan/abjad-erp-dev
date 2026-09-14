@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { formatINR, formatDate, amountInWords, billNo } from "@/lib/format";
-import { displayedDocumentNumber } from "@/lib/document-types";
+import { displayedDocumentNumber, documentDefinition } from "@/lib/document-types";
 import { ArrowLeft, Printer, Copy, Send, Pencil, Ban, PackageX, History as HistoryIcon } from "lucide-react";
 import aewLogo from "@/assets/aew-logo.jpg";
 import { toast } from "sonner";
@@ -127,6 +127,7 @@ function InvoiceDetail() {
 
   const { invoice, items, company } = data;
   const typeLabel = typeLabels[invoice.invoice_type] ?? "TAX INVOICE";
+  const docTitle = documentDefinition(String(invoice.invoice_type)).title;
   const isCancelled = invoice.status === "cancelled";
 
   const duplicate = async () => {
@@ -199,7 +200,7 @@ function InvoiceDetail() {
               invoiceNumber={billNo(invoice.invoice_number)}
               onCancelled={() => qc.invalidateQueries({ queryKey: ["invoice", id] })}
               trigger={
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"><Ban className="mr-1 h-4 w-4" /> Cancel Invoice</Button>
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"><Ban className="mr-1 h-4 w-4" /> Cancel {docTitle}</Button>
               }
             />
           )}
@@ -209,7 +210,7 @@ function InvoiceDetail() {
 
       <Tabs defaultValue="invoice" className="print:contents">
         <TabsList className="print:hidden">
-          <TabsTrigger value="invoice">Invoice</TabsTrigger>
+          <TabsTrigger value="invoice">{docTitle}</TabsTrigger>
           <TabsTrigger value="rejected"><PackageX className="mr-1 h-3.5 w-3.5" /> Rejected Items</TabsTrigger>
           <TabsTrigger value="history"><HistoryIcon className="mr-1 h-3.5 w-3.5" /> History</TabsTrigger>
         </TabsList>
