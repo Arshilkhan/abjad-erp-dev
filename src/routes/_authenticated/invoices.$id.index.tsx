@@ -242,11 +242,22 @@ function InvoiceDetail() {
   );
 }
 
+const numberLabels: Record<string, string> = {
+  tax_invoice: "Invoice No.",
+  proforma: "Proforma No.",
+  quotation: "Quotation No.",
+  delivery_challan: "Challan No.",
+};
+
 function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any; items: any[]; company: any; typeLabel: string }) {
   const c = company ?? {};
   const cellBorder = "border border-black";
   const label = "font-bold text-[11px]";
   const val = "text-[11px]";
+  const docType = String(invoice.invoice_type ?? "tax_invoice");
+  const isChallan = docType === "delivery_challan" || docType === "challan";
+  const isQuotation = docType === "quotation";
+  const isProforma = docType === "proforma";
 
   // Totals are always derived from the accepted (delivered minus rejected)
   // quantities so the invoice stays internally consistent, including for
@@ -304,6 +315,9 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
       <div className="my-1 bg-[#5b9bd5] py-1.5 text-center">
         <h2 className="text-2xl font-bold tracking-wider text-white">{typeLabel}</h2>
       </div>
+      {isProforma && (
+        <div className="mb-1 text-center text-[11px] font-bold">PROFORMA INVOICE - NOT A TAX INVOICE</div>
+      )}
 
       {/* CUSTOMER + BILL META */}
       <table className="w-full border-collapse text-[11px]">
@@ -311,8 +325,8 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
           <tr>
             <td className={`${cellBorder} p-1 ${label} w-[15%] align-top`}>CUSTOMER NAME</td>
             <td className={`${cellBorder} p-1 ${val} w-[45%] align-top`}>{invoice.customer_name_snapshot ?? "—"}</td>
-            <td className={`${cellBorder} p-1 ${label} w-[15%]`}>Bill No.</td>
-            <td className={`${cellBorder} p-1 ${val} w-[10%]`}>{billNo(invoice.invoice_number)}</td>
+            <td className={`${cellBorder} p-1 ${label} w-[15%]`}>{numberLabels[docType] ?? "Invoice No."}</td>
+            <td className={`${cellBorder} p-1 ${val} w-[10%]`}>{displayedDocumentNumber(invoice)}</td>
             <td className={`${cellBorder} p-1 ${label} w-[8%]`}>Date</td>
             <td className={`${cellBorder} p-1 ${val} w-[12%]`}>{formatDate(invoice.invoice_date)}</td>
           </tr>
@@ -416,7 +430,34 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
         </tbody>
       </table>
 
-      {/* BANK + TOTALS */}
+      {/* BANK / ACKNOWLEDGEMENT + TOTALS */}
+      {isChallan ? (
+        <table className="w-full border-collapse text-[11px]">
+          <tbody>
+            <tr>
+              <td className={`${cellBorder} p-2 align-top`} rowSpan={3} style={{ width: "55%" }}>
+                <div className="grid grid-cols-[110px_1fr] gap-y-3 text-[11px]">
+                  <div className="font-bold">RECEIVED BY</div><div>&nbsp;</div>
+                  <div className="font-bold">NAME</div><div>&nbsp;</div>
+                  <div className="font-bold">SIGNATURE</div><div>&nbsp;</div>
+                  <div className="font-bold">DATE / STAMP</div><div>&nbsp;</div>
+                </div>
+              </td>
+              <td className={`${cellBorder} p-1 ${label}`}>Total Quantity</td>
+              <td className={`${cellBorder} p-1 text-right tabular-nums font-bold`}>
+                {items.reduce((s, it) => s + Number(it.quantity ?? 0), 0).toFixed(2)}
+              </td>
+            </tr>
+            <tr>
+              <td className={`${cellBorder} p-1`}>Value of Goods (Rs.)</td>
+              <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.netValue.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td className={`${cellBorder} p-1 italic`} colSpan={2}>(Not a tax invoice — for movement of goods only)</td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
       <table className="w-full border-collapse text-[11px]">
         <tbody>
           <tr>
@@ -493,22 +534,34 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             <td className={`${cellBorder} p-1 text-right tabular-nums`}>{totals.roundOff.toFixed(2)}</td>
           </tr>
           <tr className="bg-gray-100">
-            <td className={`${cellBorder} p-1 font-bold`} colSpan={2}>Grand Total (Rs)</td>
+            <td className={`${cellBorder} p-1 font-bold`} colSpan={2}>{isQuotation ? "Total (Rs)" : "Grand Total (Rs)"}</td>
             <td className={`${cellBorder} p-1 text-right font-bold tabular-nums`}>{totals.grandTotal.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
+      )}
 
       {/* IN WORDS */}
-      <div className={`${cellBorder} border-t-0 p-1 text-[11px] italic`}>
-        In Words. {amountInWords(totals.grandTotal)}
-      </div>
+      {!isChallan && (
+        <div className={`${cellBorder} border-t-0 p-1 text-[11px] italic`}>
+          In Words. {amountInWords(totals.grandTotal)}
+        </div>
+      )}
 
       {/* FOOTER META + SIGNATURE */}
       <table className="w-full border-collapse text-[11px]">
         <tbody>
           <tr>
-            <td className={`${cellBorder} p-1 w-[60%]`}><span className="font-bold">Delivery :</span> By Road</td>
+            <td className={`${cellBorder} p-1 w-[60%]`}>
+              {isChallan ? (
+                <>
+                  <span className="font-bold">Transport :</span> {invoice.transporter_name || "By Road"} &nbsp;
+                  <span className="font-bold">Vehicle :</span> {invoice.vehicle_number || "—"}
+                </>
+              ) : (
+                <><span className="font-bold">Delivery :</span> By Road</>
+              )}
+            </td>
             <td className={`${cellBorder} p-1 text-right align-top`} rowSpan={3}>
               <div className="font-bold">For <span className="text-red-600 underline">{c.name ?? "ABJAD ENGINEERING WORKS"}</span></div>
               <div className="my-8">&nbsp;</div>
@@ -516,7 +569,17 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             </td>
           </tr>
           <tr>
-            <td className={`${cellBorder} p-1`}><span className="font-bold">Payment :</span> 100% against Performa Invoice</td>
+            <td className={`${cellBorder} p-1`}>
+              {isQuotation ? (
+                <><span className="font-bold">Validity :</span> {invoice.valid_until ? formatDate(invoice.valid_until) : "As agreed"}</>
+              ) : isChallan ? (
+                <><span className="font-bold">Reason for movement :</span> {invoice.reason_for_movement || "—"}</>
+              ) : isProforma ? (
+                <><span className="font-bold">Payment :</span> 100% advance against this proforma invoice</>
+              ) : (
+                <><span className="font-bold">Payment :</span> {invoice.payment_terms || "100% against invoice"}</>
+              )}
+            </td>
           </tr>
           <tr>
             <td className={`${cellBorder} p-1`}>
@@ -527,10 +590,21 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
         </tbody>
       </table>
 
-      {/* DECLARATION */}
+      {/* DECLARATION / TERMS */}
       <div className="mt-2 text-[10px]">
-        <div className="font-bold">DECLARATION.</div>
-        <div>{c.declaration ?? "WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT"}</div>
+        <div className="font-bold">{isQuotation ? "TERMS & CONDITIONS." : isProforma || isChallan ? "NOTE." : "DECLARATION."}</div>
+        <div>
+          {isQuotation
+            ? invoice.terms_conditions ||
+              "THIS QUOTATION IS VALID FOR THE PERIOD STATED ABOVE. PRICES ARE SUBJECT TO CHANGE THEREAFTER. TAXES AS APPLICABLE AT THE TIME OF SUPPLY."
+            : isProforma
+              ? invoice.terms_conditions ||
+                "THIS IS A PROFORMA INVOICE AND NOT A TAX INVOICE. IT IS ISSUED FOR ADVANCE PAYMENT PURPOSES ONLY AND DOES NOT CONFER ANY INPUT TAX CREDIT."
+              : isChallan
+                ? "GOODS DESPATCHED FOR THE PURPOSE STATED ABOVE. THIS DELIVERY CHALLAN IS NOT A TAX INVOICE AND IS NOT A DEMAND FOR PAYMENT. PLEASE ACKNOWLEDGE RECEIPT."
+                : c.declaration ??
+                  "WE DECLARE THAT THIS INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS DESCRIBED THAT ALL PARTICULARS ARE TRUE AND CORRECT"}
+        </div>
       </div>
 
       <div className="mt-4 text-[10px] italic text-gray-600">1 | P a g e</div>
