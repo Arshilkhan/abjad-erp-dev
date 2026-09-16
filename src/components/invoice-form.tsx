@@ -377,6 +377,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         challan_number: isChallan ? challanNumber || null : null,
         challan_date: isChallan ? challanDates[0] || invoiceDate : null,
         challan_dates: isChallan ? (challanDates.length ? challanDates : [invoiceDate]) : [],
+        movement_reason: isChallan ? movementReason || null : null,
+        transporter_name: isChallan ? transporterName.trim() || null : null,
+        place_of_dispatch: isChallan ? placeOfDispatch.trim() || null : null,
+        place_of_delivery: isChallan ? placeOfDelivery.trim() || null : null,
 
         work_order_number: workOrder || null,
         place_of_supply: cust.state ?? null,
@@ -468,6 +472,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           description: it.description,
           quantity: it.quantity,
           uom: it.uom,
+          serial_batch_number: it.serial_batch_number?.trim() || null,
           unit_rate: it.unit_rate,
           discount_pct: it.discount_pct,
           discount_amount: c.discount_amount,
