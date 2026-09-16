@@ -95,7 +95,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [otherCharges, setOtherCharges] = useState(0);
   const [transportCharges, setTransportCharges] = useState(0);
   const [deliveryCharges, setDeliveryCharges] = useState(0);
-  const [discountExtra, setDiscountExtra] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState("By Road");
   const [paymentTerms, setPaymentTerms] = useState("30 Days");
   const [notes, setNotes] = useState("");
@@ -233,13 +232,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       Number(packing || 0) +
       Number(otherCharges || 0) +
       Number(transportCharges || 0) +
-      Number(deliveryCharges || 0) -
-      Number(discountExtra || 0);
+      Number(deliveryCharges || 0);
     const preRound = subtotal + tax;
     const grand = Math.round(preRound);
     const round_off = grand - preRound;
     return { net, tax, disc, subtotal, grand, round_off };
-  }, [items, freight, packing, otherCharges, transportCharges, deliveryCharges, discountExtra]);
+  }, [items, freight, packing, otherCharges, transportCharges, deliveryCharges]);
 
   const setItem = (idx: number, patch: Partial<LineItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -1051,17 +1049,6 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <Row label="Net Value" value={formatINR(totals.net)} />
-            {(settings?.show_discount || isEdit) && (
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Extra Discount</Label>
-                <Input
-                  className="h-8 w-32 text-right"
-                  type="number"
-                  value={discountExtra}
-                  onChange={(e) => setDiscountExtra(Number(e.target.value))}
-                />
-              </div>
-            )}
             <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
             <ChargeRow
               config={cfg("transportation_charges")}
