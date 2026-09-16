@@ -185,6 +185,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             unit_rate: Number(it.unit_rate ?? 0),
             discount_pct: Number(it.discount_pct ?? 0),
             tax_pct: Number(it.tax_pct ?? 18),
+            serial_batch_number: (it as any).serial_batch_number ?? "",
           }))
         : [emptyItem(1)],
     );
@@ -567,6 +568,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             unit_rate: it.unit_rate,
             discount_pct: it.discount_pct,
             tax_pct: it.tax_pct || 18,
+            serial_batch_number: "",
           })),
         );
         setProductTexts(d.items.map((it) => it.description));
