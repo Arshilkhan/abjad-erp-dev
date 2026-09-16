@@ -384,7 +384,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         place_of_supply: cust.state ?? null,
         is_igst: isIGST,
         net_value: totals.net,
-        discount_amount: totals.disc + Number(discountExtra || 0),
+        discount_amount: totals.disc,
         freight: Number(freight || 0),
         packing_charges: Number(packing || 0),
         other_charges: Number(otherCharges || 0),
