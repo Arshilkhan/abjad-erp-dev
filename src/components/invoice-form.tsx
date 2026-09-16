@@ -630,7 +630,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
        <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-            <CardTitle className="text-base">Invoice Details</CardTitle>
+            <CardTitle className="text-base">{isChallan ? "Delivery Challan Details" : "Invoice Details"}</CardTitle>
              {!isEdit && (
                <>
                  <input
@@ -730,10 +730,25 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 </SelectContent>
               </Select>
             </div>
-            {!isChallan && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Date</Label>
-                <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+            <div className="space-y-1.5">
+              <Label className="text-xs">{isChallan ? "Delivery Challan Date" : "Date"}</Label>
+              <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+            </div>
+            {isChallan && (
+              <div className="col-span-2 space-y-1.5">
+                <Label className="text-xs">Reason for Movement</Label>
+                <Select value={movementReason} onValueChange={setMovementReason}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOVEMENT_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -855,7 +870,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Line Items</CardTitle>
+          <CardTitle className="text-base">{isChallan ? "Goods Being Moved" : "Line Items"}</CardTitle>
           <Button size="sm" variant="outline" onClick={addItem}>
             <Plus className="mr-1 h-4 w-4" /> Add Row
           </Button>
@@ -871,10 +886,16 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   <th className="p-2 text-left">Description</th>
                   <th className="p-2 text-right w-20">Qty</th>
                   <th className="p-2 text-left w-16">UOM</th>
-                  <th className="p-2 text-right w-24">Rate</th>
-                  <th className="p-2 text-right w-16">Disc%</th>
-                  <th className="p-2 text-right w-16">Tax%</th>
-                  <th className="p-2 text-right w-28">Total</th>
+                  {isChallan ? (
+                    <th className="p-2 text-left w-40">Serial / Batch No.</th>
+                  ) : (
+                    <>
+                      <th className="p-2 text-right w-24">Rate</th>
+                      <th className="p-2 text-right w-16">Disc%</th>
+                      <th className="p-2 text-right w-16">Tax%</th>
+                      <th className="p-2 text-right w-28">Total</th>
+                    </>
+                  )}
                   <th className="w-8"></th>
                 </tr>
               </thead>
@@ -926,31 +947,44 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                       <td className="p-1">
                         <Input className="h-8" value={it.uom} onChange={(e) => setItem(idx, { uom: e.target.value })} />
                       </td>
-                      <td className="p-1">
-                        <Input
-                          className="h-8 text-right tabular-nums"
-                          type="number"
-                          value={it.unit_rate}
-                          onChange={(e) => setItem(idx, { unit_rate: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="p-1">
-                        <Input
-                          className="h-8 text-right tabular-nums"
-                          type="number"
-                          value={it.discount_pct}
-                          onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="p-1">
-                        <Input
-                          className="h-8 text-right tabular-nums"
-                          type="number"
-                          value={it.tax_pct}
-                          onChange={(e) => setItem(idx, { tax_pct: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="p-2 text-right tabular-nums font-medium">{formatINR(c.total_amount)}</td>
+                      {isChallan ? (
+                        <td className="p-1">
+                          <Input
+                            className="h-8"
+                            value={it.serial_batch_number}
+                            onChange={(e) => setItem(idx, { serial_batch_number: e.target.value })}
+                            placeholder="Serial / Batch"
+                          />
+                        </td>
+                      ) : (
+                        <>
+                          <td className="p-1">
+                            <Input
+                              className="h-8 text-right tabular-nums"
+                              type="number"
+                              value={it.unit_rate}
+                              onChange={(e) => setItem(idx, { unit_rate: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="p-1">
+                            <Input
+                              className="h-8 text-right tabular-nums"
+                              type="number"
+                              value={it.discount_pct}
+                              onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="p-1">
+                            <Input
+                              className="h-8 text-right tabular-nums"
+                              type="number"
+                              value={it.tax_pct}
+                              onChange={(e) => setItem(idx, { tax_pct: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td className="p-2 text-right tabular-nums font-medium">{formatINR(c.total_amount)}</td>
+                        </>
+                      )}
                       <td className="p-1">
                         <Button
                           size="icon"
@@ -982,10 +1016,28 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                 <Input value={deliveryMode} onChange={(e) => setDeliveryMode(e.target.value)} />
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Payment Terms</Label>
-              <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-            </div>
+            {!isChallan && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment Terms</Label>
+                <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+              </div>
+            )}
+            {isChallan && (
+              <>
+                <div className="col-span-2 space-y-1.5">
+                  <Label className="text-xs">Transporter Name</Label>
+                  <Input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Place of Dispatch</Label>
+                  <Input value={placeOfDispatch} onChange={(e) => setPlaceOfDispatch(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Place of Delivery</Label>
+                  <Input value={placeOfDelivery} onChange={(e) => setPlaceOfDelivery(e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -993,7 +1045,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={isChallan ? "hidden" : undefined}>
           <CardHeader>
             <CardTitle className="text-base">Totals</CardTitle>
           </CardHeader>
