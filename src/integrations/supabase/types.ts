@@ -434,6 +434,7 @@ export type Database = {
           product_id: string | null
           quantity: number
           rejected_quantity: number
+          serial_batch_number: string | null
           sr_no: number
           tax_amount: number | null
           tax_pct: number | null
@@ -452,6 +453,7 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
+          serial_batch_number?: string | null
           sr_no: number
           tax_amount?: number | null
           tax_pct?: number | null
@@ -470,6 +472,7 @@ export type Database = {
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
+          serial_batch_number?: string | null
           sr_no?: number
           tax_amount?: number | null
           tax_pct?: number | null
@@ -680,11 +683,14 @@ export type Database = {
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           is_igst: boolean | null
           is_imported: boolean
+          movement_reason: string | null
           net_value: number | null
           notes: string | null
           other_charges: number | null
           packing_charges: number | null
           payment_terms: string | null
+          place_of_delivery: string | null
+          place_of_dispatch: string | null
           place_of_supply: string | null
           po_date: string | null
           po_number: string | null
@@ -693,6 +699,7 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number | null
           transportation_charges: number
+          transporter_name: string | null
           updated_at: string
           work_order_number: string | null
         }
@@ -728,11 +735,14 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
           is_imported?: boolean
+          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
           place_of_supply?: string | null
           po_date?: string | null
           po_number?: string | null
@@ -741,6 +751,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
+          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
@@ -776,11 +787,14 @@ export type Database = {
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
           is_imported?: boolean
+          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
           place_of_supply?: string | null
           po_date?: string | null
           po_number?: string | null
@@ -789,6 +803,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
+          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
