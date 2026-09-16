@@ -177,6 +177,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
     setNotes(inv.notes ?? "");
+    setMovementReason((inv as any).movement_reason ?? "Delivery / Supply");
+    setTransporterName((inv as any).transporter_name ?? "");
+    setPlaceOfDispatch((inv as any).place_of_dispatch ?? "");
+    setPlaceOfDelivery((inv as any).place_of_delivery ?? "");
     setItems(
       existing.items.length
         ? existing.items.map((it: any, i: number) => ({
