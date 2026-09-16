@@ -30,7 +30,18 @@ interface LineItem {
   unit_rate: number;
   discount_pct: number;
   tax_pct: number;
+  serial_batch_number: string;
 }
+
+export const MOVEMENT_REASONS = [
+  "Delivery / Supply",
+  "Job Work",
+  "Repair",
+  "Returnable Goods",
+  "Sample / Demo",
+  "Stock Transfer",
+  "Other",
+];
 
 function emptyItem(sr: number): LineItem {
   return {
@@ -43,6 +54,7 @@ function emptyItem(sr: number): LineItem {
     unit_rate: 0,
     discount_pct: 0,
     tax_pct: 18,
+    serial_batch_number: "",
   };
 }
 
