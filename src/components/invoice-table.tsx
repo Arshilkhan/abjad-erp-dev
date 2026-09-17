@@ -38,17 +38,33 @@ export function InvoiceTypeBadge({ type }: { type: string }) {
 
 export function InvoiceTable({ rows, isLoading }: { rows: any[]; isLoading?: boolean }) {
     const qc = useQueryClient();
-    const [sortField, setSortField] = useState<"invoice" | "customer" | "date" | "total" | null>(null);
-    const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+    const [sortField, setSortField] = useState<"invoice" | "customer" | "date" | "total" | null>(() => {
+        const saved = localStorage.getItem("abjad-erp-invoice-sort-field");
+        return saved === "invoice" ||
+            saved === "customer" ||
+            saved === "date" ||
+            saved === "total"
+            ? saved
+            : null;
+    });
 
-    const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
-        if (sortField === field) {
-            setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortField(field);
-            setSortDirection("asc");
-        }
-    };
+const [sortDirection, setSortDirection] = useState<"asc" | "desc">(() => {
+  const saved = localStorage.getItem("abjad-erp-invoice-sort-direction");
+  return saved === "desc" ? "desc" : "asc";
+});
+
+const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
+    if (sortField === field) {
+        const nextDirection = sortDirection === "asc" ? "desc" : "asc";
+        setSortDirection(nextDirection);
+        localStorage.setItem("abjad-erp-invoice-sort-direction", nextDirection);
+    } else {
+        setSortField(field);
+        setSortDirection("asc");
+        localStorage.setItem("abjad-erp-invoice-sort-field", field);
+        localStorage.setItem("abjad-erp-invoice-sort-direction", "asc");
+    }
+};
 
     const sortedRows = useMemo(() => {
         if (!sortField) return rows;
