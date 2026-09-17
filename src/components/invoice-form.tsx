@@ -28,7 +28,8 @@ interface LineItem {
   quantity: number;
   uom: string;
   unit_rate: number;
-  discount_pct: number;
+  discount_mode: "pct" | "flat";
+  discount_value: number;
   tax_pct: number;
   serial_batch_number: string;
 }
@@ -52,7 +53,8 @@ function emptyItem(sr: number): LineItem {
     quantity: 1,
     uom: "NOS",
     unit_rate: 0,
-    discount_pct: 0,
+    discount_mode: "pct",
+    discount_value: 0,
     tax_pct: 18,
     serial_batch_number: "",
   };
@@ -60,11 +62,13 @@ function emptyItem(sr: number): LineItem {
 
 function computeItem(it: LineItem) {
   const gross = it.quantity * it.unit_rate;
-  const discount_amount = (gross * it.discount_pct) / 100;
+  const raw = Number(it.discount_value || 0);
+  const discount_amount = it.discount_mode === "flat" ? Math.min(Math.max(raw, 0), gross) : (gross * raw) / 100;
+  const discount_pct = gross > 0 ? (discount_amount / gross) * 100 : 0;
   const net = gross - discount_amount;
   const tax_amount = (net * it.tax_pct) / 100;
   const total_amount = net + tax_amount;
-  return { discount_amount, tax_amount, total_amount, net };
+  return { discount_amount, discount_pct, tax_amount, total_amount, net };
 }
 
 export function InvoiceForm({ editId, importMode }: { editId?: string; importMode?: boolean }) {
