@@ -23,7 +23,10 @@ function InvoicesLayout() {
 function InvoicesIndex() {
   const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"folders" | "all">("folders");
+  const [view, setView] = useState<"folders" | "all">(() => {
+  const saved = localStorage.getItem("abjad-erp-invoices-view");
+  return saved === "all" || saved === "folders" ? saved : "folders";
+});
 
   const s = q.trim().toLowerCase();
   const visibleFolders = folders.filter((f) => !s || f.name.toLowerCase().includes(s));
@@ -40,10 +43,14 @@ function InvoicesIndex() {
         description="Documents organised into a folder per company."
         actions={
           <div className="flex gap-1 rounded-md border p-0.5">
-            <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => setView("folders")}>
+            <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => {setView("folders");
+            localStorage.setItem("abjad-erp-invoices-view", "folders");
+            }}>
               <LayoutGrid className="mr-1 h-4 w-4" /> Folders
             </Button>
-            <Button size="sm" variant={view === "all" ? "secondary" : "ghost"} onClick={() => setView("all")}>
+            <Button size="sm" variant={view === "all" ? "secondary" : "ghost"} onClick={() => {setView("all");
+            localStorage.setItem("abjad-erp-invoices-view", "all");
+            }}>
               <List className="mr-1 h-4 w-4" /> All documents
             </Button>
           </div>
