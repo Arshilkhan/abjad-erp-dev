@@ -27,6 +27,12 @@ export async function buildInvoicePdf(
   items: Row[],
   company: Row | null,
 ): Promise<Uint8Array> {
+  // Delivery challans are goods-movement documents, not payment requests.
+  if (String(invoice['invoice_type']) === 'delivery_challan' || String(invoice['invoice_type']) === 'challan') {
+    const { buildChallanPdf } = await import('./challan-pdf-build.server')
+    return await buildChallanPdf(invoice, items, company)
+  }
+
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)

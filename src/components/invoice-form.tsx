@@ -561,7 +561,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (d.freight) setFreight(d.freight);
       if (d.packing_charges) setPacking(d.packing_charges);
       if (d.other_charges) setOtherCharges(d.other_charges);
-      if (d.discount_amount) setDiscountExtra(d.discount_amount);
+      
       if (d.delivery_mode) setDeliveryMode(d.delivery_mode);
       if (d.payment_terms) setPaymentTerms(d.payment_terms);
       if (d.notes) setNotes(d.notes);
