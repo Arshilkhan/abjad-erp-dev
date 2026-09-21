@@ -194,7 +194,17 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: Number(it.quantity ?? 1),
             uom: it.uom ?? "NOS",
             unit_rate: Number(it.unit_rate ?? 0),
-            discount_pct: Number(it.discount_pct ?? 0),
+            ...(() => {
+              const gross = Number(it.quantity ?? 1) * Number(it.unit_rate ?? 0);
+              const discountAmount = Number(it.discount_amount ?? 0);
+              const discountPct = Number(it.discount_pct ?? 0);
+              const expectedAmount = (gross * discountPct) / 100;
+              const isFlat = discountAmount > 0 && Math.abs(discountAmount - expectedAmount) > 0.01;
+              return {
+                discount_mode: isFlat ? "flat" as const : "pct" as const,
+                discount_value: isFlat ? discountAmount : discountPct,
+              };
+            })(),
             tax_pct: Number(it.tax_pct ?? 18),
             serial_batch_number: (it as any).serial_batch_number ?? "",
           }))
@@ -476,7 +486,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           uom: it.uom,
           serial_batch_number: it.serial_batch_number?.trim() || null,
           unit_rate: it.unit_rate,
-          discount_pct: it.discount_pct,
+          discount_pct: c.discount_pct,
           discount_amount: c.discount_amount,
           tax_pct: it.tax_pct,
           tax_amount: c.tax_amount,
@@ -581,7 +591,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: it.quantity,
             uom: it.uom,
             unit_rate: it.unit_rate,
-            discount_pct: it.discount_pct,
+            discount_mode: "pct",
+            discount_value: it.discount_pct,
             tax_pct: it.tax_pct || 18,
             serial_batch_number: "",
           })),
@@ -893,7 +904,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   ) : (
                     <>
                       <th className="p-2 text-right w-24">Rate</th>
-                      <th className="p-2 text-right w-16">Disc%</th>
+                      <th className="p-2 text-right w-28">Discount</th>
                       <th className="p-2 text-right w-16">Tax%</th>
                       <th className="p-2 text-right w-28">Total</th>
                     </>
@@ -969,12 +980,27 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                             />
                           </td>
                           <td className="p-1">
-                            <Input
-                              className="h-8 text-right tabular-nums"
-                              type="number"
-                              value={it.discount_pct}
-                              onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
-                            />
+                            <div className="flex items-center gap-1">
+                              <Select
+                                value={it.discount_mode}
+                                onValueChange={(value: "pct" | "flat") => setItem(idx, { discount_mode: value })}
+                              >
+                                <SelectTrigger className="h-8 w-14 px-2 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pct">%</SelectItem>
+                                  <SelectItem value="flat">₹</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                className="h-8 min-w-0 text-right tabular-nums"
+                                type="number"
+                                min="0"
+                                value={it.discount_value}
+                                onChange={(e) => setItem(idx, { discount_value: Number(e.target.value) })}
+                              />
+                            </div>
                           </td>
                           <td className="p-1">
                             <Input
