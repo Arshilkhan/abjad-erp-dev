@@ -64,7 +64,7 @@ function InvoiceDetail() {
       const [inv, items, challanItems, company] = await Promise.all([
         supabase.from("invoices").select("*").eq("id", id).single(),
         supabase.from("invoice_items").select("*").eq("invoice_id", id).order("sr_no"),
-        (supabase.from("challan_items") as any).select("*").eq("challan_id", id).order("id"),
+        ((supabase as any).from("challan_items") as any).select("*").eq("challan_id", id).order("id"),
         supabase.from("company_profile").select("*").limit(1).maybeSingle(),
       ]);
       if (inv.error) throw inv.error;
