@@ -490,7 +490,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       if (isChallan) {
         // Keep the challan parent in sync so challan_items can use its dedicated foreign key.
         const { error: parentError } = await ((supabase as any).from("challans") as any).upsert(
-          { id: invId, created_by: user?.id ?? null },
+          { id: invId },
           { onConflict: "id" },
         );
         if (parentError) throw parentError;
