@@ -1232,16 +1232,6 @@ interface LineItem {
   serial_batch_number: string;
 }
 
-export const MOVEMENT_REASONS = [
-  "Delivery / Supply",
-  "Job Work",
-  "Repair",
-  "Returnable Goods",
-  "Sample / Demo",
-  "Stock Transfer",
-  "Other",
-];
-
 function emptyItem(sr: number): LineItem {
   return {
     sr_no: sr,
