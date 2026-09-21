@@ -155,7 +155,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       const [inv, its, cits] = await Promise.all([
         supabase.from("invoices").select("*").eq("id", editId!).single(),
         supabase.from("invoice_items").select("*").eq("invoice_id", editId!).order("sr_no"),
-        (supabase.from("challan_items") as any).select("*").eq("challan_id", editId!).order("sr_no"),
+        ((supabase as any).from("challan_items") as any).select("*").eq("challan_id", editId!).order("sr_no"),
       ]);
       if (inv.error) throw inv.error;
       const itemRows = inv.data?.invoice_type === "delivery_challan" ? (cits.data ?? []) : (its.data ?? []);
@@ -434,7 +434,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         invId = inv.id;
         invNumber = inv.invoice_number;
         const { error: dErr } = isChallan
-          ? await (supabase.from("challan_items") as any).delete().eq("challan_id", invId)
+          ? await ((supabase as any).from("challan_items") as any).delete().eq("challan_id", invId)
           : await supabase.from("invoice_items").delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
@@ -489,7 +489,10 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
       if (isChallan) {
         // Keep the challan parent in sync so challan_items can use its dedicated foreign key.
-        const { error: parentError } = await (supabase.from("challans") as any).upsert({ id: invId }, { onConflict: "id" });
+        const { error: parentError } = await ((supabase as any).from("challans") as any).upsert(
+          { id: invId, created_by: user?.id ?? null },
+          { onConflict: "id" },
+        );
         if (parentError) throw parentError;
         const rows = resolvedItems.map((it) => ({
           challan_id: invId,
@@ -500,7 +503,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           uom: it.uom || null,
           serial_batch_number: it.serial_batch_number?.trim() || null,
         }));
-        const { error: iErr } = await (supabase.from("challan_items") as any).insert(rows);
+        const { error: iErr } = await ((supabase as any).from("challan_items") as any).insert(rows);
         if (iErr) throw iErr;
       } else {
         const rows = resolvedItems.map((it) => {
