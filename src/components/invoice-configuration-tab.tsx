@@ -23,6 +23,9 @@ const HIDDEN_KEYS = new Set([
   "inventory_adjustment",
   "history_tracking",
   "audit_log",
+  "cancel_invoice",
+  "import_invoice",
+  "other_charges",
 ]);
 
 export function InvoiceConfigurationTab() {
