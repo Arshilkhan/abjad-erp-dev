@@ -5,4 +5,7 @@
 - [x] Confirm Settings exclusions remain intact
 - [x] Validate the affected flows
 
-- [ ] Split each document type into dedicated tables, migrate existing records safely, and update all app flows/PDFs/backups.
+- [ ] Create dedicated quotation, challan, and proforma tables with secure access and totals
+- [ ] Add separate create/list/detail/edit flows for each document type
+- [ ] Update PDF, email, search, reporting, and backup retrieval
+- [ ] Validate every document flow and provide live-database SQL
