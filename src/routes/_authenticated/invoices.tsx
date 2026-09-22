@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,17 @@ function InvoicesLayout() {
 function InvoicesIndex() {
   const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"folders" | "all">(() => {
-  const saved = localStorage.getItem("abjad-erp-invoices-view");
-  return saved === "all" || saved === "folders" ? saved : "folders";
-});
+  const [view, setView] = useState<"folders" | "all">("folders");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("abjad-erp-invoices-view");
+    if (saved === "all" || saved === "folders") setView(saved);
+  }, []);
+
+  const changeView = (next: "folders" | "all") => {
+    setView(next);
+    window.localStorage.setItem("abjad-erp-invoices-view", next);
+  };
 
   const s = q.trim().toLowerCase();
   const visibleFolders = folders.filter((f) => !s || f.name.toLowerCase().includes(s));
@@ -43,14 +50,10 @@ function InvoicesIndex() {
         description="Documents organised into a folder per company."
         actions={
           <div className="flex gap-1 rounded-md border p-0.5">
-            <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => {setView("folders");
-            localStorage.setItem("abjad-erp-invoices-view", "folders");
-            }}>
+            <Button size="sm" variant={view === "folders" ? "secondary" : "ghost"} onClick={() => changeView("folders")}>
               <LayoutGrid className="mr-1 h-4 w-4" /> Folders
             </Button>
-            <Button size="sm" variant={view === "all" ? "secondary" : "ghost"} onClick={() => {setView("all");
-            localStorage.setItem("abjad-erp-invoices-view", "all");
-            }}>
+            <Button size="sm" variant={view === "all" ? "secondary" : "ghost"} onClick={() => changeView("all")}>
               <List className="mr-1 h-4 w-4" /> All documents
             </Button>
           </div>
