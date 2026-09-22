@@ -194,7 +194,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: Number(it.quantity ?? 1),
             uom: it.uom ?? "NOS",
             unit_rate: Number(it.unit_rate ?? 0),
-            discount_pct: Number(it.discount_pct ?? 0),
+            discount_mode: "pct" as const,
+            discount_value: Number(it.discount_pct ?? 0),
             tax_pct: Number(it.tax_pct ?? 18),
             serial_batch_number: (it as any).serial_batch_number ?? "",
           }))
@@ -476,7 +477,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           uom: it.uom,
           serial_batch_number: it.serial_batch_number?.trim() || null,
           unit_rate: it.unit_rate,
-          discount_pct: it.discount_pct,
+          discount_pct: c.discount_pct,
           discount_amount: c.discount_amount,
           tax_pct: it.tax_pct,
           tax_amount: c.tax_amount,
@@ -581,7 +582,8 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: it.quantity,
             uom: it.uom,
             unit_rate: it.unit_rate,
-            discount_pct: it.discount_pct,
+            discount_mode: "pct" as const,
+            discount_value: Number(it.discount_pct ?? 0),
             tax_pct: it.tax_pct || 18,
             serial_batch_number: "",
           })),
@@ -893,7 +895,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   ) : (
                     <>
                       <th className="p-2 text-right w-24">Rate</th>
-                      <th className="p-2 text-right w-16">Disc%</th>
+                      <th className="p-2 text-right w-40">Discount</th>
                       <th className="p-2 text-right w-16">Tax%</th>
                       <th className="p-2 text-right w-28">Total</th>
                     </>
@@ -969,12 +971,32 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                             />
                           </td>
                           <td className="p-1">
-                            <Input
-                              className="h-8 text-right tabular-nums"
-                              type="number"
-                              value={it.discount_pct}
-                              onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
-                            />
+                            <div className="flex min-w-36 gap-1">
+                              <Input
+                                className="h-8 min-w-0 text-right tabular-nums"
+                                type="number"
+                                min={0}
+                                max={it.discount_mode === "pct" ? 100 : undefined}
+                                step="0.01"
+                                value={it.discount_value}
+                                aria-label={`Discount value for item ${it.sr_no}`}
+                                onChange={(e) => setItem(idx, { discount_value: Number(e.target.value) })}
+                              />
+                              <Select
+                                value={it.discount_mode}
+                                onValueChange={(value) =>
+                                  setItem(idx, { discount_mode: value === "flat" ? "flat" : "pct" })
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-20 px-2" aria-label={`Discount type for item ${it.sr_no}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pct">%</SelectItem>
+                                  <SelectItem value="flat">Flat</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </td>
                           <td className="p-1">
                             <Input
