@@ -3,7 +3,8 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { FilePlus2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { InvoiceTable } from "@/components/invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/challans")({
 });
 
 function ChallansPage() {
-  const { folders, isLoading } = useInvoiceFolders({ only: ["delivery_challan"] });
+  const { folders, isLoading } = useInvoiceFolders({ table: "challan", kind: "delivery_challan" });
   const [q, setQ] = useState("");
   const s = q.trim().toLowerCase();
 
@@ -36,6 +37,7 @@ function ChallansPage() {
       <PageHeader
         title="Delivery Challans"
         description="Delivery challans are filed here and are not given a bill number."
+        actions={<Button asChild><Link to="/challans/new"><FilePlus2 className="mr-1 h-4 w-4" /> New Challan</Link></Button>}
       />
       <div className="relative mb-4 max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -45,7 +47,7 @@ function ChallansPage() {
         <CardContent className="p-0">
           {!isLoading && rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              No challans yet. <Link to="/invoices/new" className="text-primary hover:underline">Create one</Link> with type “Delivery Challan”.
+               No challans yet. <Link to="/challans/new" className="text-primary hover:underline">Create one</Link>.
             </p>
           ) : (
             <InvoiceTable rows={rows} isLoading={isLoading} />

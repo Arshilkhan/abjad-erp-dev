@@ -21,11 +21,12 @@ export type InvoiceFolder = {
   lastDate: string | null;
 };
 
-export function useInvoiceFolders(opts?: { only?: string[]; exclude?: string[] }) {
+export function useInvoiceFolders(opts?: { table?: "invoices" | "quotation" | "challan" | "performa"; kind?: string }) {
+  const table = opts?.table ?? "invoices";
   const invoicesQ = useQuery({
-    queryKey: ["invoices"],
+    queryKey: ["sales-documents", table],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*").order("created_at", { ascending: false });
+      const { data, error } = await (supabase.from(table) as any).select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -46,9 +47,7 @@ export function useInvoiceFolders(opts?: { only?: string[]; exclude?: string[] }
 
   const folders = new Map<string, InvoiceFolder>();
   for (const r of invoicesQ.data ?? []) {
-    const t = String(r.invoice_type);
-    if (opts?.only && !opts.only.includes(t)) continue;
-    if (opts?.exclude && opts.exclude.includes(t)) continue;
+    if (opts?.kind && String(r.invoice_type) !== opts.kind) continue;
     const name = (r.customer_id ? map.get(r.customer_id) : "") || (r.customer_name_snapshot ?? "").trim() || UNFILED;
 
     const slug = folderSlug(name);
