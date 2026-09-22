@@ -65,26 +65,10 @@ export function isChallanNumber(invoiceNumber: string | null | undefined): boole
   return /^dc-/i.test(String(invoiceNumber ?? "").trim());
 }
 
-/** Displays the numeric sequence from an invoice number, including type-prefixed references. */
+/** Displays only the bill number portion of a stored invoice number ("2-jhon" -> "2"). */
 export function billNo(invoiceNumber: string | null | undefined): string {
   const s = String(invoiceNumber ?? "").trim();
   if (!s || isChallanNumber(s)) return "";
-  const m = /^(?:inv-|qtn-|pro-|po-)?(\d+)(?:[-_].*)?$/i.exec(s);
+  const m = /^(\d+)(?:[-_].*)?$/.exec(s);
   return m ? m[1]! : s;
-}
-
-export function invoiceTypeNumber(invoice: Record<string, any>): string {
-  if (invoice.invoice_type === "delivery_challan" || invoice.invoice_type === "challan") {
-    return String(invoice.challan_number ?? "").trim();
-  }
-  return billNo(invoice.invoice_number);
-}
-
-export function invoiceTypeNumberLabel(invoiceType: string | null | undefined): string {
-  switch (invoiceType) {
-    case "quotation": return "Qtn No.";
-    case "proforma": return "Proforma No.";
-    case "purchase_order": return "PO No.";
-    default: return "Inv. No.";
-  }
 }

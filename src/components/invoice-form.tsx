@@ -152,14 +152,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     queryKey: ["invoice-edit", editId],
     enabled: isEdit,
     queryFn: async () => {
-      const [inv, its, cits] = await Promise.all([
+      const [inv, its] = await Promise.all([
         supabase.from("invoices").select("*").eq("id", editId!).single(),
         supabase.from("invoice_items").select("*").eq("invoice_id", editId!).order("sr_no"),
-        ((supabase as any).from("challan_items") as any).select("*").eq("challan_id", editId!).order("sr_no"),
       ]);
       if (inv.error) throw inv.error;
-      const itemRows = inv.data?.invoice_type === "delivery_challan" ? (cits.data ?? []) : (its.data ?? []);
-      return { invoice: inv.data, items: itemRows };
+      return { invoice: inv.data, items: its.data ?? [] };
     },
   });
 
@@ -196,17 +194,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: Number(it.quantity ?? 1),
             uom: it.uom ?? "NOS",
             unit_rate: Number(it.unit_rate ?? 0),
-            ...(() => {
-              const gross = Number(it.quantity ?? 1) * Number(it.unit_rate ?? 0);
-              const discountAmount = Number(it.discount_amount ?? 0);
-              const discountPct = Number(it.discount_pct ?? 0);
-              const expectedAmount = (gross * discountPct) / 100;
-              const isFlat = discountAmount > 0 && Math.abs(discountAmount - expectedAmount) > 0.01;
-              return {
-                discount_mode: isFlat ? "flat" as const : "pct" as const,
-                discount_value: isFlat ? discountAmount : discountPct,
-              };
-            })(),
+            discount_pct: Number(it.discount_pct ?? 0),
             tax_pct: Number(it.tax_pct ?? 18),
             serial_batch_number: (it as any).serial_batch_number ?? "",
           }))
@@ -433,9 +421,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         if (error) throw error;
         invId = inv.id;
         invNumber = inv.invoice_number;
-        const { error: dErr } = isChallan
-          ? await ((supabase as any).from("challan_items") as any).delete().eq("challan_id", invId)
-          : await supabase.from("invoice_items").delete().eq("invoice_id", invId);
+        const { error: dErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
         // Invoice number format: <sequence>-<company-name-slug>, e.g. 1-fluid-tech
@@ -445,20 +431,11 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/^-+|-+$/g, "") || "customer";
 
-        const { data: existing } = await supabase.from("invoices").select("invoice_number, invoice_type");
-        const typePrefix = isChallan
-          ? "dc"
-          : invoiceType === "quotation"
-            ? "qtn"
-            : invoiceType === "proforma"
-              ? "pro"
-              : invoiceType === "purchase_order"
-                ? "po"
-                : "inv";
-        const seqRe = isChallan ? /^dc-(\d+)-/i : new RegExp(`^(?:${typePrefix}-)?(\\d+)-`, "i");
+        const { data: existing } = await supabase.from("invoices").select("invoice_number");
+        // Delivery challans never consume a bill number; they get their own "dc-" reference.
+        const seqRe = isChallan ? /^dc-(\d+)-/i : /^(\d+)-/;
         let seq = 0;
         for (const row of existing ?? []) {
-          if (row.invoice_type !== invoiceType) continue;
           const m = seqRe.exec(row.invoice_number ?? "");
           if (m) seq = Math.max(seq, Number(m[1]));
         }
@@ -467,7 +444,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         let lastErr: any = null;
         for (let attempt = 0; attempt < 25; attempt++) {
           seq += 1;
-          const invoice_number = `${typePrefix}-${seq}-${slug}`;
+          const invoice_number = isChallan ? `dc-${seq}-${slug}` : `${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
           if (importMode || pdfImported) {
             insertPayload.is_imported = true;
@@ -487,47 +464,27 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         invNumber = inserted.invoice_number;
       }
 
-      if (isChallan) {
-        // Keep the challan parent in sync so challan_items can use its dedicated foreign key.
-        const { error: parentError } = await ((supabase as any).from("challans") as any).upsert(
-          { id: invId },
-          { onConflict: "id" },
-        );
-        if (parentError) throw parentError;
-        const rows = resolvedItems.map((it) => ({
-          challan_id: invId,
-          product: it.description || null,
-          hsn: it.hsn_code || null,
-          description: it.description || null,
-          quantity: Number(it.quantity) || 0,
-          uom: it.uom || null,
+      const rows = resolvedItems.map((it) => {
+        const c = computeItem(it);
+        return {
+          invoice_id: invId,
+          sr_no: it.sr_no,
+          product_id: it.product_id,
+          hsn_code: it.hsn_code || null,
+          description: it.description,
+          quantity: it.quantity,
+          uom: it.uom,
           serial_batch_number: it.serial_batch_number?.trim() || null,
-        }));
-        const { error: iErr } = await ((supabase as any).from("challan_items") as any).insert(rows);
-        if (iErr) throw iErr;
-      } else {
-        const rows = resolvedItems.map((it) => {
-          const c = computeItem(it);
-          return {
-            invoice_id: invId,
-            sr_no: it.sr_no,
-            product_id: it.product_id,
-            hsn_code: it.hsn_code || null,
-            description: it.description,
-            quantity: it.quantity,
-            uom: it.uom,
-            serial_batch_number: it.serial_batch_number?.trim() || null,
-            unit_rate: it.unit_rate,
-            discount_pct: c.discount_pct,
-            discount_amount: c.discount_amount,
-            tax_pct: it.tax_pct,
-            tax_amount: c.tax_amount,
-            total_amount: c.total_amount,
-          };
-        });
-        const { error: iErr } = await supabase.from("invoice_items").insert(rows);
-        if (iErr) throw iErr;
-      }
+          unit_rate: it.unit_rate,
+          discount_pct: it.discount_pct,
+          discount_amount: c.discount_amount,
+          tax_pct: it.tax_pct,
+          tax_amount: c.tax_amount,
+          total_amount: c.total_amount,
+        };
+      });
+      const { error: iErr } = await supabase.from("invoice_items").insert(rows);
+      if (iErr) throw iErr;
 
       return { id: invId, invoice_number: invNumber };
     },
@@ -624,8 +581,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             quantity: it.quantity,
             uom: it.uom,
             unit_rate: it.unit_rate,
-            discount_mode: "pct",
-            discount_value: it.discount_pct,
+            discount_pct: it.discount_pct,
             tax_pct: it.tax_pct || 18,
             serial_batch_number: "",
           })),
@@ -937,7 +893,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                   ) : (
                     <>
                       <th className="p-2 text-right w-24">Rate</th>
-                      <th className="p-2 text-right w-28">Discount</th>
+                      <th className="p-2 text-right w-16">Disc%</th>
                       <th className="p-2 text-right w-16">Tax%</th>
                       <th className="p-2 text-right w-28">Total</th>
                     </>
@@ -1013,27 +969,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
                             />
                           </td>
                           <td className="p-1">
-                            <div className="flex items-center gap-1">
-                              <Select
-                                value={it.discount_mode}
-                                onValueChange={(value: "pct" | "flat") => setItem(idx, { discount_mode: value })}
-                              >
-                                <SelectTrigger className="h-8 w-14 px-2 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pct">%</SelectItem>
-                                  <SelectItem value="flat">₹</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Input
-                                className="h-8 min-w-0 text-right tabular-nums"
-                                type="number"
-                                min="0"
-                                value={it.discount_value}
-                                onChange={(e) => setItem(idx, { discount_value: Number(e.target.value) })}
-                              />
-                            </div>
+                            <Input
+                              className="h-8 text-right tabular-nums"
+                              type="number"
+                              value={it.discount_pct}
+                              onChange={(e) => setItem(idx, { discount_pct: Number(e.target.value) })}
+                            />
                           </td>
                           <td className="p-1">
                             <Input

@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import { amountInWords, formatDate, invoiceTypeNumber, invoiceTypeNumberLabel } from '@/lib/format'
+import { amountInWords, formatDate, billNo } from '@/lib/format'
 import { AEW_LOGO_BASE64 } from '@/assets/aew-logo-base64'
 
 type Row = Record<string, any>
@@ -216,8 +216,8 @@ export async function buildInvoicePdf(
   const rowH = 16
   cell(cx[0]!, y, cw[0]!, rowH, 'CUSTOMER NAME', { bold: true })
   cell(cx[1]!, y, cw[1]!, rowH, invoice['customer_name_snapshot'] ?? '-')
-  cell(cx[2]!, y, cw[2]!, rowH, invoiceTypeNumberLabel(String(invoice['invoice_type'])), { bold: true })
-  cell(cx[3]!, y, cw[3]!, rowH, invoiceTypeNumber(invoice))
+  cell(cx[2]!, y, cw[2]!, rowH, 'Bill No.', { bold: true })
+  cell(cx[3]!, y, cw[3]!, rowH, billNo(invoice['invoice_number']))
   cell(cx[4]!, y, cw[4]!, rowH, 'Date', { bold: true })
   cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 8.5 })
   y -= rowH
@@ -250,6 +250,17 @@ export async function buildInvoicePdf(
   cell(rightX + cw[2]! + cw[3]!, y, cw[4]!, chRowH, 'Date', { bold: true })
   page.drawRectangle({ x: chDateX, y: y - chRowH, width: cw[5]!, height: chRowH, borderColor: black, borderWidth: 0.6 })
   chLines.forEach((l, i) => draw(l, chDateX + 3, y - chLineH - i * chLineH, chSize))
+  const restH = (addrH - chRowH) / 2
+  cell(rightX, y - chRowH, rightW * 0.45, restH, 'PO No. /OS CH NO.', { bold: true })
+  cell(rightX + rightW * 0.45, y - chRowH, rightW * 0.55, restH, invoice['po_number'] ?? '')
+  cell(rightX, y - chRowH - restH, rightW * 0.45, restH, 'PO DATE', { bold: true })
+  cell(
+    rightX + rightW * 0.45,
+    y - chRowH - restH,
+    rightW * 0.55,
+    restH,
+    invoice['po_date'] ? formatDate(invoice['po_date']) : '',
+  )
   y -= addrH
 
   // ---------- BUYER + COMPANY DETAILS ----------

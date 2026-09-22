@@ -173,7 +173,7 @@ export async function buildChallanPdf(
   y -= rowH
 
   const docRows: Array<[string, string]> = [
-    ['Challan No.', String(invoice['challan_number'] ?? '-')],
+    ['Challan No.', String(invoice['challan_number'] ?? invoice['invoice_number'] ?? '-')],
     ['Reason for Movement', String(invoice['movement_reason'] ?? '-')],
   ]
   const consRows: Array<[string, string]> = [

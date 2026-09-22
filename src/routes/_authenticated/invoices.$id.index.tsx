@@ -61,15 +61,14 @@ function InvoiceDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["invoice", id],
     queryFn: async () => {
-      const [inv, items, challanItems, company] = await Promise.all([
+      const [inv, items, company] = await Promise.all([
         supabase.from("invoices").select("*").eq("id", id).single(),
         supabase.from("invoice_items").select("*").eq("invoice_id", id).order("sr_no"),
-        ((supabase as any).from("challan_items") as any).select("*").eq("challan_id", id).order("id"),
         supabase.from("company_profile").select("*").limit(1).maybeSingle(),
       ]);
       if (inv.error) throw inv.error;
+      const rows = (items.data ?? []) as any[];
       const invoice = inv.data as any;
-      const rows = (invoice.invoice_type === "delivery_challan" ? (challanItems.data ?? []) : (items.data ?? [])) as any[];
 
       // Self-heal stored snapshots for invoices whose rejections were saved
       // before totals were recalculated (only grand_total was adjusted then).
