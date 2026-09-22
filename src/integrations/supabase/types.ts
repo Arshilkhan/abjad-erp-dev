@@ -86,6 +86,248 @@ export type Database = {
         }
         Relationships: []
       }
+      challan: {
+        Row: {
+          amount_in_words: string | null
+          amount_paid: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cgst_amount: number | null
+          challan_date: string | null
+          challan_dates: string[]
+          challan_number: string | null
+          contact_mobile: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          customer_address_snapshot: string | null
+          customer_gst_snapshot: string | null
+          customer_id: string | null
+          customer_name_snapshot: string | null
+          delivery_charges: number
+          delivery_mode: string | null
+          discount_amount: number | null
+          freight: number | null
+          grand_total: number | null
+          gst_arn: string | null
+          id: string
+          igst_amount: number | null
+          import_source: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_type: Database["public"]["Enums"]["invoice_type"]
+          is_igst: boolean | null
+          is_imported: boolean
+          movement_reason: string | null
+          net_value: number | null
+          notes: string | null
+          other_charges: number | null
+          packing_charges: number | null
+          payment_terms: string | null
+          place_of_delivery: string | null
+          place_of_dispatch: string | null
+          place_of_supply: string | null
+          po_date: string | null
+          po_number: string | null
+          round_off: number | null
+          sgst_amount: number | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number | null
+          transportation_charges: number
+          transporter_name: string | null
+          updated_at: string
+          work_order_number: string | null
+        }
+        Insert: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Update: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challan_customer_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challan_items: {
+        Row: {
+          accepted_quantity: number | null
+          description: string
+          discount_amount: number | null
+          discount_pct: number | null
+          hsn_code: string | null
+          id: string
+          invoice_id: string
+          product_id: string | null
+          quantity: number
+          rejected_quantity: number
+          serial_batch_number: string | null
+          sr_no: number
+          tax_amount: number | null
+          tax_pct: number | null
+          total_amount: number
+          unit_rate: number
+          uom: string | null
+        }
+        Insert: {
+          accepted_quantity?: number | null
+          description: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Update: {
+          accepted_quantity?: number | null
+          description?: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no?: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challan_items_parent_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "challan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challan_items_product_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_profile: {
         Row: {
           address: string | null
@@ -864,6 +1106,248 @@ export type Database = {
           },
         ]
       }
+      performa: {
+        Row: {
+          amount_in_words: string | null
+          amount_paid: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cgst_amount: number | null
+          challan_date: string | null
+          challan_dates: string[]
+          challan_number: string | null
+          contact_mobile: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          customer_address_snapshot: string | null
+          customer_gst_snapshot: string | null
+          customer_id: string | null
+          customer_name_snapshot: string | null
+          delivery_charges: number
+          delivery_mode: string | null
+          discount_amount: number | null
+          freight: number | null
+          grand_total: number | null
+          gst_arn: string | null
+          id: string
+          igst_amount: number | null
+          import_source: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_type: Database["public"]["Enums"]["invoice_type"]
+          is_igst: boolean | null
+          is_imported: boolean
+          movement_reason: string | null
+          net_value: number | null
+          notes: string | null
+          other_charges: number | null
+          packing_charges: number | null
+          payment_terms: string | null
+          place_of_delivery: string | null
+          place_of_dispatch: string | null
+          place_of_supply: string | null
+          po_date: string | null
+          po_number: string | null
+          round_off: number | null
+          sgst_amount: number | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number | null
+          transportation_charges: number
+          transporter_name: string | null
+          updated_at: string
+          work_order_number: string | null
+        }
+        Insert: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Update: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performa_customer_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performa_items: {
+        Row: {
+          accepted_quantity: number | null
+          description: string
+          discount_amount: number | null
+          discount_pct: number | null
+          hsn_code: string | null
+          id: string
+          invoice_id: string
+          product_id: string | null
+          quantity: number
+          rejected_quantity: number
+          serial_batch_number: string | null
+          sr_no: number
+          tax_amount: number | null
+          tax_pct: number | null
+          total_amount: number
+          unit_rate: number
+          uom: string | null
+        }
+        Insert: {
+          accepted_quantity?: number | null
+          description: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Update: {
+          accepted_quantity?: number | null
+          description?: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no?: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performa_items_parent_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "performa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performa_items_product_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -1131,6 +1615,248 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation: {
+        Row: {
+          amount_in_words: string | null
+          amount_paid: number | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cgst_amount: number | null
+          challan_date: string | null
+          challan_dates: string[]
+          challan_number: string | null
+          contact_mobile: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string | null
+          customer_address_snapshot: string | null
+          customer_gst_snapshot: string | null
+          customer_id: string | null
+          customer_name_snapshot: string | null
+          delivery_charges: number
+          delivery_mode: string | null
+          discount_amount: number | null
+          freight: number | null
+          grand_total: number | null
+          gst_arn: string | null
+          id: string
+          igst_amount: number | null
+          import_source: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_type: Database["public"]["Enums"]["invoice_type"]
+          is_igst: boolean | null
+          is_imported: boolean
+          movement_reason: string | null
+          net_value: number | null
+          notes: string | null
+          other_charges: number | null
+          packing_charges: number | null
+          payment_terms: string | null
+          place_of_delivery: string | null
+          place_of_dispatch: string | null
+          place_of_supply: string | null
+          po_date: string | null
+          po_number: string | null
+          round_off: number | null
+          sgst_amount: number | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number | null
+          transportation_charges: number
+          transporter_name: string | null
+          updated_at: string
+          work_order_number: string | null
+        }
+        Insert: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Update: {
+          amount_in_words?: string | null
+          amount_paid?: number | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_amount?: number | null
+          challan_date?: string | null
+          challan_dates?: string[]
+          challan_number?: string | null
+          contact_mobile?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_address_snapshot?: string | null
+          customer_gst_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string | null
+          delivery_charges?: number
+          delivery_mode?: string | null
+          discount_amount?: number | null
+          freight?: number | null
+          grand_total?: number | null
+          gst_arn?: string | null
+          id?: string
+          igst_amount?: number | null
+          import_source?: string | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_type?: Database["public"]["Enums"]["invoice_type"]
+          is_igst?: boolean | null
+          is_imported?: boolean
+          movement_reason?: string | null
+          net_value?: number | null
+          notes?: string | null
+          other_charges?: number | null
+          packing_charges?: number | null
+          payment_terms?: string | null
+          place_of_delivery?: string | null
+          place_of_dispatch?: string | null
+          place_of_supply?: string | null
+          po_date?: string | null
+          po_number?: string | null
+          round_off?: number | null
+          sgst_amount?: number | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          transportation_charges?: number
+          transporter_name?: string | null
+          updated_at?: string
+          work_order_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_customer_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_items: {
+        Row: {
+          accepted_quantity: number | null
+          description: string
+          discount_amount: number | null
+          discount_pct: number | null
+          hsn_code: string | null
+          id: string
+          invoice_id: string
+          product_id: string | null
+          quantity: number
+          rejected_quantity: number
+          serial_batch_number: string | null
+          sr_no: number
+          tax_amount: number | null
+          tax_pct: number | null
+          total_amount: number
+          unit_rate: number
+          uom: string | null
+        }
+        Insert: {
+          accepted_quantity?: number | null
+          description: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Update: {
+          accepted_quantity?: number | null
+          description?: string
+          discount_amount?: number | null
+          discount_pct?: number | null
+          hsn_code?: string | null
+          id?: string
+          invoice_id?: string
+          product_id?: string | null
+          quantity?: number
+          rejected_quantity?: number
+          serial_batch_number?: string | null
+          sr_no?: number
+          tax_amount?: number | null
+          tax_pct?: number | null
+          total_amount?: number
+          unit_rate?: number
+          uom?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_parent_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "quotation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_items_product_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
