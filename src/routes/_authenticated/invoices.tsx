@@ -21,7 +21,7 @@ function InvoicesLayout() {
 }
 
 function InvoicesIndex() {
-  const { folders, isLoading } = useInvoiceFolders({ exclude: ["quotation", "delivery_challan"] });
+  const { folders, isLoading } = useInvoiceFolders({ table: "invoices", kind: "tax_invoice" });
   const [q, setQ] = useState("");
   const [view, setView] = useState<"folders" | "all">("folders");
 

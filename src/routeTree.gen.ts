@@ -23,14 +23,18 @@ import { Route as AuthenticatedInventoryRouteImport } from './routes/_authentica
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
 import { Route as AuthenticatedPaymentsRouteImport } from './routes/_authenticated/payments'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
+import { Route as AuthenticatedProformasRouteImport } from './routes/_authenticated/proformas'
 import { Route as AuthenticatedPurchasesRouteImport } from './routes/_authenticated/purchases'
 import { Route as AuthenticatedQuotationsRouteImport } from './routes/_authenticated/quotations'
 import { Route as AuthenticatedRejectedItemsRouteImport } from './routes/_authenticated/rejected-items'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedChallansNewRouteImport } from './routes/_authenticated/challans.new'
 import { Route as AuthenticatedInvoicesImportRouteImport } from './routes/_authenticated/invoices.import'
 import { Route as AuthenticatedInvoicesNewRouteImport } from './routes/_authenticated/invoices.new'
+import { Route as AuthenticatedProformasNewRouteImport } from './routes/_authenticated/proformas.new'
+import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as ApiGoogleDriveCallbackRouteImport } from './routes/api/google-drive/callback'
 import { Route as ApiPublicBackupCronRouteImport } from './routes/api/public/backup-cron'
 import { Route as AuthenticatedInvoicesIdIndexRouteImport } from './routes/_authenticated/invoices.$id.index'
@@ -111,6 +115,11 @@ const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedProformasRoute = AuthenticatedProformasRouteImport.update({
+  id: '/proformas',
+  path: '/proformas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedPurchasesRoute = AuthenticatedPurchasesRouteImport.update({
   id: '/purchases',
   path: '/purchases',
@@ -142,6 +151,12 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedChallansNewRoute =
+  AuthenticatedChallansNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedChallansRoute,
+  } as any)
 const AuthenticatedInvoicesImportRoute =
   AuthenticatedInvoicesImportRouteImport.update({
     id: '/import',
@@ -153,6 +168,18 @@ const AuthenticatedInvoicesNewRoute =
     id: '/new',
     path: '/new',
     getParentRoute: () => AuthenticatedInvoicesRoute,
+  } as any)
+const AuthenticatedProformasNewRoute =
+  AuthenticatedProformasNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedProformasRoute,
+  } as any)
+const AuthenticatedQuotationsNewRoute =
+  AuthenticatedQuotationsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedQuotationsRoute,
   } as any)
 const ApiGoogleDriveCallbackRoute = ApiGoogleDriveCallbackRouteImport.update({
   id: '/api/google-drive/callback',
@@ -205,7 +232,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
-  '/challans': typeof AuthenticatedChallansRoute
+  '/challans': typeof AuthenticatedChallansRouteWithChildren
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -213,14 +240,18 @@ export interface FileRoutesByFullPath {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/proformas': typeof AuthenticatedProformasRouteWithChildren
   '/purchases': typeof AuthenticatedPurchasesRoute
-  '/quotations': typeof AuthenticatedQuotationsRoute
+  '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/challans/new': typeof AuthenticatedChallansNewRoute
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
@@ -236,7 +267,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/backups': typeof AuthenticatedBackupsRoute
   '/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
-  '/challans': typeof AuthenticatedChallansRoute
+  '/challans': typeof AuthenticatedChallansRouteWithChildren
   '/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/customers': typeof AuthenticatedCustomersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -244,14 +275,18 @@ export interface FileRoutesByTo {
   '/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
+  '/proformas': typeof AuthenticatedProformasRouteWithChildren
   '/purchases': typeof AuthenticatedPurchasesRoute
-  '/quotations': typeof AuthenticatedQuotationsRoute
+  '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/challans/new': typeof AuthenticatedChallansNewRoute
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
@@ -269,7 +304,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/backups': typeof AuthenticatedBackupsRoute
   '/_authenticated/cancelled-invoices': typeof AuthenticatedCancelledInvoicesRoute
-  '/_authenticated/challans': typeof AuthenticatedChallansRoute
+  '/_authenticated/challans': typeof AuthenticatedChallansRouteWithChildren
   '/_authenticated/customer-credits': typeof AuthenticatedCustomerCreditsRoute
   '/_authenticated/customers': typeof AuthenticatedCustomersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -277,14 +312,18 @@ export interface FileRoutesById {
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRouteWithChildren
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
+  '/_authenticated/proformas': typeof AuthenticatedProformasRouteWithChildren
   '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
-  '/_authenticated/quotations': typeof AuthenticatedQuotationsRoute
+  '/_authenticated/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/_authenticated/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/challans/new': typeof AuthenticatedChallansNewRoute
   '/_authenticated/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/_authenticated/invoices/new': typeof AuthenticatedInvoicesNewRoute
+  '/_authenticated/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/_authenticated/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
@@ -310,14 +349,18 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/payments'
     | '/products'
+    | '/proformas'
     | '/purchases'
     | '/quotations'
     | '/rejected-items'
     | '/reports'
     | '/settings'
     | '/users'
+    | '/challans/new'
     | '/invoices/import'
     | '/invoices/new'
+    | '/proformas/new'
+    | '/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/invoices/$id/edit'
@@ -341,14 +384,18 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/payments'
     | '/products'
+    | '/proformas'
     | '/purchases'
     | '/quotations'
     | '/rejected-items'
     | '/reports'
     | '/settings'
     | '/users'
+    | '/challans/new'
     | '/invoices/import'
     | '/invoices/new'
+    | '/proformas/new'
+    | '/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/invoices/$id/edit'
@@ -373,14 +420,18 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices'
     | '/_authenticated/payments'
     | '/_authenticated/products'
+    | '/_authenticated/proformas'
     | '/_authenticated/purchases'
     | '/_authenticated/quotations'
     | '/_authenticated/rejected-items'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/users'
+    | '/_authenticated/challans/new'
     | '/_authenticated/invoices/import'
     | '/_authenticated/invoices/new'
+    | '/_authenticated/proformas/new'
+    | '/_authenticated/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/_authenticated/invoices/$id/edit'
@@ -503,6 +554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/proformas': {
+      id: '/_authenticated/proformas'
+      path: '/proformas'
+      fullPath: '/proformas'
+      preLoaderRoute: typeof AuthenticatedProformasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/purchases': {
       id: '/_authenticated/purchases'
       path: '/purchases'
@@ -545,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/challans/new': {
+      id: '/_authenticated/challans/new'
+      path: '/new'
+      fullPath: '/challans/new'
+      preLoaderRoute: typeof AuthenticatedChallansNewRouteImport
+      parentRoute: typeof AuthenticatedChallansRoute
+    }
     '/_authenticated/invoices/import': {
       id: '/_authenticated/invoices/import'
       path: '/import'
@@ -558,6 +623,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/invoices/new'
       preLoaderRoute: typeof AuthenticatedInvoicesNewRouteImport
       parentRoute: typeof AuthenticatedInvoicesRoute
+    }
+    '/_authenticated/proformas/new': {
+      id: '/_authenticated/proformas/new'
+      path: '/new'
+      fullPath: '/proformas/new'
+      preLoaderRoute: typeof AuthenticatedProformasNewRouteImport
+      parentRoute: typeof AuthenticatedProformasRoute
+    }
+    '/_authenticated/quotations/new': {
+      id: '/_authenticated/quotations/new'
+      path: '/new'
+      fullPath: '/quotations/new'
+      preLoaderRoute: typeof AuthenticatedQuotationsNewRouteImport
+      parentRoute: typeof AuthenticatedQuotationsRoute
     }
     '/api/google-drive/callback': {
       id: '/api/google-drive/callback'
@@ -618,6 +697,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedChallansRouteChildren {
+  AuthenticatedChallansNewRoute: typeof AuthenticatedChallansNewRoute
+}
+
+const AuthenticatedChallansRouteChildren: AuthenticatedChallansRouteChildren = {
+  AuthenticatedChallansNewRoute: AuthenticatedChallansNewRoute,
+}
+
+const AuthenticatedChallansRouteWithChildren =
+  AuthenticatedChallansRoute._addFileChildren(
+    AuthenticatedChallansRouteChildren,
+  )
+
 interface AuthenticatedInvoicesRouteChildren {
   AuthenticatedInvoicesImportRoute: typeof AuthenticatedInvoicesImportRoute
   AuthenticatedInvoicesNewRoute: typeof AuthenticatedInvoicesNewRoute
@@ -640,10 +732,38 @@ const AuthenticatedInvoicesRouteWithChildren =
     AuthenticatedInvoicesRouteChildren,
   )
 
+interface AuthenticatedProformasRouteChildren {
+  AuthenticatedProformasNewRoute: typeof AuthenticatedProformasNewRoute
+}
+
+const AuthenticatedProformasRouteChildren: AuthenticatedProformasRouteChildren =
+  {
+    AuthenticatedProformasNewRoute: AuthenticatedProformasNewRoute,
+  }
+
+const AuthenticatedProformasRouteWithChildren =
+  AuthenticatedProformasRoute._addFileChildren(
+    AuthenticatedProformasRouteChildren,
+  )
+
+interface AuthenticatedQuotationsRouteChildren {
+  AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
+}
+
+const AuthenticatedQuotationsRouteChildren: AuthenticatedQuotationsRouteChildren =
+  {
+    AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
+  }
+
+const AuthenticatedQuotationsRouteWithChildren =
+  AuthenticatedQuotationsRoute._addFileChildren(
+    AuthenticatedQuotationsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedBackupsRoute: typeof AuthenticatedBackupsRoute
   AuthenticatedCancelledInvoicesRoute: typeof AuthenticatedCancelledInvoicesRoute
-  AuthenticatedChallansRoute: typeof AuthenticatedChallansRoute
+  AuthenticatedChallansRoute: typeof AuthenticatedChallansRouteWithChildren
   AuthenticatedCustomerCreditsRoute: typeof AuthenticatedCustomerCreditsRoute
   AuthenticatedCustomersRoute: typeof AuthenticatedCustomersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -651,8 +771,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRouteWithChildren
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
+  AuthenticatedProformasRoute: typeof AuthenticatedProformasRouteWithChildren
   AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
-  AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRoute
+  AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRouteWithChildren
   AuthenticatedRejectedItemsRoute: typeof AuthenticatedRejectedItemsRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -662,7 +783,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBackupsRoute: AuthenticatedBackupsRoute,
   AuthenticatedCancelledInvoicesRoute: AuthenticatedCancelledInvoicesRoute,
-  AuthenticatedChallansRoute: AuthenticatedChallansRoute,
+  AuthenticatedChallansRoute: AuthenticatedChallansRouteWithChildren,
   AuthenticatedCustomerCreditsRoute: AuthenticatedCustomerCreditsRoute,
   AuthenticatedCustomersRoute: AuthenticatedCustomersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
@@ -670,8 +791,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRouteWithChildren,
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
+  AuthenticatedProformasRoute: AuthenticatedProformasRouteWithChildren,
   AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
-  AuthenticatedQuotationsRoute: AuthenticatedQuotationsRoute,
+  AuthenticatedQuotationsRoute: AuthenticatedQuotationsRouteWithChildren,
   AuthenticatedRejectedItemsRoute: AuthenticatedRejectedItemsRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
