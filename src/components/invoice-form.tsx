@@ -63,7 +63,10 @@ function emptyItem(sr: number): LineItem {
 function computeItem(it: LineItem) {
   const gross = it.quantity * it.unit_rate;
   const raw = Number(it.discount_value || 0);
-  const discount_amount = it.discount_mode === "flat" ? Math.min(Math.max(raw, 0), gross) : (gross * raw) / 100;
+  const discount_amount =
+    it.discount_mode === "flat"
+      ? Math.min(Math.max(raw, 0), gross)
+      : (gross * Math.min(Math.max(raw, 0), 100)) / 100;
   const discount_pct = gross > 0 ? (discount_amount / gross) * 100 : 0;
   const net = gross - discount_amount;
   const tax_amount = (net * it.tax_pct) / 100;
