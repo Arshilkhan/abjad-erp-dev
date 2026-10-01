@@ -9,7 +9,7 @@ import { Search, FileText, User, Package, Folder } from "lucide-react";
 import { folderSlug } from "@/lib/invoice-folders";
 
 type Hit =
-  | { kind: "invoice"; id: string; primary: string; secondary: string }
+  | { kind: "invoice"; id: string; primary: string; secondary: string; doc?: SalesDocumentKind }
   | { kind: "folder"; id: string; primary: string; secondary: string }
   | { kind: "customer"; id: string; primary: string; secondary: string }
   | { kind: "product"; id: string; primary: string; secondary: string };

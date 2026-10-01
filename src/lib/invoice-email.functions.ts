@@ -7,7 +7,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
  */
 export const sendInvoiceEmail = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { invoiceId: string }) => {
+  .inputValidator((input: { invoiceId: string; kind?: string }) => {
     if (!input?.invoiceId) throw new Error('invoiceId is required')
     return input
   })
@@ -19,12 +19,10 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
     await enforceRateLimit('invoice-email-doc', data.invoiceId, 5, 3600)
 
 
-    const { data: invoice, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', data.invoiceId)
-      .single()
-    if (error || !invoice) return { sent: false as const, reason: 'invoice_not_found' }
+    const { fetchSalesDocument } = await import('./sales-document-fetch.server')
+    const doc = await fetchSalesDocument(supabase, data.invoiceId, data.kind)
+    if (!doc) return { sent: false as const, reason: 'invoice_not_found' }
+    const { invoice, items, company } = doc
 
     let email: string | null = null
     let companyName: string | null = null
@@ -40,15 +38,6 @@ export const sendInvoiceEmail = createServerFn({ method: 'POST' })
       companyName = invoice.customer_name_snapshot || null
     }
     if (!email) return { sent: false as const, reason: 'no_email' }
-
-    const [{ data: items }, { data: company }] = await Promise.all([
-      supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', invoice.id)
-        .order('sr_no', { ascending: true }),
-      supabase.from('company_profile').select('*').limit(1).maybeSingle(),
-    ])
 
     // Build the PDF and attach it directly to the email
     const { buildInvoicePdf } = await import('./invoice-pdf-build.server')

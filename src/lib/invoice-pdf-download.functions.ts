@@ -7,28 +7,17 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
  */
 export const downloadInvoicePdf = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { invoiceId: string }) => {
+  .inputValidator((input: { invoiceId: string; kind?: string }) => {
     if (!input?.invoiceId) throw new Error('invoiceId is required')
     return input
   })
   .handler(async ({ data, context }) => {
     const { supabase } = context
 
-    const { data: invoice, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', data.invoiceId)
-      .single()
-    if (error || !invoice) throw new Error('Invoice not found')
-
-    const [{ data: items }, { data: company }] = await Promise.all([
-      supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', invoice.id)
-        .order('sr_no', { ascending: true }),
-      supabase.from('company_profile').select('*').limit(1).maybeSingle(),
-    ])
+    const { fetchSalesDocument } = await import('./sales-document-fetch.server')
+    const doc = await fetchSalesDocument(supabase, data.invoiceId, data.kind)
+    if (!doc) throw new Error('Document not found')
+    const { invoice, items, company } = doc
 
     const { buildInvoicePdf } = await import('./invoice-pdf-build.server')
     const pdfBytes = await buildInvoicePdf(invoice, items ?? [], company ?? null)
