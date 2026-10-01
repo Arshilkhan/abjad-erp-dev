@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { ChevronDown, ClipboardList, FileSpreadsheet, FileText, Plus, ShoppingCart, Truck } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Plus, ShoppingCart, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,

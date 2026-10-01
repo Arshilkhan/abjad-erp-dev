@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { NewPODialog } from "./purchases";
+import { NewPODialog } from "./purchases.index";
 
 export const Route = createFileRoute("/_authenticated/purchases/new")({
   head: () => ({
