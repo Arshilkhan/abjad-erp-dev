@@ -3,8 +3,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { FilePlus2, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { InvoiceTable } from "@/components/invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
@@ -37,7 +36,6 @@ function QuotationsPage() {
       <PageHeader
         title="Quotations"
         description="Quotations are stored separately from invoices."
-        actions={<Button asChild><Link to="/quotations/new"><FilePlus2 className="mr-1 h-4 w-4" /> New Quotation</Link></Button>}
       />
       <div className="relative mb-4 max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

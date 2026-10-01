@@ -34,6 +34,8 @@ import { Route as AuthenticatedChallansNewRouteImport } from './routes/_authenti
 import { Route as AuthenticatedInvoicesImportRouteImport } from './routes/_authenticated/invoices.import'
 import { Route as AuthenticatedInvoicesNewRouteImport } from './routes/_authenticated/invoices.new'
 import { Route as AuthenticatedProformasNewRouteImport } from './routes/_authenticated/proformas.new'
+import { Route as AuthenticatedPurchasesIndexRouteImport } from './routes/_authenticated/purchases.index'
+import { Route as AuthenticatedPurchasesNewRouteImport } from './routes/_authenticated/purchases.new'
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as ApiGoogleDriveCallbackRouteImport } from './routes/api/google-drive/callback'
 import { Route as ApiPublicBackupCronRouteImport } from './routes/api/public/backup-cron'
@@ -175,6 +177,18 @@ const AuthenticatedProformasNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedProformasRoute,
   } as any)
+const AuthenticatedPurchasesIndexRoute =
+  AuthenticatedPurchasesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPurchasesRoute,
+  } as any)
+const AuthenticatedPurchasesNewRoute =
+  AuthenticatedPurchasesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedPurchasesRoute,
+  } as any)
 const AuthenticatedQuotationsNewRoute =
   AuthenticatedQuotationsNewRouteImport.update({
     id: '/new',
@@ -241,7 +255,7 @@ export interface FileRoutesByFullPath {
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
   '/proformas': typeof AuthenticatedProformasRouteWithChildren
-  '/purchases': typeof AuthenticatedPurchasesRoute
+  '/purchases': typeof AuthenticatedPurchasesRouteWithChildren
   '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -251,9 +265,11 @@ export interface FileRoutesByFullPath {
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
+  '/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -276,7 +292,6 @@ export interface FileRoutesByTo {
   '/payments': typeof AuthenticatedPaymentsRoute
   '/products': typeof AuthenticatedProductsRoute
   '/proformas': typeof AuthenticatedProformasRouteWithChildren
-  '/purchases': typeof AuthenticatedPurchasesRoute
   '/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/reports': typeof AuthenticatedReportsRoute
@@ -286,9 +301,11 @@ export interface FileRoutesByTo {
   '/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
+  '/purchases': typeof AuthenticatedPurchasesIndexRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -313,7 +330,7 @@ export interface FileRoutesById {
   '/_authenticated/payments': typeof AuthenticatedPaymentsRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/proformas': typeof AuthenticatedProformasRouteWithChildren
-  '/_authenticated/purchases': typeof AuthenticatedPurchasesRoute
+  '/_authenticated/purchases': typeof AuthenticatedPurchasesRouteWithChildren
   '/_authenticated/quotations': typeof AuthenticatedQuotationsRouteWithChildren
   '/_authenticated/rejected-items': typeof AuthenticatedRejectedItemsRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
@@ -323,9 +340,11 @@ export interface FileRoutesById {
   '/_authenticated/invoices/import': typeof AuthenticatedInvoicesImportRoute
   '/_authenticated/invoices/new': typeof AuthenticatedInvoicesNewRoute
   '/_authenticated/proformas/new': typeof AuthenticatedProformasNewRoute
+  '/_authenticated/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
+  '/_authenticated/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/_authenticated/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -360,9 +379,11 @@ export interface FileRouteTypes {
     | '/invoices/import'
     | '/invoices/new'
     | '/proformas/new'
+    | '/purchases/new'
     | '/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
+    | '/purchases/'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -385,7 +406,6 @@ export interface FileRouteTypes {
     | '/payments'
     | '/products'
     | '/proformas'
-    | '/purchases'
     | '/quotations'
     | '/rejected-items'
     | '/reports'
@@ -395,9 +415,11 @@ export interface FileRouteTypes {
     | '/invoices/import'
     | '/invoices/new'
     | '/proformas/new'
+    | '/purchases/new'
     | '/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
+    | '/purchases'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -431,9 +453,11 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/import'
     | '/_authenticated/invoices/new'
     | '/_authenticated/proformas/new'
+    | '/_authenticated/purchases/new'
     | '/_authenticated/quotations/new'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
+    | '/_authenticated/purchases/'
     | '/_authenticated/invoices/$id/edit'
     | '/_authenticated/invoices/folder/$company'
     | '/lovable/email/auth/preview'
@@ -631,6 +655,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProformasNewRouteImport
       parentRoute: typeof AuthenticatedProformasRoute
     }
+    '/_authenticated/purchases/': {
+      id: '/_authenticated/purchases/'
+      path: '/'
+      fullPath: '/purchases/'
+      preLoaderRoute: typeof AuthenticatedPurchasesIndexRouteImport
+      parentRoute: typeof AuthenticatedPurchasesRoute
+    }
+    '/_authenticated/purchases/new': {
+      id: '/_authenticated/purchases/new'
+      path: '/new'
+      fullPath: '/purchases/new'
+      preLoaderRoute: typeof AuthenticatedPurchasesNewRouteImport
+      parentRoute: typeof AuthenticatedPurchasesRoute
+    }
     '/_authenticated/quotations/new': {
       id: '/_authenticated/quotations/new'
       path: '/new'
@@ -746,6 +784,22 @@ const AuthenticatedProformasRouteWithChildren =
     AuthenticatedProformasRouteChildren,
   )
 
+interface AuthenticatedPurchasesRouteChildren {
+  AuthenticatedPurchasesNewRoute: typeof AuthenticatedPurchasesNewRoute
+  AuthenticatedPurchasesIndexRoute: typeof AuthenticatedPurchasesIndexRoute
+}
+
+const AuthenticatedPurchasesRouteChildren: AuthenticatedPurchasesRouteChildren =
+  {
+    AuthenticatedPurchasesNewRoute: AuthenticatedPurchasesNewRoute,
+    AuthenticatedPurchasesIndexRoute: AuthenticatedPurchasesIndexRoute,
+  }
+
+const AuthenticatedPurchasesRouteWithChildren =
+  AuthenticatedPurchasesRoute._addFileChildren(
+    AuthenticatedPurchasesRouteChildren,
+  )
+
 interface AuthenticatedQuotationsRouteChildren {
   AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
 }
@@ -772,7 +826,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedProformasRoute: typeof AuthenticatedProformasRouteWithChildren
-  AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRoute
+  AuthenticatedPurchasesRoute: typeof AuthenticatedPurchasesRouteWithChildren
   AuthenticatedQuotationsRoute: typeof AuthenticatedQuotationsRouteWithChildren
   AuthenticatedRejectedItemsRoute: typeof AuthenticatedRejectedItemsRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
@@ -792,7 +846,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedProformasRoute: AuthenticatedProformasRouteWithChildren,
-  AuthenticatedPurchasesRoute: AuthenticatedPurchasesRoute,
+  AuthenticatedPurchasesRoute: AuthenticatedPurchasesRouteWithChildren,
   AuthenticatedQuotationsRoute: AuthenticatedQuotationsRouteWithChildren,
   AuthenticatedRejectedItemsRoute: AuthenticatedRejectedItemsRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,

@@ -6,8 +6,14 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-import { Plus } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Plus, ShoppingCart, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -37,10 +43,38 @@ function AuthedLayout() {
             <SidebarTrigger />
             <GlobalSearch />
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              {canAccess("invoices") && (
-                <Button asChild size="sm">
-                  <Link to="/invoices/new"><Plus className="mr-1 h-4 w-4" /> New Invoice</Link>
-                </Button>
+              {(canAccess("invoices") || canAccess("quotations") || canAccess("challans") || canAccess("purchases")) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" aria-label="Create document">
+                      <Plus className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Create</span>
+                      <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    {canAccess("invoices") && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/proformas/new"><FileText /> New Proforma</Link>
+                      </DropdownMenuItem>
+                    )}
+                    {canAccess("quotations") && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/quotations/new"><FileSpreadsheet /> New Quotation</Link>
+                      </DropdownMenuItem>
+                    )}
+                    {canAccess("challans") && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/challans/new"><Truck /> New Challan</Link>
+                      </DropdownMenuItem>
+                    )}
+                    {canAccess("purchases") && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/purchases/new"><ShoppingCart /> New PO</Link>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           </header>

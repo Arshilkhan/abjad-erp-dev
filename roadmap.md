@@ -9,3 +9,4 @@
 - [x] Add separate create/list/detail/edit flows for each document type
 - [x] Update PDF, email, search, reporting, and backup retrieval
 - [ ] Validate every document flow and provide live-database SQL
+- [x] Move Proforma, Quotation, Challan, and PO creation actions into the shared header
