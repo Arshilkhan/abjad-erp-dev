@@ -156,7 +156,6 @@ function VendorDialog({ open, onClose, vendor, onSaved }: { open: boolean; onClo
 
 function PurchaseOrdersTab() {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<any>(null);
   const { data: pos = [] } = useQuery({
     queryKey: ["purchase_orders"],
@@ -174,9 +173,6 @@ function PurchaseOrdersTab() {
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="mb-3 flex justify-end">
-          <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> New PO</Button>
-        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -202,7 +198,6 @@ function PurchaseOrdersTab() {
             ))}
           </TableBody>
         </Table>
-        <NewPODialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ["purchase_orders"] })} />
         <ViewPODialog po={viewing} onClose={() => setViewing(null)} onSent={() => qc.invalidateQueries({ queryKey: ["purchase_orders"] })} />
       </CardContent>
     </Card>
@@ -213,7 +208,7 @@ type POLine = { product_id: string | null; product_name: string; description: st
 
 const emptyLine = (): POLine => ({ product_id: null, product_name: "", description: "", hsn: "", qty: 1, rate: 0, tax_pct: 18 });
 
-function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+export function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-select"],

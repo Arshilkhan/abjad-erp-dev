@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { FilePlus2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InvoiceTable } from "@/components/invoice-table";
@@ -26,7 +25,7 @@ function ProformasPage() {
   const s = q.trim().toLowerCase();
   const rows = folders.flatMap((f) => f.rows).filter((r: any) => !s || [r.invoice_number, r.customer_name_snapshot].filter(Boolean).some((v) => String(v).toLowerCase().includes(s)));
   return <>
-    <PageHeader title="Proforma Invoices" description="Proforma invoices are stored separately from tax invoices." actions={<Button asChild><Link to="/proformas/new"><FilePlus2 className="mr-1 h-4 w-4" /> New Proforma</Link></Button>} />
+    <PageHeader title="Proforma Invoices" description="Proforma invoices are stored separately from tax invoices." />
     <div className="relative mb-4 max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-9 pl-9" placeholder="Search proforma invoices…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
     <Card><CardContent className="p-0"><InvoiceTable rows={rows} isLoading={isLoading} /></CardContent></Card>
   </>;
