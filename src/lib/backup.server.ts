@@ -41,6 +41,12 @@ async function fetchAll(table: string): Promise<Row[]> {
 const CSV_TABLES = [
   'invoices',
   'invoice_items',
+  'performa',
+  'performa_items',
+  'quotation',
+  'quotation_items',
+  'challan',
+  'challan_items',
   'customers',
   'products',
   'payments',
@@ -87,27 +93,33 @@ export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?
 
     // Invoice PDFs
     const { data: company } = await supabaseAdmin.from('company_profile').select('*').limit(1).maybeSingle()
-    const invoices = tableData['invoices'] ?? []
-    const itemsByInvoice = new Map<string, Row[]>()
-    for (const it of tableData['invoice_items'] ?? []) {
-      const list = itemsByInvoice.get(it['invoice_id']) ?? []
-      list.push(it)
-      itemsByInvoice.set(it['invoice_id'], list)
-    }
-
     let pdfCount = 0
-    for (const inv of invoices) {
-      const items = (itemsByInvoice.get(inv['id']) ?? []).sort(
-        (a, b) => Number(a['sr_no'] ?? 0) - Number(b['sr_no'] ?? 0),
-      )
-      try {
-        const bytes = await buildInvoicePdf(inv, items, (company as Row | null) ?? null)
-        const folder = safe(inv['customer_name_snapshot'], 'no-customer')
-        const name = safe(inv['invoice_number'] ?? inv['id'], String(inv['id']))
-        files[`invoices/${folder}/${name}.pdf`] = bytes
-        pdfCount++
-      } catch (e) {
-        console.error('[backup] pdf failed for', inv['id'], e)
+    const docSets = [
+      ['invoices', 'invoice_items', 'invoices'],
+      ['performa', 'performa_items', 'proformas'],
+      ['quotation', 'quotation_items', 'quotations'],
+      ['challan', 'challan_items', 'challans'],
+    ] as const
+    for (const [table, itemsTable, dir] of docSets) {
+      const itemsByDoc = new Map<string, Row[]>()
+      for (const it of tableData[itemsTable] ?? []) {
+        const list = itemsByDoc.get(it['invoice_id']) ?? []
+        list.push(it)
+        itemsByDoc.set(it['invoice_id'], list)
+      }
+      for (const inv of tableData[table] ?? []) {
+        const items = (itemsByDoc.get(inv['id']) ?? []).sort(
+          (a, b) => Number(a['sr_no'] ?? 0) - Number(b['sr_no'] ?? 0),
+        )
+        try {
+          const bytes = await buildInvoicePdf(inv, items, (company as Row | null) ?? null)
+          const folder = safe(inv['customer_name_snapshot'], 'no-customer')
+          const name = safe(inv['invoice_number'] ?? inv['id'], String(inv['id']))
+          files[`${dir}/${folder}/${name}.pdf`] = bytes
+          pdfCount++
+        } catch (e) {
+          console.error('[backup] pdf failed for', table, inv['id'], e)
+        }
       }
     }
 
