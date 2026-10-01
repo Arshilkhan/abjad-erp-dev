@@ -1,3 +1,4 @@
+import { isSalesDocumentKind, type SalesDocumentKind } from "@/lib/sales-documents";
 import { billNo } from "@/lib/format";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -8,7 +9,7 @@ import { Search, FileText, User, Package, Folder } from "lucide-react";
 import { folderSlug } from "@/lib/invoice-folders";
 
 type Hit =
-  | { kind: "invoice"; id: string; primary: string; secondary: string }
+  | { kind: "invoice"; id: string; primary: string; secondary: string; doc?: SalesDocumentKind }
   | { kind: "folder"; id: string; primary: string; secondary: string }
   | { kind: "customer"; id: string; primary: string; secondary: string }
   | { kind: "product"; id: string; primary: string; secondary: string };
@@ -23,7 +24,15 @@ export function GlobalSearch() {
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["gs-invoices"],
-    queryFn: async () => (await supabase.from("invoices").select("id, invoice_number, customer_name_snapshot, invoice_type, po_number, challan_number, status").order("created_at", { ascending: false }).limit(200)).data ?? [],
+    queryFn: async () => {
+      const cols = "id, invoice_number, customer_name_snapshot, invoice_type, po_number, challan_number, status";
+      const res = await Promise.all(
+        (["invoices", "performa", "quotation", "challan"] as const).map((t) =>
+          (supabase.from(t as "invoices") as any).select(cols).order("created_at", { ascending: false }).limit(100),
+        ),
+      );
+      return res.flatMap((r: any) => r.data ?? []);
+    },
   });
   const { data: customers = [] } = useQuery({
     queryKey: ["gs-customers"],
@@ -47,6 +56,7 @@ export function GlobalSearch() {
       .map((r: any) => ({
         kind: "invoice",
         id: r.id,
+        doc: isSalesDocumentKind(String(r.invoice_type)) ? r.invoice_type : "tax_invoice",
         primary: billNo(r.invoice_number),
         secondary: [r.customer_name_snapshot, String(r.invoice_type ?? "").replace(/_/g, " ")].filter(Boolean).join(" • "),
       }));
@@ -85,7 +95,7 @@ export function GlobalSearch() {
   const go = (hit: Hit) => {
     setOpen(false);
     setQ("");
-    if (hit.kind === "invoice") nav({ to: "/invoices/$id", params: { id: hit.id } });
+    if (hit.kind === "invoice") nav({ to: "/invoices/$id", params: { id: hit.id }, search: { kind: hit.doc ?? "tax_invoice" } });
     else if (hit.kind === "folder") nav({ to: "/invoices/folder/$company", params: { company: hit.id } });
     else if (hit.kind === "customer") nav({ to: "/customers" });
     else if (hit.kind === "product") nav({ to: "/products" });

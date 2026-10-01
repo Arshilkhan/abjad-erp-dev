@@ -1,3 +1,4 @@
+import { salesDocumentConfig, type SalesDocumentKind } from "@/lib/sales-documents";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +75,19 @@ function computeItem(it: LineItem) {
   return { discount_amount, discount_pct, tax_amount, total_amount, net };
 }
 
-export function InvoiceForm({ editId, importMode }: { editId?: string; importMode?: boolean }) {
+export function InvoiceForm({
+  editId,
+  importMode,
+  documentType = "tax_invoice",
+}: {
+  editId?: string;
+  importMode?: boolean;
+  documentType?: SalesDocumentKind;
+}) {
+  const docCfg = salesDocumentConfig(documentType);
+  const docTable = docCfg.table as "invoices";
+  const docItemsTable = docCfg.itemsTable as "invoice_items";
+  const isTaxInvoice = documentType === "tax_invoice";
   const nav = useNavigate();
   const router = useRouter();
   const { user } = useAuth();
@@ -91,7 +104,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
   const [custEmail, setCustEmail] = useState("");
   const [custGst, setCustGst] = useState("");
   const [productTexts, setProductTexts] = useState<string[]>([""]);
-  const [invoiceType, setInvoiceType] = useState<string>("tax_invoice");
+  const [invoiceType, setInvoiceType] = useState<string>(documentType);
   const [challanNumber, setChallanNumber] = useState("");
   const [challanDates, setChallanDates] = useState<string[]>([]);
   const [challanDateInput, setChallanDateInput] = useState("");
@@ -152,12 +165,12 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
 
   // Load existing invoice for edit
   const { data: existing } = useQuery({
-    queryKey: ["invoice-edit", editId],
+    queryKey: ["invoice-edit", documentType, editId],
     enabled: isEdit,
     queryFn: async () => {
       const [inv, its] = await Promise.all([
-        supabase.from("invoices").select("*").eq("id", editId!).single(),
-        supabase.from("invoice_items").select("*").eq("invoice_id", editId!).order("sr_no"),
+        supabase.from(docTable).select("*").eq("id", editId!).single(),
+        supabase.from(docItemsTable).select("*").eq("invoice_id", editId!).order("sr_no"),
       ]);
       if (inv.error) throw inv.error;
       return { invoice: inv.data, items: its.data ?? [] };
@@ -169,7 +182,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     const inv = existing.invoice;
     setCustomerId(inv.customer_id ?? "");
     setCustomerText(inv.customer_name_snapshot ?? "");
-    setInvoiceType(inv.invoice_type);
+    setInvoiceType(documentType);
     setInvoiceDate(inv.invoice_date);
     setChallanNumber(inv.challan_number ?? "");
     setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));
@@ -417,7 +430,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
       let invNumber: string;
       if (isEdit) {
         const { data: inv, error } = await supabase
-          .from("invoices")
+          .from(docTable)
           .update(payload)
           .eq("id", editId!)
           .select()
@@ -425,7 +438,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         if (error) throw error;
         invId = inv.id;
         invNumber = inv.invoice_number;
-        const { error: dErr } = await supabase.from("invoice_items").delete().eq("invoice_id", invId);
+        const { error: dErr } = await supabase.from(docItemsTable).delete().eq("invoice_id", invId);
         if (dErr) throw dErr;
       } else {
         // Invoice number format: <sequence>-<company-name-slug>, e.g. 1-fluid-tech
@@ -435,9 +448,9 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/^-+|-+$/g, "") || "customer";
 
-        const { data: existing } = await supabase.from("invoices").select("invoice_number");
+        const { data: existing } = await supabase.from(docTable).select("invoice_number");
         // Delivery challans never consume a bill number; they get their own "dc-" reference.
-        const seqRe = isChallan ? /^dc-(\d+)-/i : /^(\d+)-/;
+        const seqRe = docCfg.prefix ? new RegExp(`^${docCfg.prefix}(\\d+)-`, "i") : /^(\d+)-/;
         let seq = 0;
         for (const row of existing ?? []) {
           const m = seqRe.exec(row.invoice_number ?? "");
@@ -448,13 +461,13 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         let lastErr: any = null;
         for (let attempt = 0; attempt < 25; attempt++) {
           seq += 1;
-          const invoice_number = isChallan ? `dc-${seq}-${slug}` : `${seq}-${slug}`;
+          const invoice_number = `${docCfg.prefix}${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
           if (importMode || pdfImported) {
             insertPayload.is_imported = true;
             insertPayload.import_source = "manual";
           }
-          const { data: inv, error } = await supabase.from("invoices").insert(insertPayload).select().single();
+          const { data: inv, error } = await supabase.from(docTable).insert(insertPayload).select().single();
           if (!error) {
             inserted = inv;
             lastErr = null;
@@ -487,7 +500,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
           total_amount: c.total_amount,
         };
       });
-      const { error: iErr } = await supabase.from("invoice_items").insert(rows);
+      const { error: iErr } = await supabase.from(docItemsTable).insert(rows);
       if (iErr) throw iErr;
 
       return { id: invId, invoice_number: invNumber };
@@ -495,21 +508,23 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
     onSuccess: async (inv, status) => {
       qc.invalidateQueries({ queryKey: ["customers-list"] });
       qc.invalidateQueries({ queryKey: ["products-list"] });
-      if (isEdit) {
+      if (!isTaxInvoice) {
+        // History is a tax-invoice-only feature.
+      } else if (isEdit) {
         await logInvoiceEvent(inv.id, "edited", "Invoice edited");
-       } else if (importMode || pdfImported) {
+      } else if (importMode || pdfImported) {
         await logInvoiceEvent(inv.id, "imported", `Imported invoice ${inv.invoice_number}`);
       } else {
         await logInvoiceEvent(inv.id, "created", `Created invoice ${inv.invoice_number}`);
       }
-      toast.success(`Invoice ${inv.invoice_number} ${isEdit ? "updated" : importMode ? "imported" : "created"}`);
+      toast.success(`${docCfg.label} ${inv.invoice_number} ${isEdit ? "updated" : importMode ? "imported" : "created"}`);
 
       if (status === "sent") {
         try {
-          const res: any = await sendEmail({ data: { invoiceId: inv.id } });
+          const res: any = await sendEmail({ data: { invoiceId: inv.id, kind: documentType } });
           if (res?.sent) {
             toast.success(`Invoice emailed to ${res.email}`);
-            await logInvoiceEvent(inv.id, "sent", `Invoice emailed to ${res.email}`);
+            if (isTaxInvoice) await logInvoiceEvent(inv.id, "sent", `Invoice emailed to ${res.email}`);
           } else if (res?.reason === "no_email") {
             toast.info("Saved. No customer email on file, so nothing was sent.");
           } else if (res?.reason === "recipient_suppressed") {
@@ -520,7 +535,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
         }
       }
 
-      nav({ to: "/invoices/$id", params: { id: inv.id } });
+      nav({ to: "/invoices/$id", params: { id: inv.id }, search: { kind: documentType } });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -725,17 +740,7 @@ export function InvoiceForm({ editId, importMode }: { editId?: string; importMod
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
-              <Select value={invoiceType} onValueChange={setInvoiceType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tax_invoice">Tax Invoice</SelectItem>
-                  <SelectItem value="proforma">Proforma</SelectItem>
-                  <SelectItem value="quotation">Quotation</SelectItem>
-                  <SelectItem value="delivery_challan">Delivery Challan</SelectItem>
-                </SelectContent>
-              </Select>
+<Input value={docCfg.label} readOnly disabled />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">{isChallan ? "Delivery Challan Date" : "Date"}</Label>

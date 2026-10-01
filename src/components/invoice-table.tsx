@@ -1,4 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import { isSalesDocumentKind, type SalesDocumentKind } from "@/lib/sales-documents";
+
+const docKind = (r: any): SalesDocumentKind => {
+  const t = String(r?.invoice_type ?? "");
+  return isSalesDocumentKind(t) ? t : "tax_invoice";
+};
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -146,7 +152,7 @@ const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
                 {sortedRows.map((r: any) => (
                     <TableRow key={r.id} className={`hover:bg-muted/40 ${r.status === "cancelled" ? "opacity-60" : ""}`}>
                         <TableCell className="font-mono text-sm font-medium">
-                            <Link to="/invoices/$id" params={{ id: r.id }} className="text-primary hover:underline">
+                            <Link to="/invoices/$id" params={{ id: r.id }} search={{ kind: docKind(r) }} className="text-primary hover:underline">
                                 {billNo(r.invoice_number) || (r.challan_number ? `CH ${r.challan_number}` : "—")}
                             </Link>
                             {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
@@ -161,7 +167,7 @@ const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
                                 {r.status !== "cancelled" && (
                                     <>
                                         <Button size="icon" variant="ghost" asChild title="Edit">
-                                            <Link to="/invoices/$id/edit" params={{ id: r.id }}><Pencil className="h-3.5 w-3.5" /></Link>
+                                            <Link to="/invoices/$id/edit" params={{ id: r.id }} search={{ kind: docKind(r) }}><Pencil className="h-3.5 w-3.5" /></Link>
                                         </Button>
                                         <CancelInvoiceDialog
                                             invoiceId={r.id}

@@ -15,9 +15,14 @@ import { Badge } from "@/components/ui/badge";
 import { useServerFn } from "@tanstack/react-start";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf-download.functions";
 import { useState } from "react";
+import { isSalesDocumentKind, salesDocumentConfig, type SalesDocumentKind } from "@/lib/sales-documents";
 
 export const Route = createFileRoute("/_authenticated/invoices/$id/")({
-  head: () => ({ meta: [{ title: "Invoice — ABJAD ERP" }] }),
+  validateSearch: (search: Record<string, unknown>): { kind?: SalesDocumentKind } => {
+    const k = typeof search.kind === "string" ? search.kind : "";
+    return isSalesDocumentKind(k) ? { kind: k } : {};
+  },
+  head: () => ({ meta: [{ title: "Document — ABJAD ERP" }] }),
   component: InvoiceDetail,
 });
 
@@ -32,6 +37,11 @@ const typeLabels: Record<string, string> = {
 
 function InvoiceDetail() {
   const { id } = Route.useParams();
+  const kind: SalesDocumentKind = Route.useSearch().kind ?? "tax_invoice";
+  const cfg = salesDocumentConfig(kind);
+  const docTable = cfg.table as "invoices";
+  const itemsTable = cfg.itemsTable as "invoice_items";
+  const isTax = kind === "tax_invoice";
   const nav = useNavigate();
   const router = useRouter();
   const qc = useQueryClient();
@@ -41,7 +51,7 @@ function InvoiceDetail() {
   const downloadPdf = async () => {
     setDownloading(true);
     try {
-      const res: any = await getPdf({ data: { invoiceId: id } });
+      const res: any = await getPdf({ data: { invoiceId: id, kind } });
       const bin = atob(res.base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -59,11 +69,11 @@ function InvoiceDetail() {
   };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["invoice", id],
+    queryKey: ["invoice", kind, id],
     queryFn: async () => {
       const [inv, items, company] = await Promise.all([
-        supabase.from("invoices").select("*").eq("id", id).single(),
-        supabase.from("invoice_items").select("*").eq("invoice_id", id).order("sr_no"),
+        supabase.from(docTable).select("*").eq("id", id).single(),
+        supabase.from(itemsTable).select("*").eq("invoice_id", id).order("sr_no"),
         supabase.from("company_profile").select("*").limit(1).maybeSingle(),
       ]);
       if (inv.error) throw inv.error;
@@ -83,7 +93,7 @@ function InvoiceDetail() {
           netValue += net; itemDiscounts += discount; taxTotal += tax;
           const lineTotal = net + tax;
           if (Math.abs(Number(it.total_amount ?? 0) - lineTotal) > 0.01) {
-            await supabase.from("invoice_items").update({
+            await supabase.from(itemsTable).update({
               accepted_quantity: accepted,
               discount_amount: discount,
               tax_amount: tax,
@@ -112,7 +122,7 @@ function InvoiceDetail() {
         };
         if (Math.abs(Number(invoice.subtotal ?? 0) - subtotal) > 0.01 ||
             Math.abs(Number(invoice.grand_total ?? 0) - grand) > 0.01) {
-          await supabase.from("invoices").update(next).eq("id", id);
+          await supabase.from(docTable).update(next).eq("id", id);
           Object.assign(invoice, next);
         }
       }
@@ -129,7 +139,7 @@ function InvoiceDetail() {
   const isCancelled = invoice.status === "cancelled";
 
   const duplicate = async () => {
-    const { data: newInv, error } = await supabase.from("invoices").insert({
+    const { data: newInv, error } = await supabase.from(docTable).insert({
       invoice_number: `${invoice.invoice_number}-COPY-${Date.now().toString().slice(-4)}`,
       invoice_type: invoice.invoice_type,
       invoice_date: new Date().toISOString().slice(0, 10),
@@ -153,24 +163,32 @@ function InvoiceDetail() {
     }).select("id").single();
     if (error) return toast.error(error.message);
     if (items.length && newInv) {
-      await supabase.from("invoice_items").insert(items.map((it: any) => ({
+      await supabase.from(itemsTable).insert(items.map((it: any) => ({
         invoice_id: newInv.id, sr_no: it.sr_no, product_id: it.product_id, hsn_code: it.hsn_code,
         description: it.description, quantity: it.quantity, uom: it.uom, unit_rate: it.unit_rate,
         discount_pct: it.discount_pct, discount_amount: it.discount_amount, tax_pct: it.tax_pct,
         tax_amount: it.tax_amount, total_amount: it.total_amount,
       })));
     }
-    if (newInv) await logInvoiceEvent(newInv.id, "duplicated", `Duplicated from ${invoice.invoice_number}`);
-    toast.success("Invoice duplicated as draft");
-    nav({ to: "/invoices/$id", params: { id: newInv!.id } });
+    if (newInv && isTax) await logInvoiceEvent(newInv.id, "duplicated", `Duplicated from ${invoice.invoice_number}`);
+    toast.success(`${cfg.label} duplicated as draft`);
+    nav({ to: "/invoices/$id", params: { id: newInv!.id }, search: { kind } });
   };
 
   const markSent = async () => {
-    const { error } = await supabase.from("invoices").update({ status: "sent" }).eq("id", id);
+    const { error } = await supabase.from(docTable).update({ status: "sent" }).eq("id", id);
     if (error) return toast.error(error.message);
-    await logInvoiceEvent(id, "sent", "Marked as sent");
+    if (isTax) await logInvoiceEvent(id, "sent", "Marked as sent");
     toast.success("Marked as sent");
-    qc.invalidateQueries({ queryKey: ["invoice", id] });
+    qc.invalidateQueries({ queryKey: ["invoice", kind, id] });
+  };
+
+  const cancelOther = async () => {
+    if (!window.confirm(`Cancel this ${cfg.label.toLowerCase()}?`)) return;
+    const { error } = await supabase.from(docTable).update({ status: "cancelled" }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(`${cfg.label} cancelled`);
+    qc.invalidateQueries({ queryKey: ["invoice", kind, id] });
   };
 
   return (
@@ -188,15 +206,18 @@ function InvoiceDetail() {
           )}
           {!isCancelled && (
             <Button variant="outline" size="sm" asChild>
-              <Link to="/invoices/$id/edit" params={{ id }}><Pencil className="mr-1 h-4 w-4" /> Edit</Link>
+              <Link to="/invoices/$id/edit" params={{ id }} search={{ kind }}><Pencil className="mr-1 h-4 w-4" /> Edit</Link>
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={duplicate}><Copy className="mr-1 h-4 w-4" /> Duplicate</Button>
-          {!isCancelled && (
+          {!isCancelled && !isTax && (
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={cancelOther}><Ban className="mr-1 h-4 w-4" /> Cancel</Button>
+          )}
+          {!isCancelled && isTax && (
             <CancelInvoiceDialog
               invoiceId={id}
               invoiceNumber={billNo(invoice.invoice_number)}
-              onCancelled={() => qc.invalidateQueries({ queryKey: ["invoice", id] })}
+              onCancelled={() => qc.invalidateQueries({ queryKey: ["invoice", kind, id] })}
               trigger={
                 <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"><Ban className="mr-1 h-4 w-4" /> Cancel Invoice</Button>
               }
@@ -208,9 +229,9 @@ function InvoiceDetail() {
 
       <Tabs defaultValue="invoice" className="print:contents">
         <TabsList className="print:hidden">
-          <TabsTrigger value="invoice">Invoice</TabsTrigger>
-          <TabsTrigger value="rejected"><PackageX className="mr-1 h-3.5 w-3.5" /> Rejected Items</TabsTrigger>
-          <TabsTrigger value="history"><HistoryIcon className="mr-1 h-3.5 w-3.5" /> History</TabsTrigger>
+          <TabsTrigger value="invoice">{isTax ? "Invoice" : cfg.label}</TabsTrigger>
+          {isTax && <TabsTrigger value="rejected"><PackageX className="mr-1 h-3.5 w-3.5" /> Rejected Items</TabsTrigger>}
+          {isTax && <TabsTrigger value="history"><HistoryIcon className="mr-1 h-3.5 w-3.5" /> History</TabsTrigger>}
         </TabsList>
         <TabsContent value="invoice" className="print:block">
           <div className={`print-page relative mx-auto bg-white text-black shadow-sm print:shadow-none ${isCancelled ? "cancelled-invoice" : ""}`} style={{ maxWidth: "210mm", padding: "10mm" }}>
