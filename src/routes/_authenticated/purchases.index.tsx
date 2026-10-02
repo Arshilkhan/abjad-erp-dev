@@ -357,9 +357,9 @@ export function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader><DialogTitle>New Purchase Order</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 [&>div]:min-w-0">
           <div><Label>PO Number *</Label><Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="PO-2026-001" /></div>
           <div><Label>PO Date</Label><Input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} /></div>
           <div><Label>Expected</Label><Input type="date" value={expected} onChange={(e) => setExpected(e.target.value)} /></div>
@@ -394,7 +394,7 @@ export function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose
           <div><Label>State</Label><Input value={vendor.state ?? ""} onChange={(e) => setV("state", e.target.value)} /></div>
           <div><Label>State Code</Label><Input value={vendor.state_code ?? ""} onChange={(e) => setV("state_code", e.target.value)} /></div>
           <div><Label>Payment Terms</Label><Input value={vendor.payment_terms ?? ""} onChange={(e) => setV("payment_terms", e.target.value)} /></div>
-          <div className="col-span-4"><Label>Address</Label><Textarea rows={2} value={vendor.address ?? ""} onChange={(e) => setV("address", e.target.value)} /></div>
+            <div className="col-span-2 sm:col-span-4"><Label>Address</Label><Textarea rows={2} value={vendor.address ?? ""} onChange={(e) => setV("address", e.target.value)} /></div>
         </div>
 
 
@@ -404,7 +404,7 @@ export function NewPODialog({ open, onClose, onSaved }: { open: boolean; onClose
             <Button type="button" size="sm" variant="outline" onClick={addLine}><Plus className="mr-1 h-3 w-3" /> Add Line</Button>
           </div>
           <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[700px] text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
                 <tr>
                   <th className="p-2 text-left">Product Name</th>
