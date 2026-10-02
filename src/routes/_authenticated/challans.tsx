@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,8 +18,13 @@ export const Route = createFileRoute("/_authenticated/challans")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ChallansPage,
+  component: ChallansLayout,
 });
+
+function ChallansLayout() {
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  return path === "/challans" ? <ChallansPage /> : <Outlet />;
+}
 
 function ChallansPage() {
   const { folders, isLoading } = useInvoiceFolders({ table: "challan", kind: "delivery_challan" });
