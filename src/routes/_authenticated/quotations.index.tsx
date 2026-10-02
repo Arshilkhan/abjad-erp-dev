@@ -7,7 +7,7 @@ import { Search } from "lucide-react";
 import { InvoiceTable } from "@/components/invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
-export const Route = createFileRoute("/_authenticated/quotations")({
+export const Route = createFileRoute("/_authenticated/quotations/")({
   head: () => ({
     meta: [
       { title: "Quotations — ABJAD ERP" },

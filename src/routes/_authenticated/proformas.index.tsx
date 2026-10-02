@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { InvoiceTable } from "@/components/invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
-export const Route = createFileRoute("/_authenticated/proformas")({
+export const Route = createFileRoute("/_authenticated/proformas/")({
   head: () => ({ meta: [
     { title: "Proforma Invoices — ABJAD ERP" },
     { name: "description", content: "Create and manage customer proforma invoices." },
