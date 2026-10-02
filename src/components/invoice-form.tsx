@@ -622,17 +622,19 @@ export function InvoiceForm({
       <PageHeader
         title={
           isEdit
-            ? `Edit Invoice${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
+            ? `Edit ${docCfg.label}${existing?.invoice?.invoice_number ? ` — ${existing.invoice.invoice_number}` : ""}`
             : importMode
               ? "Import Invoice"
-              : "New Invoice"
+              : `New ${docCfg.label}`
         }
         description={
           importMode
             ? "Record an invoice that was created outside the software. It'll be tagged 'Imported' and behaves like a normal invoice."
             : isEdit
-              ? "Update customer, line items, taxes, charges, delivery and payment details."
-              : "Create a GST tax invoice. Field visibility and mandatory rules follow your Settings."
+              ? `Update ${docCfg.label.toLowerCase()} details.`
+              : isTaxInvoice
+                ? "Create a GST tax invoice. Field visibility and mandatory rules follow your Settings."
+                : `Create a ${docCfg.label.toLowerCase()}.`
         }
         actions={
           <div className="flex gap-2">

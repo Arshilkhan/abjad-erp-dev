@@ -10,4 +10,4 @@
 - [x] Update PDF, email, search, reporting, and backup retrieval
 - [ ] Validate every document flow and provide live-database SQL
 - [x] Move Proforma, Quotation, Challan, and PO creation actions into the shared header
-- [ ] Make every header create action open its form directly and include New Invoice
+- [x] Make every header create action open its form directly and include New Invoice
