@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -16,13 +16,8 @@ export const Route = createFileRoute("/_authenticated/proformas/")({
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),
-  component: ProformasLayout,
+  component: ProformasPage,
 });
-
-function ProformasLayout() {
-  const path = useRouterState({ select: (r) => r.location.pathname });
-  return path === "/proformas" ? <ProformasPage /> : <Outlet />;
-}
 
 function ProformasPage() {
   const { folders, isLoading } = useInvoiceFolders({ table: "performa", kind: "proforma" });
