@@ -55,6 +55,11 @@ function AuthedLayout() {
                   <DropdownMenuContent align="end" className="w-52">
                     {canAccess("invoices") && (
                       <DropdownMenuItem asChild>
+                        <Link to="/invoices/new"><FileText /> New Invoice</Link>
+                      </DropdownMenuItem>
+                    )}
+                    {canAccess("invoices") && (
+                      <DropdownMenuItem asChild>
                         <Link to="/proformas/new"><FileText /> New Proforma</Link>
                       </DropdownMenuItem>
                     )}
