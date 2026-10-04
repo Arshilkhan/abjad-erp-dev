@@ -306,6 +306,76 @@ function InvoiceDetail() {
   );
 }
 
+function PrintableChallan({ invoice, items, company }: { invoice: any; items: any[]; company: any }) {
+  const c = company ?? {};
+  const border = "border border-black";
+  const dates = Array.isArray(invoice.challan_dates) && invoice.challan_dates.length
+    ? invoice.challan_dates.map((date: string) => formatDate(date)).join(", ")
+    : formatDate(invoice.challan_date ?? invoice.invoice_date);
+
+  return (
+    <div className="text-[11px] text-black" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+      <div className="flex items-start justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-xl font-bold">{c.name ?? "ABJAD ENGINEERING WORKS"}</h1>
+          <div>{[c.address, c.city, c.state, c.pincode].filter(Boolean).join(", ")}</div>
+          <div>GSTIN: {c.gst_number ?? "—"}</div>
+          <div>{[c.mobile, c.alt_mobile, c.email].filter(Boolean).join(" • ")}</div>
+        </div>
+        <img src={aewLogo} alt="AEW logo" className="h-20 w-auto object-contain" />
+      </div>
+      <h2 className="bg-primary py-2 text-center text-xl font-bold text-primary-foreground">DELIVERY CHALLAN</h2>
+
+      <div className="grid grid-cols-2">
+        <section className={`${border} p-2`}>
+          <h3 className="font-bold">DOCUMENT DETAILS</h3>
+          <div>Challan No.: {invoice.challan_number ?? invoice.invoice_number}</div>
+          <div>Date: {dates}</div>
+          <div>Reason: {invoice.movement_reason ?? "—"}</div>
+        </section>
+        <section className={`${border} p-2`}>
+          <h3 className="font-bold">CONSIGNEE</h3>
+          <div>{invoice.customer_name_snapshot ?? "—"}</div>
+          <div className="whitespace-pre-line">{invoice.customer_address_snapshot ?? "—"}</div>
+          <div>GSTIN: {invoice.customer_gst_snapshot ?? "—"}</div>
+        </section>
+      </div>
+      <section className={`${border} p-2`}>
+        <h3 className="font-bold">TRANSPORT</h3>
+        <div className="grid grid-cols-3 gap-2">
+          <div>Transporter: {invoice.transporter_name ?? "—"}</div>
+          <div>Dispatch: {invoice.place_of_dispatch ?? "—"}</div>
+          <div>Delivery: {invoice.place_of_delivery ?? "—"}</div>
+        </div>
+      </section>
+      <table className="w-full border-collapse">
+        <thead><tr>
+          {['Sr. No.', 'Item', 'HSN', 'Description', 'Quantity', 'UOM', 'Serial / Batch'].map((head) => (
+            <th key={head} className={`${border} p-1 text-left`}>{head}</th>
+          ))}
+        </tr></thead>
+        <tbody>{items.map((item) => (
+          <tr key={item.id}>
+            <td className={`${border} p-1`}>{item.sr_no}</td>
+            <td className={`${border} p-1`}>{item.description}</td>
+            <td className={`${border} p-1`}>{item.hsn_code ?? ""}</td>
+            <td className={`${border} p-1`}>{item.description}</td>
+            <td className={`${border} p-1 text-right`}>{Number(item.quantity)}</td>
+            <td className={`${border} p-1`}>{item.uom ?? "NOS"}</td>
+            <td className={`${border} p-1`}>{item.serial_batch_number ?? ""}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {invoice.notes && <div className={`${border} p-2`}>Notes: {invoice.notes}</div>}
+      <section className={`${border} mt-4 p-3`}>
+        <h3 className="font-bold">RECEIVER ACKNOWLEDGEMENT</h3>
+        <p>Received the above goods in good condition.</p>
+        <div className="mt-10 grid grid-cols-4 gap-4"><span>Receiver Name</span><span>Signature</span><span>Date</span><span>Company Stamp</span></div>
+      </section>
+    </div>
+  );
+}
+
 function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any; items: any[]; company: any; typeLabel: string }) {
   const c = company ?? {};
   const cellBorder = "border border-black";
