@@ -82,7 +82,7 @@ function InvoiceDetail() {
 
       // Self-heal stored snapshots for invoices whose rejections were saved
       // before totals were recalculated (only grand_total was adjusted then).
-      if (invoice && rows.some((it) => Number(it.rejected_quantity ?? 0) > 0)) {
+      if (isTax && invoice && rows.some((it) => Number(it.rejected_quantity ?? 0) > 0)) {
         let netValue = 0, itemDiscounts = 0, taxTotal = 0;
         for (const it of rows) {
           const accepted = Number(it.quantity) - Number(it.rejected_quantity ?? 0);
@@ -139,7 +139,7 @@ function InvoiceDetail() {
   const isCancelled = invoice.status === "cancelled";
 
   const duplicate = async () => {
-    const { data: newInv, error } = await supabase.from(docTable).insert({
+    const duplicatePayload: any = {
       invoice_number: `${invoice.invoice_number}-COPY-${Date.now().toString().slice(-4)}`,
       invoice_type: invoice.invoice_type,
       invoice_date: new Date().toISOString().slice(0, 10),
@@ -147,28 +147,67 @@ function InvoiceDetail() {
       customer_name_snapshot: invoice.customer_name_snapshot,
       customer_gst_snapshot: invoice.customer_gst_snapshot,
       customer_address_snapshot: invoice.customer_address_snapshot,
-      is_igst: invoice.is_igst,
-      net_value: invoice.net_value,
-      discount_amount: invoice.discount_amount,
-      freight: invoice.freight,
-      packing_charges: invoice.packing_charges,
-      subtotal: invoice.subtotal,
-      sgst_amount: invoice.sgst_amount,
-      cgst_amount: invoice.cgst_amount,
-      igst_amount: invoice.igst_amount,
-      round_off: invoice.round_off,
-      grand_total: invoice.grand_total,
-      amount_in_words: invoice.amount_in_words,
+      work_order_number: invoice.work_order_number,
+      delivery_mode: invoice.delivery_mode,
+      contact_person: invoice.contact_person,
+      contact_mobile: invoice.contact_mobile,
+      notes: invoice.notes,
       status: "draft",
-    }).select("id").single();
+    };
+    if (kind === "delivery_challan") {
+      Object.assign(duplicatePayload, {
+        challan_number: invoice.challan_number,
+        challan_date: invoice.challan_date,
+        challan_dates: invoice.challan_dates,
+        movement_reason: invoice.movement_reason,
+        transporter_name: invoice.transporter_name,
+        place_of_dispatch: invoice.place_of_dispatch,
+        place_of_delivery: invoice.place_of_delivery,
+      });
+    } else {
+      Object.assign(duplicatePayload, {
+        is_igst: invoice.is_igst,
+        net_value: invoice.net_value,
+        discount_amount: invoice.discount_amount,
+        freight: invoice.freight,
+        packing_charges: invoice.packing_charges,
+        other_charges: invoice.other_charges,
+        transportation_charges: invoice.transportation_charges,
+        delivery_charges: invoice.delivery_charges,
+        subtotal: invoice.subtotal,
+        sgst_amount: invoice.sgst_amount,
+        cgst_amount: invoice.cgst_amount,
+        igst_amount: invoice.igst_amount,
+        round_off: invoice.round_off,
+        grand_total: invoice.grand_total,
+        amount_in_words: invoice.amount_in_words,
+        payment_terms: invoice.payment_terms,
+      });
+    }
+    const { data: newInv, error } = await supabase.from(docTable).insert(duplicatePayload).select("id").single();
     if (error) return toast.error(error.message);
     if (items.length && newInv) {
-      await supabase.from(itemsTable).insert(items.map((it: any) => ({
-        invoice_id: newInv.id, sr_no: it.sr_no, product_id: it.product_id, hsn_code: it.hsn_code,
-        description: it.description, quantity: it.quantity, uom: it.uom, unit_rate: it.unit_rate,
-        discount_pct: it.discount_pct, discount_amount: it.discount_amount, tax_pct: it.tax_pct,
-        tax_amount: it.tax_amount, total_amount: it.total_amount,
-      })));
+      await supabase.from(itemsTable).insert(items.map((it: any) => {
+        const base = {
+          invoice_id: newInv.id,
+          sr_no: it.sr_no,
+          product_id: it.product_id,
+          hsn_code: it.hsn_code,
+          description: it.description,
+          quantity: it.quantity,
+          uom: it.uom,
+          serial_batch_number: it.serial_batch_number,
+        };
+        return kind === "delivery_challan" ? base : {
+          ...base,
+          unit_rate: it.unit_rate,
+          discount_pct: it.discount_pct,
+          discount_amount: it.discount_amount,
+          tax_pct: it.tax_pct,
+          tax_amount: it.tax_amount,
+          total_amount: it.total_amount,
+        };
+      }));
     }
     if (newInv && isTax) await logInvoiceEvent(newInv.id, "duplicated", `Duplicated from ${invoice.invoice_number}`);
     toast.success(`${cfg.label} duplicated as draft`);
@@ -200,7 +239,7 @@ function InvoiceDetail() {
         </Button>
         <div className="flex flex-wrap gap-2">
           {isCancelled && <Badge variant="outline" className="border-destructive bg-destructive/10 text-destructive uppercase">Cancelled</Badge>}
-          {invoice.is_imported && <Badge variant="outline" className="uppercase">Imported</Badge>}
+          {isTax && invoice.is_imported && <Badge variant="outline" className="uppercase">Imported</Badge>}
           {invoice.status === "draft" && !isCancelled && (
             <Button variant="outline" size="sm" onClick={markSent}><Send className="mr-1 h-4 w-4" /> Mark Sent</Button>
           )}
@@ -240,7 +279,11 @@ function InvoiceDetail() {
                 <span className="select-none text-[140px] font-extrabold uppercase tracking-widest opacity-20" style={{ color: "#dc2626", transform: "rotate(-25deg)", border: "8px solid #dc2626", padding: "0 24px" }}>Cancelled</span>
               </div>
             )}
-            <PrintableInvoice invoice={invoice} items={items} company={company} typeLabel={typeLabel} />
+            {kind === "delivery_challan" ? (
+              <PrintableChallan invoice={invoice} items={items} company={company} />
+            ) : (
+              <PrintableInvoice invoice={invoice} items={items} company={company} typeLabel={typeLabel} />
+            )}
           </div>
         </TabsContent>
         <TabsContent value="rejected" className="print:hidden">
@@ -260,6 +303,76 @@ function InvoiceDetail() {
         }
       `}</style>
     </>
+  );
+}
+
+function PrintableChallan({ invoice, items, company }: { invoice: any; items: any[]; company: any }) {
+  const c = company ?? {};
+  const border = "border border-black";
+  const dates = Array.isArray(invoice.challan_dates) && invoice.challan_dates.length
+    ? invoice.challan_dates.map((date: string) => formatDate(date)).join(", ")
+    : formatDate(invoice.challan_date ?? invoice.invoice_date);
+
+  return (
+    <div className="text-[11px] text-black" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+      <div className="flex items-start justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-xl font-bold">{c.name ?? "ABJAD ENGINEERING WORKS"}</h1>
+          <div>{[c.address, c.city, c.state, c.pincode].filter(Boolean).join(", ")}</div>
+          <div>GSTIN: {c.gst_number ?? "—"}</div>
+          <div>{[c.mobile, c.alt_mobile, c.email].filter(Boolean).join(" • ")}</div>
+        </div>
+        <img src={aewLogo} alt="AEW logo" className="h-20 w-auto object-contain" />
+      </div>
+      <h2 className="bg-primary py-2 text-center text-xl font-bold text-primary-foreground">DELIVERY CHALLAN</h2>
+
+      <div className="grid grid-cols-2">
+        <section className={`${border} p-2`}>
+          <h3 className="font-bold">DOCUMENT DETAILS</h3>
+          <div>Challan No.: {invoice.challan_number ?? invoice.invoice_number}</div>
+          <div>Date: {dates}</div>
+          <div>Reason: {invoice.movement_reason ?? "—"}</div>
+        </section>
+        <section className={`${border} p-2`}>
+          <h3 className="font-bold">CONSIGNEE</h3>
+          <div>{invoice.customer_name_snapshot ?? "—"}</div>
+          <div className="whitespace-pre-line">{invoice.customer_address_snapshot ?? "—"}</div>
+          <div>GSTIN: {invoice.customer_gst_snapshot ?? "—"}</div>
+        </section>
+      </div>
+      <section className={`${border} p-2`}>
+        <h3 className="font-bold">TRANSPORT</h3>
+        <div className="grid grid-cols-3 gap-2">
+          <div>Transporter: {invoice.transporter_name ?? "—"}</div>
+          <div>Dispatch: {invoice.place_of_dispatch ?? "—"}</div>
+          <div>Delivery: {invoice.place_of_delivery ?? "—"}</div>
+        </div>
+      </section>
+      <table className="w-full border-collapse">
+        <thead><tr>
+          {['Sr. No.', 'Item', 'HSN', 'Description', 'Quantity', 'UOM', 'Serial / Batch'].map((head) => (
+            <th key={head} className={`${border} p-1 text-left`}>{head}</th>
+          ))}
+        </tr></thead>
+        <tbody>{items.map((item) => (
+          <tr key={item.id}>
+            <td className={`${border} p-1`}>{item.sr_no}</td>
+            <td className={`${border} p-1`}>{item.description}</td>
+            <td className={`${border} p-1`}>{item.hsn_code ?? ""}</td>
+            <td className={`${border} p-1`}>{item.description}</td>
+            <td className={`${border} p-1 text-right`}>{Number(item.quantity)}</td>
+            <td className={`${border} p-1`}>{item.uom ?? "NOS"}</td>
+            <td className={`${border} p-1`}>{item.serial_batch_number ?? ""}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {invoice.notes && <div className={`${border} p-2`}>Notes: {invoice.notes}</div>}
+      <section className={`${border} mt-4 p-3`}>
+        <h3 className="font-bold">RECEIVER ACKNOWLEDGEMENT</h3>
+        <p>Received the above goods in good condition.</p>
+        <div className="mt-10 grid grid-cols-4 gap-4"><span>Receiver Name</span><span>Signature</span><span>Date</span><span>Company Stamp</span></div>
+      </section>
+    </div>
   );
 }
 
@@ -338,26 +451,8 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             <td className={`${cellBorder} p-1 ${val} w-[12%]`}>{formatDate(invoice.invoice_date)}</td>
           </tr>
           <tr>
-            <td className={`${cellBorder} p-1 ${label} align-top`} rowSpan={3}>Address</td>
-            <td className={`${cellBorder} p-1 ${val} align-top`} rowSpan={3}>{invoice.customer_address_snapshot ?? "—"}</td>
-            <td className={`${cellBorder} p-1 ${label}`}>Challan No.</td>
-            <td className={`${cellBorder} p-1 ${val}`}>{invoice.challan_number ?? ""}</td>
-            <td className={`${cellBorder} p-1 ${label}`}>Date</td>
-            <td className={`${cellBorder} p-1 ${val}`}>
-              {(() => {
-                const dates = (invoice as { challan_dates?: string[] | null }).challan_dates;
-                if (dates && dates.length > 0) return dates.map((d) => formatDate(d)).join(", ");
-                return invoice.challan_date ? formatDate(invoice.challan_date) : "–";
-              })()}
-            </td>
-          </tr>
-          <tr>
-            <td className={`${cellBorder} p-1 ${label}`} colSpan={2}>PO No. /OS CH NO.</td>
-            <td className={`${cellBorder} p-1 ${val}`} colSpan={2}>{invoice.po_number ?? ""}</td>
-          </tr>
-          <tr>
-            <td className={`${cellBorder} p-1 ${label}`} colSpan={2}>PO DATE</td>
-            <td className={`${cellBorder} p-1 ${val}`} colSpan={2}>{invoice.po_date ? formatDate(invoice.po_date) : ""}</td>
+            <td className={`${cellBorder} p-1 ${label} align-top`}>Address</td>
+            <td className={`${cellBorder} p-1 ${val} align-top`} colSpan={5}>{invoice.customer_address_snapshot ?? "—"}</td>
           </tr>
         </tbody>
       </table>
@@ -380,10 +475,6 @@ function PrintableInvoice({ invoice, items, company, typeLabel }: { invoice: any
             <td className={`${cellBorder} p-1 ${val}`}>{invoice.work_order_number ?? ""}</td>
             <td className={`${cellBorder} p-1 ${label}`}>PAN NO.</td>
             <td className={`${cellBorder} p-1 ${val}`}>{c.pan_number ?? ""}</td>
-          </tr>
-          <tr>
-            <td className={`${cellBorder} p-1 ${label}`}>GST ARN NO.</td>
-            <td className={`${cellBorder} p-1 ${val}`} colSpan={3}>{invoice.gst_arn ?? ""}</td>
           </tr>
         </tbody>
       </table>

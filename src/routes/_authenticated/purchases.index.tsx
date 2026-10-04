@@ -581,9 +581,6 @@ function ViewPODialog({ po, onClose, onSent }: { po: any; onClose: () => void; o
             </div>
             <div className="ml-auto w-full max-w-xs space-y-1">
               <Row k="Net value" v={formatINR(po.net_value)} />
-              {Number(po.discount_amount) > 0 && <Row k="Discount" v={formatINR(po.discount_amount)} />}
-              {Number(po.freight) > 0 && <Row k="Freight" v={formatINR(po.freight)} />}
-              {Number(po.packing_charges) > 0 && <Row k="Packing" v={formatINR(po.packing_charges)} />}
               <Row k="Sub total" v={formatINR(po.sub_total)} />
               {po.is_igst ? (
                 <Row k="IGST" v={formatINR(po.igst_amount)} />
