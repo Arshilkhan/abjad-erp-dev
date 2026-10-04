@@ -11,3 +11,5 @@
 - [ ] Validate every document flow and provide live-database SQL
 - [x] Move Proforma, Quotation, Challan, and PO creation actions into the shared header
 - [x] Make every header create action open its form directly and include New Invoice
+- [ ] Remove unused fields from document forms, views, PDFs, and database schema
+- [ ] Validate all five document flows after field removal

@@ -27,7 +27,7 @@ function ChallansPage() {
   const s = q.trim().toLowerCase();
 
   const rows = folders.flatMap((f) => f.rows).filter((r: any) =>
-    !s || [r.customer_name_snapshot, r.challan_number, r.po_number].filter(Boolean)
+    !s || [r.customer_name_snapshot, r.challan_number].filter(Boolean)
       .some((v: string) => String(v).toLowerCase().includes(s)),
   );
 

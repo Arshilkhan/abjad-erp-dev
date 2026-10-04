@@ -240,7 +240,7 @@ export async function buildChallanPdf(
     cell(ix[2]!, y, iw[2]!, h, String(it['hsn_code'] ?? ''), { align: 'center', size: 8.5 })
     page.drawRectangle({ x: ix[3]!, y: y - h, width: iw[3]!, height: h, borderColor: black, borderWidth: 0.6 })
     descLines.forEach((l, li) => draw(l, ix[3]! + 3, y - 12 - li * 11, 9))
-    const qty = num(it['quantity']) - num(it['rejected_quantity'])
+    const qty = num(it['quantity'])
     cell(ix[4]!, y, iw[4]!, h, String(qty), { align: 'right' })
     cell(ix[5]!, y, iw[5]!, h, String(it['uom'] ?? 'NOS'), { align: 'center' })
     cell(ix[6]!, y, iw[6]!, h, String(it['serial_batch_number'] ?? ''), { align: 'center', size: 8.5 })
@@ -252,7 +252,7 @@ export async function buildChallanPdf(
   }
 
   // total quantity (informational only, no money)
-  const totalQty = items.reduce((s, it) => s + num(it['quantity']) - num(it['rejected_quantity']), 0)
+  const totalQty = items.reduce((s, it) => s + num(it['quantity']), 0)
   cell(L, y, iw[0]! + iw[1]! + iw[2]! + iw[3]!, rowH, 'Total Quantity', { bold: true, align: 'right' })
   cell(ix[4]!, y, iw[4]!, rowH, String(totalQty), { bold: true, align: 'right' })
   cell(ix[5]!, y, iw[5]! + iw[6]!, rowH, '')

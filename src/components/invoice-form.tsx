@@ -184,15 +184,22 @@ export function InvoiceForm({
     setCustomerText(inv.customer_name_snapshot ?? "");
     setInvoiceType(documentType);
     setInvoiceDate(inv.invoice_date);
-    setChallanNumber(inv.challan_number ?? "");
-    setChallanDates(((inv as any).challan_dates as string[] | null) ?? (inv.challan_date ? [inv.challan_date] : []));
+    if (isChallan) {
+      setChallanNumber((inv as any).challan_number ?? "");
+      setChallanDates(
+        ((inv as any).challan_dates as string[] | null) ??
+          ((inv as any).challan_date ? [(inv as any).challan_date] : []),
+      );
+    }
 
     setWorkOrder(inv.work_order_number ?? "");
-    setFreight(Number(inv.freight ?? 0));
-    setPacking(Number(inv.packing_charges ?? 0));
-    setOtherCharges(Number(inv.other_charges ?? 0));
-    setTransportCharges(Number((inv as any).transportation_charges ?? 0));
-    setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
+    if (!isChallan) {
+      setFreight(Number((inv as any).freight ?? 0));
+      setPacking(Number((inv as any).packing_charges ?? 0));
+      setOtherCharges(Number((inv as any).other_charges ?? 0));
+      setTransportCharges(Number((inv as any).transportation_charges ?? 0));
+      setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
+    }
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
     setNotes(inv.notes ?? "");
@@ -209,10 +216,10 @@ export function InvoiceForm({
             description: it.description ?? "",
             quantity: Number(it.quantity ?? 1),
             uom: it.uom ?? "NOS",
-            unit_rate: Number(it.unit_rate ?? 0),
+            unit_rate: isChallan ? 0 : Number(it.unit_rate ?? 0),
             discount_mode: "pct" as const,
-            discount_value: Number(it.discount_pct ?? 0),
-            tax_pct: Number(it.tax_pct ?? 18),
+            discount_value: isChallan ? 0 : Number(it.discount_pct ?? 0),
+            tax_pct: isChallan ? 0 : Number(it.tax_pct ?? 18),
             serial_batch_number: (it as any).serial_batch_number ?? "",
           }))
         : [emptyItem(1)],
@@ -300,11 +307,13 @@ export function InvoiceForm({
         const c = cfg(key);
         if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
       };
-      requireCharge("freight_charges", freight);
-      requireCharge("packing_charges", packing);
-      requireCharge("other_charges", otherCharges);
-      requireCharge("transportation_charges", transportCharges);
-      requireCharge("delivery_charges", deliveryCharges);
+      if (!isChallan) {
+        requireCharge("freight_charges", freight);
+        requireCharge("packing_charges", packing);
+        requireCharge("other_charges", otherCharges);
+        requireCharge("transportation_charges", transportCharges);
+        requireCharge("delivery_charges", deliveryCharges);
+      }
       if (items.length === 0) throw new Error("Add at least one item");
 
       // Resolve the customer: use the selected one, match an existing record by
@@ -391,40 +400,43 @@ export function InvoiceForm({
         customer_name_snapshot: cust.company_name || cust.customer_name,
         customer_gst_snapshot: cust.gst_number,
         customer_address_snapshot: custAddress.trim() || cust.billing_address,
-        po_number: null,
-        po_date: null,
-        challan_number: isChallan ? challanNumber || null : null,
-        challan_date: isChallan ? challanDates[0] || invoiceDate : null,
-        challan_dates: isChallan ? (challanDates.length ? challanDates : [invoiceDate]) : [],
-        movement_reason: isChallan ? movementReason || null : null,
-        transporter_name: isChallan ? transporterName.trim() || null : null,
-        place_of_dispatch: isChallan ? placeOfDispatch.trim() || null : null,
-        place_of_delivery: isChallan ? placeOfDelivery.trim() || null : null,
-
         work_order_number: workOrder || null,
-        place_of_supply: cust.state ?? null,
-        is_igst: isIGST,
-        net_value: totals.net,
-        discount_amount: totals.disc,
-        freight: Number(freight || 0),
-        packing_charges: Number(packing || 0),
-        other_charges: Number(otherCharges || 0),
-        transportation_charges: Number(transportCharges || 0),
-        delivery_charges: Number(deliveryCharges || 0),
-        subtotal: totals.subtotal,
-        sgst_amount,
-        cgst_amount,
-        igst_amount,
-        round_off: totals.round_off,
-        grand_total: totals.grand,
-        amount_in_words: amountInWords(totals.grand),
         delivery_mode: deliveryMode || null,
-        payment_terms: paymentTerms || null,
         contact_person: nameTyped || null,
         contact_mobile: custMobile || null,
         notes: notes || null,
         status,
       };
+      if (isChallan) {
+        Object.assign(payload, {
+          challan_number: challanNumber || null,
+          challan_date: challanDates[0] || invoiceDate,
+          challan_dates: challanDates.length ? challanDates : [invoiceDate],
+          movement_reason: movementReason || null,
+          transporter_name: transporterName.trim() || null,
+          place_of_dispatch: placeOfDispatch.trim() || null,
+          place_of_delivery: placeOfDelivery.trim() || null,
+        });
+      } else {
+        Object.assign(payload, {
+          is_igst: isIGST,
+          net_value: totals.net,
+          discount_amount: totals.disc,
+          freight: Number(freight || 0),
+          packing_charges: Number(packing || 0),
+          other_charges: Number(otherCharges || 0),
+          transportation_charges: Number(transportCharges || 0),
+          delivery_charges: Number(deliveryCharges || 0),
+          subtotal: totals.subtotal,
+          sgst_amount,
+          cgst_amount,
+          igst_amount,
+          round_off: totals.round_off,
+          grand_total: totals.grand,
+          amount_in_words: amountInWords(totals.grand),
+          payment_terms: paymentTerms || null,
+        });
+      }
 
       let invId: string;
       let invNumber: string;
@@ -463,7 +475,7 @@ export function InvoiceForm({
           seq += 1;
           const invoice_number = `${docCfg.prefix}${seq}-${slug}`;
           const insertPayload: any = { ...payload, invoice_number, created_by: user?.id };
-          if (importMode || pdfImported) {
+          if (isTaxInvoice && (importMode || pdfImported)) {
             insertPayload.is_imported = true;
             insertPayload.import_source = "manual";
           }
@@ -483,7 +495,7 @@ export function InvoiceForm({
 
       const rows = resolvedItems.map((it) => {
         const c = computeItem(it);
-        return {
+        const base = {
           invoice_id: invId,
           sr_no: it.sr_no,
           product_id: it.product_id,
@@ -492,13 +504,18 @@ export function InvoiceForm({
           quantity: it.quantity,
           uom: it.uom,
           serial_batch_number: it.serial_batch_number?.trim() || null,
-          unit_rate: it.unit_rate,
-          discount_pct: c.discount_pct,
-          discount_amount: c.discount_amount,
-          tax_pct: it.tax_pct,
-          tax_amount: c.tax_amount,
-          total_amount: c.total_amount,
         };
+        return isChallan
+          ? base
+          : {
+              ...base,
+              unit_rate: it.unit_rate,
+              discount_pct: c.discount_pct,
+              discount_amount: c.discount_amount,
+              tax_pct: it.tax_pct,
+              tax_amount: c.tax_amount,
+              total_amount: c.total_amount,
+            };
       });
       const { error: iErr } = await supabase.from(docItemsTable).insert(rows);
       if (iErr) throw iErr;
@@ -577,9 +594,6 @@ export function InvoiceForm({
       if (d.email) setCustEmail(d.email);
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
-      if (d.challan_number) setChallanNumber(d.challan_number);
-      if (d.challan_date) setChallanDates([d.challan_date]);
-
       if (d.work_order_number) setWorkOrder(d.work_order_number);
       if (d.freight) setFreight(d.freight);
       if (d.packing_charges) setPacking(d.packing_charges);
@@ -655,7 +669,7 @@ export function InvoiceForm({
         <Card className="lg:col-span-2">
            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
             <CardTitle className="text-base">{isChallan ? "Delivery Challan Details" : "Invoice Details"}</CardTitle>
-             {!isEdit && (
+              {!isEdit && isTaxInvoice && (
                <>
                  <input
                    id="invoice-pdf"
