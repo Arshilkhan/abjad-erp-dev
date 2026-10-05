@@ -25,10 +25,9 @@ export function GlobalSearch() {
   const { data: invoices = [] } = useQuery({
     queryKey: ["gs-invoices"],
     queryFn: async () => {
-      const cols = "id, invoice_number, customer_name_snapshot, invoice_type, po_number, challan_number, status";
       const res = await Promise.all(
         (["invoices", "performa", "quotation", "challan"] as const).map((t) =>
-          (supabase.from(t as "invoices") as any).select(cols).order("created_at", { ascending: false }).limit(100),
+          (supabase.from(t as "invoices") as any).select(t === "challan" ? "id, invoice_number, customer_name_snapshot, invoice_type, challan_number, status" : "id, invoice_number, customer_name_snapshot, invoice_type, status").order("created_at", { ascending: false }).limit(100),
         ),
       );
       return res.flatMap((r: any) => r.data ?? []);
@@ -48,7 +47,7 @@ export function GlobalSearch() {
     if (!s) return [];
     const inv: Hit[] = invoices
       .filter((r: any) =>
-        [r.invoice_number, r.customer_name_snapshot, r.po_number, r.challan_number, r.invoice_type]
+        [r.invoice_number, r.customer_name_snapshot, r.challan_number, r.invoice_type]
           .filter(Boolean)
           .some((v: string) => String(v).toLowerCase().includes(s)),
       )

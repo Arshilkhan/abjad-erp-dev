@@ -153,14 +153,14 @@ const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
                     <TableRow key={r.id} className={`hover:bg-muted/40 ${r.status === "cancelled" ? "opacity-60" : ""}`}>
                         <TableCell className="font-mono text-sm font-medium">
                             <Link to="/invoices/$id" params={{ id: r.id }} search={{ kind: docKind(r) }} className="text-primary hover:underline">
-                                {billNo(r.invoice_number) || (r.challan_number ? `CH ${r.challan_number}` : "—")}
+                                {docKind(r) === "delivery_challan" ? (r.challan_number || r.invoice_number) : billNo(r.invoice_number)}
                             </Link>
                             {r.is_imported && <Badge variant="outline" className="ml-2 text-[9px] uppercase">Imported</Badge>}
                         </TableCell>
                         <TableCell><InvoiceTypeBadge type={String(r.invoice_type)} /></TableCell>
                         <TableCell>{r.customer_name_snapshot ?? "—"}</TableCell>
                         <TableCell>{formatDate(r.invoice_date)}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold">{formatINR(r.grand_total)}</TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">{docKind(r) === "delivery_challan" ? "—" : formatINR(r.grand_total)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] font-medium uppercase ${statusStyles[r.status] ?? ""}`}>{r.status}</Badge></TableCell>
                         <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -169,12 +169,12 @@ const handleSort = (field: "invoice" | "customer" | "date" | "total") => {
                                         <Button size="icon" variant="ghost" asChild title="Edit">
                                             <Link to="/invoices/$id/edit" params={{ id: r.id }} search={{ kind: docKind(r) }}><Pencil className="h-3.5 w-3.5" /></Link>
                                         </Button>
-                                        <CancelInvoiceDialog
+                                        {docKind(r) === "tax_invoice" && <CancelInvoiceDialog
                                             invoiceId={r.id}
                                             invoiceNumber={r.invoice_number}
                                             onCancelled={() => qc.invalidateQueries({ queryKey: ["invoices"] })}
                                             trigger={<Button size="icon" variant="ghost" title="Cancel invoice"><Ban className="h-3.5 w-3.5 text-destructive" /></Button>}
-                                        />
+                                        />}
                                     </>
                                 )}
                             </div>
