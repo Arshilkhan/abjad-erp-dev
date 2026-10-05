@@ -120,7 +120,7 @@ function SalesReport() {
             </TableRow>
           ))}
           {rows.length > 0 && <TableRow className="bg-muted/40 font-semibold">
-            <TableCell colSpan={4} className="text-right">Totals</TableCell>
+            <TableCell colSpan={3} className="text-right">Totals</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.net)}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.tax)}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.grand)}</TableCell>
@@ -373,7 +373,7 @@ function GstReport() {
   const { data: rows = [] } = useQuery({
     queryKey: ["rep-gst", from, to],
     queryFn: async () => (await supabase.from("invoices")
-      .select("invoice_number, invoice_date, customer_name_snapshot, customer_gst_snapshot, place_of_supply, subtotal, sgst_amount, cgst_amount, igst_amount, grand_total, is_igst")
+      .select("invoice_number, invoice_date, customer_name_snapshot, customer_gst_snapshot, subtotal, sgst_amount, cgst_amount, igst_amount, grand_total, is_igst")
       .eq("invoice_type", "tax_invoice")
       .gte("invoice_date", from).lte("invoice_date", to)
       .order("invoice_date")).data ?? [],
@@ -396,17 +396,16 @@ function GstReport() {
     <CardContent className="p-0">
       <Table>
         <TableHeader><TableRow>
-          <TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Customer GSTIN</TableHead><TableHead>POS</TableHead>
+          <TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Customer GSTIN</TableHead>
           <TableHead className="text-right">Taxable</TableHead><TableHead className="text-right">SGST</TableHead><TableHead className="text-right">CGST</TableHead><TableHead className="text-right">IGST</TableHead>
         </TableRow></TableHeader>
         <TableBody>
-          {rows.length === 0 && <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No tax invoices in range.</TableCell></TableRow>}
+          {rows.length === 0 && <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No tax invoices in range.</TableCell></TableRow>}
           {rows.map((r: any, i) => (
             <TableRow key={i}>
               <TableCell className="font-mono">{billNo(r.invoice_number)}</TableCell>
               <TableCell>{formatDate(r.invoice_date)}</TableCell>
               <TableCell className="font-mono text-xs">{r.customer_gst_snapshot ?? "—"}</TableCell>
-              <TableCell className="text-xs">{r.place_of_supply ?? "—"}</TableCell>
               <TableCell className="text-right tabular-nums">{formatINR(r.subtotal)}</TableCell>
               <TableCell className="text-right tabular-nums">{formatINR(r.sgst_amount)}</TableCell>
               <TableCell className="text-right tabular-nums">{formatINR(r.cgst_amount)}</TableCell>
@@ -414,7 +413,7 @@ function GstReport() {
             </TableRow>
           ))}
           {rows.length > 0 && <TableRow className="bg-muted/40 font-semibold">
-            <TableCell colSpan={4} className="text-right">Totals</TableCell>
+            <TableCell colSpan={3} className="text-right">Totals</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.taxable)}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.sgst)}</TableCell>
             <TableCell className="text-right tabular-nums">{formatINR(totals.cgst)}</TableCell>

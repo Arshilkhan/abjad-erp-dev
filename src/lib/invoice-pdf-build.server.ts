@@ -222,45 +222,15 @@ export async function buildInvoicePdf(
   cell(cx[5]!, y, cw[5]!, rowH, formatDate(invoice['invoice_date']), { size: 8.5 })
   y -= rowH
 
-  const challanDates: string[] | null = invoice['challan_dates'] ?? null
-  const challanDateTxt =
-    challanDates && challanDates.length
-      ? challanDates.map((d) => formatDate(d)).join(', ')
-      : invoice['challan_date']
-        ? formatDate(invoice['challan_date'])
-        : '-'
-
-  // Challan dates wrap onto as many lines as needed — never truncated with "...".
-  const chSize = 7.5
-  const chLineH = chSize + 2
-  const chLines = wrap(challanDateTxt, cw[5]! - 6, chSize)
-  const chRowH = Math.max(rowH, chLines.length * chLineH + 5)
-  const addrH = Math.max(rowH * 3, chRowH + rowH * 2)
+  const addrH = rowH * 3
   cell(cx[0]!, y, cw[0]!, addrH, '', { bold: true })
   draw('Address', cx[0]! + 3, y - 12, 9.5, { bold: true })
   const addrLines = wrap(invoice['customer_address_snapshot'] ?? '-', cw[1]! - 6, 9.5).slice(0, 3)
   page.drawRectangle({ x: cx[1]!, y: y - addrH, width: cw[1]!, height: addrH, borderColor: black, borderWidth: 0.6 })
   addrLines.forEach((l, i) => draw(l, cx[1]! + 3, y - 13 - i * 12, 9.5))
-
   const rightX = cx[2]!
   const rightW = cw[2]! + cw[3]! + cw[4]! + cw[5]!
-  const chDateX = rightX + cw[2]! + cw[3]! + cw[4]!
-  cell(rightX, y, cw[2]!, chRowH, 'Challan No.', { bold: true })
-  cell(rightX + cw[2]!, y, cw[3]!, chRowH, invoice['challan_number'] ?? '')
-  cell(rightX + cw[2]! + cw[3]!, y, cw[4]!, chRowH, 'Date', { bold: true })
-  page.drawRectangle({ x: chDateX, y: y - chRowH, width: cw[5]!, height: chRowH, borderColor: black, borderWidth: 0.6 })
-  chLines.forEach((l, i) => draw(l, chDateX + 3, y - chLineH - i * chLineH, chSize))
-  const restH = (addrH - chRowH) / 2
-  cell(rightX, y - chRowH, rightW * 0.45, restH, 'PO No. /OS CH NO.', { bold: true })
-  cell(rightX + rightW * 0.45, y - chRowH, rightW * 0.55, restH, invoice['po_number'] ?? '')
-  cell(rightX, y - chRowH - restH, rightW * 0.45, restH, 'PO DATE', { bold: true })
-  cell(
-    rightX + rightW * 0.45,
-    y - chRowH - restH,
-    rightW * 0.55,
-    restH,
-    invoice['po_date'] ? formatDate(invoice['po_date']) : '',
-  )
+  cell(rightX, y, rightW, addrH, '')
   y -= addrH
 
   // ---------- BUYER + COMPANY DETAILS ----------
@@ -279,9 +249,6 @@ export async function buildInvoicePdf(
   cell(L + lw, y, vw, rowH, invoice['work_order_number'] ?? '')
   cell(L + half, y, lw, rowH, 'PAN NO.', { bold: true })
   cell(L + half + lw, y, vw, rowH, c['pan_number'] ?? '')
-  y -= rowH
-  cell(L, y, lw, rowH, 'GST ARN NO.', { bold: true })
-  cell(L + lw, y, W - lw, rowH, invoice['gst_arn'] ?? '')
   y -= rowH
 
   // ---------- LINE ITEMS ----------

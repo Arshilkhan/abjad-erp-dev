@@ -197,8 +197,10 @@ export function InvoiceForm({
       setFreight(Number((inv as any).freight ?? 0));
       setPacking(Number((inv as any).packing_charges ?? 0));
       setOtherCharges(Number((inv as any).other_charges ?? 0));
-      setTransportCharges(Number((inv as any).transportation_charges ?? 0));
-      setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
+      if (isTaxInvoice) {
+        setTransportCharges(Number((inv as any).transportation_charges ?? 0));
+        setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
+      }
     }
     setDeliveryMode(inv.delivery_mode ?? "");
     setPaymentTerms(inv.payment_terms ?? "");
@@ -311,8 +313,10 @@ export function InvoiceForm({
         requireCharge("freight_charges", freight);
         requireCharge("packing_charges", packing);
         requireCharge("other_charges", otherCharges);
-        requireCharge("transportation_charges", transportCharges);
-        requireCharge("delivery_charges", deliveryCharges);
+        if (isTaxInvoice) {
+          requireCharge("transportation_charges", transportCharges);
+          requireCharge("delivery_charges", deliveryCharges);
+        }
       }
       if (items.length === 0) throw new Error("Add at least one item");
 
@@ -425,8 +429,7 @@ export function InvoiceForm({
           freight: Number(freight || 0),
           packing_charges: Number(packing || 0),
           other_charges: Number(otherCharges || 0),
-          transportation_charges: Number(transportCharges || 0),
-          delivery_charges: Number(deliveryCharges || 0),
+
           subtotal: totals.subtotal,
           sgst_amount,
           cgst_amount,
@@ -436,6 +439,10 @@ export function InvoiceForm({
           amount_in_words: amountInWords(totals.grand),
           payment_terms: paymentTerms || null,
         });
+        if (isTaxInvoice) {
+          payload.transportation_charges = Number(transportCharges || 0);
+          payload.delivery_charges = Number(deliveryCharges || 0);
+        }
       }
 
       let invId: string;
@@ -595,9 +602,9 @@ export function InvoiceForm({
       if (d.gst_number) setCustGst(d.gst_number);
       if (d.invoice_date) setInvoiceDate(d.invoice_date);
       if (d.work_order_number) setWorkOrder(d.work_order_number);
-      if (d.freight) setFreight(d.freight);
-      if (d.packing_charges) setPacking(d.packing_charges);
-      if (d.other_charges) setOtherCharges(d.other_charges);
+      if (isTaxInvoice && d.freight) setFreight(d.freight);
+      if (isTaxInvoice && d.packing_charges) setPacking(d.packing_charges);
+      if (isTaxInvoice && d.other_charges) setOtherCharges(d.other_charges);
       
       if (d.delivery_mode) setDeliveryMode(d.delivery_mode);
       if (d.payment_terms) setPaymentTerms(d.payment_terms);
@@ -1100,18 +1107,18 @@ export function InvoiceForm({
           <CardContent className="space-y-2 text-sm">
             <Row label="Net Value" value={formatINR(totals.net)} />
             <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
-            <ChargeRow
+            {isTaxInvoice && <ChargeRow
               config={cfg("transportation_charges")}
               fallbackLabel="Transportation Charges"
               value={transportCharges}
               onChange={setTransportCharges}
-            />
-            <ChargeRow
+            />}
+            {isTaxInvoice && <ChargeRow
               config={cfg("delivery_charges")}
               fallbackLabel="Delivery Charges"
               value={deliveryCharges}
               onChange={setDeliveryCharges}
-            />
+            />}
             <ChargeRow
               config={cfg("packing_charges")}
               fallbackLabel="Packing & Forwarding"
