@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{t}from"./invoice-form-DTFtF8m8.js";var n=e(),r=()=>(0,n.jsx)(t,{importMode:!0});export{r as component};

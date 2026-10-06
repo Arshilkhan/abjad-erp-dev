@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{t}from"./invoice-form-DTFtF8m8.js";import{t as n}from"./index-BlEYWGOh.js";var r=e();function i(){let{id:e}=n.useParams(),{kind:i}=n.useSearch();return(0,r.jsx)(t,{editId:e,documentType:i??`tax_invoice`},`${i}-${e}`)}export{i as component};

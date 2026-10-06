@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{U as t,nt as n}from"./index-BlEYWGOh.js";var r=e();function i(){let{user:e,loading:i}=t();return i?(0,r.jsx)(`div`,{className:`flex min-h-screen items-center justify-center text-muted-foreground`,children:`Loading…`}):(0,r.jsx)(n,{to:e?`/dashboard`:`/auth`})}export{i as component};

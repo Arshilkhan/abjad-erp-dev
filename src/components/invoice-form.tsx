@@ -24,6 +24,7 @@ import { computeItem, emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/comp
 import { Row, ChargeRow, } from "@/components/forms/shared/totals-section";
 import { ProductLineItems } from "@/components/forms/shared/product-line-items";
 import { DocumentDetails } from "@/components/forms/shared/document-details";
+import { AdditionalDetails } from "@/components/forms/shared/additional-details";
 
 export function InvoiceForm({
   editId,
@@ -682,45 +683,23 @@ export function InvoiceForm({
       />
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Additional Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            {(settings?.show_delivery || isEdit) && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Delivery Mode</Label>
-                <Input value={deliveryMode} onChange={(e) => setDeliveryMode(e.target.value)} />
-              </div>
-            )}
-            {!isChallan && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Payment Terms</Label>
-                <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-              </div>
-            )}
-            {isChallan && (
-              <>
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs">Transporter Name</Label>
-                  <Input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Place of Dispatch</Label>
-                  <Input value={placeOfDispatch} onChange={(e) => setPlaceOfDispatch(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Place of Delivery</Label>
-                  <Input value={placeOfDelivery} onChange={(e) => setPlaceOfDelivery(e.target.value)} />
-                </div>
-              </>
-            )}
-            <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Notes</Label>
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
+        <AdditionalDetails
+          isChallan={isChallan}
+          isEdit={isEdit}
+          showDelivery={settings?.show_delivery}
+          deliveryMode={deliveryMode}
+          paymentTerms={paymentTerms}
+          transporterName={transporterName}
+          placeOfDispatch={placeOfDispatch}
+          placeOfDelivery={placeOfDelivery}
+          notes={notes}
+          setDeliveryMode={setDeliveryMode}
+          setPaymentTerms={setPaymentTerms}
+          setTransporterName={setTransporterName}
+          setPlaceOfDispatch={setPlaceOfDispatch}
+          setPlaceOfDelivery={setPlaceOfDelivery}
+          setNotes={setNotes}
+        />
 
         <Card className={isChallan ? "hidden" : undefined}>
           <CardHeader>

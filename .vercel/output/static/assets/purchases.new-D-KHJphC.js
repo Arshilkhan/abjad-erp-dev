@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{$ as t,a as n,rt as r}from"./index-BlEYWGOh.js";var i=e();function a(){let e=r({from:`/purchases/new`}),a=t(),o=()=>e({to:`/purchases`});return(0,i.jsx)(n,{open:!0,onClose:o,onSaved:async()=>{await a.invalidateQueries({queryKey:[`purchase_orders`]}),await o()}})}export{a as component};
