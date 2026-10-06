@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { InvoiceTable } from "@/components/invoice-table";
+import { ChallanTable } from "@/components/documents/challan-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
 export const Route = createFileRoute("/_authenticated/challans/")({
@@ -48,7 +48,7 @@ function ChallansPage() {
                No challans yet. <Link to="/challans/new" className="text-primary hover:underline">Create one</Link>.
             </p>
           ) : (
-            <InvoiceTable rows={rows} isLoading={isLoading} />
+            <ChallanTable rows={rows} isLoading={isLoading} />
           )}
         </CardContent>
       </Card>
