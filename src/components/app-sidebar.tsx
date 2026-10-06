@@ -1,8 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard, FileText, FileSpreadsheet, Users, Package, Warehouse,
-  ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX, CreditCard,
-  UserCog, Truck, CloudUpload,
+import {LayoutDashboard, FileText,  FileSpreadsheet,  ReceiptText,  Users,  Package,  Warehouse,  ShoppingCart,  Wallet,  BarChart3,  Settings,  Factory,  Ban,  PackageX,
+        CreditCard,  UserCog,  Truck,  CloudUpload,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
