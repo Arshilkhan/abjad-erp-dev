@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { InvoiceTable } from "@/components/invoice-table";
+import { QuotationTable } from "@/components/documents/quotation-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
 export const Route = createFileRoute("/_authenticated/quotations/")({
@@ -48,7 +48,7 @@ function QuotationsPage() {
                No quotations yet. <Link to="/quotations/new" className="text-primary hover:underline">Create one</Link>.
             </p>
           ) : (
-            <InvoiceTable rows={rows} isLoading={isLoading} />
+            <QuotationTable rows={rows} isLoading={isLoading} />
           )}
         </CardContent>
       </Card>
