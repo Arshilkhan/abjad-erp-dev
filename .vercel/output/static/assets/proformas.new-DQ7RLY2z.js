@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-D3jfb0Ew.js";import{t}from"./invoice-form-DTFtF8m8.js";var n=e(),r=()=>(0,n.jsx)(t,{documentType:`proforma`});export{r as component};
