@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { InvoiceTable } from "@/components/invoice-table";
+import { ProformaTable } from "@/components/documents/proforma-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 
 export const Route = createFileRoute("/_authenticated/proformas/")({
@@ -27,6 +27,6 @@ function ProformasPage() {
   return <>
     <PageHeader title="Proforma Invoices" description="Proforma invoices are stored separately from tax invoices." />
     <div className="relative mb-4 max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="h-9 pl-9" placeholder="Search proforma invoices…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-    <Card><CardContent className="p-0"><InvoiceTable rows={rows} isLoading={isLoading} /></CardContent></Card>
+    <Card><CardContent className="p-0"><ProformaTable rows={rows} isLoading={isLoading} /></CardContent></Card>
   </>;
 }
