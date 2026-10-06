@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Folder, Search, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InvoiceTable } from "@/components/invoice-table";
+import { TaxInvoiceTable } from "@/components/documents/tax-invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 import { formatINR, formatDate } from "@/lib/format";
 
@@ -71,7 +71,7 @@ function InvoicesIndex() {
       </div>
 
       {view === "all" ? (
-        <Card><CardContent className="p-0"><InvoiceTable rows={allRows} isLoading={isLoading} /></CardContent></Card>
+        <Card><CardContent className="p-0"><TaxInvoiceTable rows={allRows} isLoading={isLoading} /></CardContent></Card>
       ) : isLoading ? (
         <p className="py-10 text-center text-muted-foreground">Loading…</p>
       ) : visibleFolders.length === 0 ? (

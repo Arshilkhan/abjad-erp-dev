@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ChevronLeft, Search } from "lucide-react";
-import { InvoiceTable } from "@/components/invoice-table";
+import { TaxInvoiceTable } from "@/components/documents/tax-invoice-table";
 import { useInvoiceFolders } from "@/lib/invoice-folders";
 import { formatINR } from "@/lib/format";
 
@@ -46,7 +46,7 @@ function FolderPage() {
               <Input className="h-9 pl-9" placeholder="Search in this folder…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
           </div>
-          <InvoiceTable rows={rows} isLoading={isLoading} />
+          <TaxInvoiceTable rows={rows} isLoading={isLoading} />
         </CardContent>
       </Card>
     </>
