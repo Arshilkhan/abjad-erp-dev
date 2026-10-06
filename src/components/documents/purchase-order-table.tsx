@@ -1,8 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -13,24 +10,26 @@ import {
     TableRow,
 } from "@/components/ui/table";
 
-import { formatINR, formatDate, billNo } from "@/lib/format";
+import { formatINR, formatDate } from "@/lib/format";
 
 export function PurchaseOrderTable({
     rows,
     isLoading,
+    onRowClick,
 }: {
     rows: any[];
     isLoading?: boolean;
+    onRowClick?: (row: any) => void;
 }) {
     const [sortField, setSortField] = useState<
-        "po" | "vendor" | "date" | "total" | null
+        "po" | "vendor" | "date" | "total" | "expected" | null
     >(null);
 
     const [sortDirection, setSortDirection] =
         useState<"asc" | "desc">("asc");
 
     const handleSort = (
-        field: "po" | "vendor" | "date" | "total",
+        field: "po" | "vendor" | "date" | "total" | "expected",
     ) => {
         if (sortField === field) {
             setSortDirection((prev) =>
@@ -50,10 +49,8 @@ export function PurchaseOrderTable({
 
             switch (sortField) {
                 case "po":
-                    comparison = String(
-                        a.invoice_number ?? "",
-                    ).localeCompare(
-                        String(b.invoice_number ?? ""),
+                    comparison = String(a.po_number ?? "").localeCompare(
+                        String(b.po_number ?? ""),
                         undefined,
                         { numeric: true },
                     );
@@ -61,28 +58,28 @@ export function PurchaseOrderTable({
 
                 case "vendor":
                     comparison = String(
-                        a.vendor_name_snapshot ??
-                            a.customer_name_snapshot ??
-                            "",
+                        a.vendor_name_snapshot ?? "",
                     ).localeCompare(
-                        String(
-                            b.vendor_name_snapshot ??
-                                b.customer_name_snapshot ??
-                                "",
-                        ),
+                        String(b.vendor_name_snapshot ?? ""),
                     );
                     break;
 
                 case "date":
                     comparison =
-                        new Date(a.invoice_date).getTime() -
-                        new Date(b.invoice_date).getTime();
+                        new Date(a.po_date).getTime() -
+                        new Date(b.po_date).getTime();
                     break;
 
                 case "total":
                     comparison =
                         Number(a.grand_total ?? 0) -
                         Number(b.grand_total ?? 0);
+                    break;
+
+                case "expected":
+                    comparison =
+                        new Date(a.expected_date ?? 0).getTime() -
+                        new Date(b.expected_date ?? 0).getTime();
                     break;
             }
 
@@ -91,6 +88,14 @@ export function PurchaseOrderTable({
                 : -comparison;
         });
     }, [rows, sortField, sortDirection]);
+
+    const statusColor: Record<string, string> = {
+        draft: "bg-muted text-muted-foreground",
+        sent: "bg-secondary text-secondary-foreground",
+        received:
+            "bg-[color:oklch(0.92_0.06_155)] text-[color:oklch(0.35_0.14_155)]",
+        cancelled: "bg-destructive/10 text-destructive",
+    };
 
     return (
         <Table>
@@ -105,16 +110,16 @@ export function PurchaseOrderTable({
 
                     <TableHead
                         className="cursor-pointer select-none"
-                        onClick={() => handleSort("vendor")}
+                        onClick={() => handleSort("date")}
                     >
-                        Vendor
+                        Date
                     </TableHead>
 
                     <TableHead
                         className="cursor-pointer select-none"
-                        onClick={() => handleSort("date")}
+                        onClick={() => handleSort("vendor")}
                     >
-                        Date
+                        Vendor
                     </TableHead>
 
                     <TableHead
@@ -126,8 +131,11 @@ export function PurchaseOrderTable({
 
                     <TableHead>Status</TableHead>
 
-                    <TableHead className="w-24 text-right">
-                        Actions
+                    <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("expected")}
+                    >
+                        Expected
                     </TableHead>
                 </TableRow>
             </TableHeader>
@@ -150,14 +158,7 @@ export function PurchaseOrderTable({
                             colSpan={6}
                             className="py-10 text-center text-muted-foreground"
                         >
-                            No purchase orders here yet.{" "}
-                            <Link
-                                to="/invoices/new"
-                                search={{ kind: "purchase_order" }}
-                                className="text-primary hover:underline"
-                            >
-                                Create one
-                            </Link>.
+                            No purchase orders yet.
                         </TableCell>
                     </TableRow>
                 )}
@@ -165,29 +166,23 @@ export function PurchaseOrderTable({
                 {sortedRows.map((r: any) => (
                     <TableRow
                         key={r.id}
-                        className="hover:bg-muted/40"
+                        className={
+                            onRowClick
+                                ? "cursor-pointer hover:bg-muted/40"
+                                : "hover:bg-muted/40"
+                        }
+                        onClick={() => onRowClick?.(r)}
                     >
                         <TableCell className="font-mono text-sm font-medium">
-                            <Link
-                                to="/invoices/$id"
-                                params={{ id: r.id }}
-                                search={{
-                                    kind: "purchase_order",
-                                }}
-                                className="text-primary hover:underline"
-                            >
-                                {billNo(r.invoice_number)}
-                            </Link>
+                            {r.po_number ?? "—"}
                         </TableCell>
 
                         <TableCell>
-                            {r.vendor_name_snapshot ??
-                                r.customer_name_snapshot ??
-                                "—"}
+                            {formatDate(r.po_date)}
                         </TableCell>
 
                         <TableCell>
-                            {formatDate(r.invoice_date)}
+                            {r.vendor_name_snapshot ?? "—"}
                         </TableCell>
 
                         <TableCell className="text-right tabular-nums font-semibold">
@@ -197,29 +192,16 @@ export function PurchaseOrderTable({
                         <TableCell>
                             <Badge
                                 variant="outline"
-                                className="text-[10px] font-medium uppercase"
+                                className={`text-[10px] uppercase ${statusColor[r.status] ?? ""}`}
                             >
-                                {r.status}
+                                {r.status ?? "—"}
                             </Badge>
                         </TableCell>
 
-                        <TableCell className="text-right">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                asChild
-                                title="Edit"
-                            >
-                                <Link
-                                    to="/invoices/$id/edit"
-                                    params={{ id: r.id }}
-                                    search={{
-                                        kind: "purchase_order",
-                                    }}
-                                >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                </Link>
-                            </Button>
+                        <TableCell>
+                            {r.expected_date
+                                ? formatDate(r.expected_date)
+                                : "—"}
                         </TableCell>
                     </TableRow>
                 ))}
