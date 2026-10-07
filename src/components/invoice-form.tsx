@@ -25,6 +25,7 @@ import { Row, ChargeRow, } from "@/components/forms/shared/totals-section";
 import { ProductLineItems } from "@/components/forms/shared/product-line-items";
 import { DocumentDetails } from "@/components/forms/shared/document-details";
 import { AdditionalDetails } from "@/components/forms/shared/additional-details";
+import { DocumentFormCore } from "@/components/forms/shared/document-form-core";
 
 export function InvoiceForm({
   editId,
@@ -596,8 +597,9 @@ export function InvoiceForm({
     }
   };
 
-  return (
-    <>
+return (
+  <DocumentFormCore
+    header={
       <PageHeader
         title={
           isEdit
@@ -629,7 +631,8 @@ export function InvoiceForm({
           </div>
         }
       />
-
+    }
+    details={
       <DocumentDetails
         isChallan={isChallan}
         isEdit={isEdit}
@@ -669,7 +672,8 @@ export function InvoiceForm({
         addChallanDate={addChallanDate}
         handlePdf={handlePdf}
       />
-
+    }
+    items={
       <ProductLineItems
         items={items}
         productTexts={productTexts}
@@ -681,7 +685,8 @@ export function InvoiceForm({
         removeItem={removeItem}
         addItem={addItem}
       />
-
+    }
+    additionalDetails={
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <AdditionalDetails
           isChallan={isChallan}
@@ -707,33 +712,49 @@ export function InvoiceForm({
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <Row label="Net Value" value={formatINR(totals.net)} />
-            <ChargeRow config={cfg("freight_charges")} fallbackLabel="Freight" value={freight} onChange={setFreight} />
-            {isTaxInvoice && <ChargeRow
-              config={cfg("transportation_charges")}
-              fallbackLabel="Transportation Charges"
-              value={transportCharges}
-              onChange={setTransportCharges}
-            />}
-            {isTaxInvoice && <ChargeRow
-              config={cfg("delivery_charges")}
-              fallbackLabel="Delivery Charges"
-              value={deliveryCharges}
-              onChange={setDeliveryCharges}
-            />}
+
+            <ChargeRow
+              config={cfg("freight_charges")}
+              fallbackLabel="Freight"
+              value={freight}
+              onChange={setFreight}
+            />
+
+            {isTaxInvoice && (
+              <ChargeRow
+                config={cfg("transportation_charges")}
+                fallbackLabel="Transportation Charges"
+                value={transportCharges}
+                onChange={setTransportCharges}
+              />
+            )}
+
+            {isTaxInvoice && (
+              <ChargeRow
+                config={cfg("delivery_charges")}
+                fallbackLabel="Delivery Charges"
+                value={deliveryCharges}
+                onChange={setDeliveryCharges}
+              />
+            )}
+
             <ChargeRow
               config={cfg("packing_charges")}
               fallbackLabel="Packing & Forwarding"
               value={packing}
               onChange={setPacking}
             />
+
             <ChargeRow
               config={cfg("other_charges")}
               fallbackLabel="Other Charges"
               value={otherCharges}
               onChange={setOtherCharges}
             />
+
             <div className="border-t pt-2">
               <Row label="Subtotal" value={formatINR(totals.subtotal)} />
+
               {isIGST ? (
                 <Row label="IGST" value={formatINR(totals.tax)} />
               ) : (
@@ -742,16 +763,21 @@ export function InvoiceForm({
                   <Row label="SGST" value={formatINR(totals.tax / 2)} />
                 </>
               )}
+
               <Row label="Round Off" value={formatINR(totals.round_off)} />
             </div>
+
             <div className="flex items-center justify-between border-t pt-2 text-base font-bold">
               <span>Grand Total</span>
               <span className="tabular-nums">{formatINR(totals.grand)}</span>
             </div>
-            <p className="pt-1 text-xs italic text-muted-foreground">{amountInWords(totals.grand)}</p>
+
+            <p className="pt-1 text-xs italic text-muted-foreground">
+              {amountInWords(totals.grand)}
+            </p>
           </CardContent>
         </Card>
       </div>
-    </>
-  );
-}
+    }
+  />
+)}
