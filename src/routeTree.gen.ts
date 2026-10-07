@@ -42,9 +42,12 @@ import { Route as AuthenticatedQuotationsIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
 import { Route as ApiGoogleDriveCallbackRouteImport } from './routes/api/google-drive/callback'
 import { Route as ApiPublicBackupCronRouteImport } from './routes/api/public/backup-cron'
+import { Route as AuthenticatedChallansFolderCompanyRouteImport } from './routes/_authenticated/challans.folder.$company'
 import { Route as AuthenticatedInvoicesIdIndexRouteImport } from './routes/_authenticated/invoices.$id.index'
 import { Route as AuthenticatedInvoicesIdEditRouteImport } from './routes/_authenticated/invoices.$id.edit'
 import { Route as AuthenticatedInvoicesFolderCompanyRouteImport } from './routes/_authenticated/invoices.folder.$company'
+import { Route as AuthenticatedProformasFolderCompanyRouteImport } from './routes/_authenticated/proformas.folder.$company'
+import { Route as AuthenticatedQuotationsFolderCompanyRouteImport } from './routes/_authenticated/quotations.folder.$company'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -226,6 +229,12 @@ const ApiPublicBackupCronRoute = ApiPublicBackupCronRouteImport.update({
   path: '/api/public/backup-cron',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedChallansFolderCompanyRoute =
+  AuthenticatedChallansFolderCompanyRouteImport.update({
+    id: '/folder/$company',
+    path: '/folder/$company',
+    getParentRoute: () => AuthenticatedChallansRoute,
+  } as any)
 const AuthenticatedInvoicesIdIndexRoute =
   AuthenticatedInvoicesIdIndexRouteImport.update({
     id: '/$id/',
@@ -243,6 +252,18 @@ const AuthenticatedInvoicesFolderCompanyRoute =
     id: '/folder/$company',
     path: '/folder/$company',
     getParentRoute: () => AuthenticatedInvoicesRoute,
+  } as any)
+const AuthenticatedProformasFolderCompanyRoute =
+  AuthenticatedProformasFolderCompanyRouteImport.update({
+    id: '/folder/$company',
+    path: '/folder/$company',
+    getParentRoute: () => AuthenticatedProformasRoute,
+  } as any)
+const AuthenticatedQuotationsFolderCompanyRoute =
+  AuthenticatedQuotationsFolderCompanyRouteImport.update({
+    id: '/folder/$company',
+    path: '/folder/$company',
+    getParentRoute: () => AuthenticatedQuotationsRoute,
   } as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
@@ -294,8 +315,11 @@ export interface FileRoutesByFullPath {
   '/proformas/': typeof AuthenticatedProformasIndexRoute
   '/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/quotations/': typeof AuthenticatedQuotationsIndexRoute
+  '/challans/folder/$company': typeof AuthenticatedChallansFolderCompanyRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
+  '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
+  '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -330,8 +354,11 @@ export interface FileRoutesByTo {
   '/proformas': typeof AuthenticatedProformasIndexRoute
   '/purchases': typeof AuthenticatedPurchasesIndexRoute
   '/quotations': typeof AuthenticatedQuotationsIndexRoute
+  '/challans/folder/$company': typeof AuthenticatedChallansFolderCompanyRoute
   '/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
+  '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
+  '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -372,8 +399,11 @@ export interface FileRoutesById {
   '/_authenticated/proformas/': typeof AuthenticatedProformasIndexRoute
   '/_authenticated/purchases/': typeof AuthenticatedPurchasesIndexRoute
   '/_authenticated/quotations/': typeof AuthenticatedQuotationsIndexRoute
+  '/_authenticated/challans/folder/$company': typeof AuthenticatedChallansFolderCompanyRoute
   '/_authenticated/invoices/$id/edit': typeof AuthenticatedInvoicesIdEditRoute
   '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
+  '/_authenticated/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
+  '/_authenticated/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -414,8 +444,11 @@ export interface FileRouteTypes {
     | '/proformas/'
     | '/purchases/'
     | '/quotations/'
+    | '/challans/folder/$company'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
+    | '/proformas/folder/$company'
+    | '/quotations/folder/$company'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -450,8 +483,11 @@ export interface FileRouteTypes {
     | '/proformas'
     | '/purchases'
     | '/quotations'
+    | '/challans/folder/$company'
     | '/invoices/$id/edit'
     | '/invoices/folder/$company'
+    | '/proformas/folder/$company'
+    | '/quotations/folder/$company'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -491,8 +527,11 @@ export interface FileRouteTypes {
     | '/_authenticated/proformas/'
     | '/_authenticated/purchases/'
     | '/_authenticated/quotations/'
+    | '/_authenticated/challans/folder/$company'
     | '/_authenticated/invoices/$id/edit'
     | '/_authenticated/invoices/folder/$company'
+    | '/_authenticated/proformas/folder/$company'
+    | '/_authenticated/quotations/folder/$company'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -744,6 +783,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBackupCronRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/challans/folder/$company': {
+      id: '/_authenticated/challans/folder/$company'
+      path: '/folder/$company'
+      fullPath: '/challans/folder/$company'
+      preLoaderRoute: typeof AuthenticatedChallansFolderCompanyRouteImport
+      parentRoute: typeof AuthenticatedChallansRoute
+    }
     '/_authenticated/invoices/$id/': {
       id: '/_authenticated/invoices/$id/'
       path: '/$id'
@@ -764,6 +810,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/invoices/folder/$company'
       preLoaderRoute: typeof AuthenticatedInvoicesFolderCompanyRouteImport
       parentRoute: typeof AuthenticatedInvoicesRoute
+    }
+    '/_authenticated/proformas/folder/$company': {
+      id: '/_authenticated/proformas/folder/$company'
+      path: '/folder/$company'
+      fullPath: '/proformas/folder/$company'
+      preLoaderRoute: typeof AuthenticatedProformasFolderCompanyRouteImport
+      parentRoute: typeof AuthenticatedProformasRoute
+    }
+    '/_authenticated/quotations/folder/$company': {
+      id: '/_authenticated/quotations/folder/$company'
+      path: '/folder/$company'
+      fullPath: '/quotations/folder/$company'
+      preLoaderRoute: typeof AuthenticatedQuotationsFolderCompanyRouteImport
+      parentRoute: typeof AuthenticatedQuotationsRoute
     }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
@@ -792,11 +852,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedChallansRouteChildren {
   AuthenticatedChallansNewRoute: typeof AuthenticatedChallansNewRoute
   AuthenticatedChallansIndexRoute: typeof AuthenticatedChallansIndexRoute
+  AuthenticatedChallansFolderCompanyRoute: typeof AuthenticatedChallansFolderCompanyRoute
 }
 
 const AuthenticatedChallansRouteChildren: AuthenticatedChallansRouteChildren = {
   AuthenticatedChallansNewRoute: AuthenticatedChallansNewRoute,
   AuthenticatedChallansIndexRoute: AuthenticatedChallansIndexRoute,
+  AuthenticatedChallansFolderCompanyRoute:
+    AuthenticatedChallansFolderCompanyRoute,
 }
 
 const AuthenticatedChallansRouteWithChildren =
@@ -829,12 +892,15 @@ const AuthenticatedInvoicesRouteWithChildren =
 interface AuthenticatedProformasRouteChildren {
   AuthenticatedProformasNewRoute: typeof AuthenticatedProformasNewRoute
   AuthenticatedProformasIndexRoute: typeof AuthenticatedProformasIndexRoute
+  AuthenticatedProformasFolderCompanyRoute: typeof AuthenticatedProformasFolderCompanyRoute
 }
 
 const AuthenticatedProformasRouteChildren: AuthenticatedProformasRouteChildren =
   {
     AuthenticatedProformasNewRoute: AuthenticatedProformasNewRoute,
     AuthenticatedProformasIndexRoute: AuthenticatedProformasIndexRoute,
+    AuthenticatedProformasFolderCompanyRoute:
+      AuthenticatedProformasFolderCompanyRoute,
   }
 
 const AuthenticatedProformasRouteWithChildren =
@@ -861,12 +927,15 @@ const AuthenticatedPurchasesRouteWithChildren =
 interface AuthenticatedQuotationsRouteChildren {
   AuthenticatedQuotationsNewRoute: typeof AuthenticatedQuotationsNewRoute
   AuthenticatedQuotationsIndexRoute: typeof AuthenticatedQuotationsIndexRoute
+  AuthenticatedQuotationsFolderCompanyRoute: typeof AuthenticatedQuotationsFolderCompanyRoute
 }
 
 const AuthenticatedQuotationsRouteChildren: AuthenticatedQuotationsRouteChildren =
   {
     AuthenticatedQuotationsNewRoute: AuthenticatedQuotationsNewRoute,
     AuthenticatedQuotationsIndexRoute: AuthenticatedQuotationsIndexRoute,
+    AuthenticatedQuotationsFolderCompanyRoute:
+      AuthenticatedQuotationsFolderCompanyRoute,
   }
 
 const AuthenticatedQuotationsRouteWithChildren =
