@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {LayoutDashboard, FileText,  FileSpreadsheet,  ReceiptText,  Users,  Package,  Warehouse,  ShoppingCart,  Wallet,  BarChart3,  Settings,  Factory,  Ban,  PackageX,
-        CreditCard,  UserCog,  Truck,  CloudUpload,
+import {
+  LayoutDashboard, FileText, FileSpreadsheet, ReceiptText, Users, Package, Warehouse, ShoppingCart, Wallet, BarChart3, Settings, Factory, Ban, PackageX,
+  CreditCard, UserCog, Truck, CloudUpload,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -30,10 +31,25 @@ const main = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const path = useRouterState({ select: (r) => r.location.pathname });
+  const { pathname: path, search } = useRouterState({
+    select: (r) => r.location,
+  });
   const { user, signOut, isAdmin, canAccess } = useAuth();
   const visible = main.filter((i) => canAccess(i.panel));
-  const isActive = (u: string) => path === u || path.startsWith(u + "/");
+
+  const documentKind =
+    (search as { kind?: string }).kind ?? "tax_invoice";
+
+  const isActive = (u: string) => {
+    if (path.startsWith("/invoices/")) {
+      if (u === "/invoices") return documentKind === "tax_invoice";
+      if (u === "/proformas") return documentKind === "proforma";
+      if (u === "/quotations") return documentKind === "quotation";
+      if (u === "/challans") return documentKind === "delivery_challan";
+    }
+
+    return path === u || path.startsWith(u + "/");
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -69,43 +85,43 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         {(canAccess("settings") || isAdmin) && (
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {canAccess("settings") && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/settings")}>
-                    <Link to="/settings">
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/backups")}>
-                    <Link to="/backups">
-                      <CloudUpload className="h-4 w-4" />
-                      <span>Backups</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/users")}>
-                    <Link to="/users">
-                      <UserCog className="h-4 w-4" />
-                      <span>Users</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {canAccess("settings") && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/settings")}>
+                      <Link to="/settings">
+                        <Settings className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {isAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/backups")}>
+                      <Link to="/backups">
+                        <CloudUpload className="h-4 w-4" />
+                        <span>Backups</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {isAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive("/users")}>
+                      <Link to="/users">
+                        <UserCog className="h-4 w-4" />
+                        <span>Users</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
