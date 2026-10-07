@@ -19,6 +19,11 @@ interface Customer {
   customer_name?: string | null;
   company_name?: string | null;
   gst_number?: string | null;
+  billing_address?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+  state?: string | null;
+  state_code?: string | null;
 }
 
 interface InvoiceSettings {
@@ -31,12 +36,10 @@ interface DocumentDetailsProps {
   isChallan: boolean;
   isEdit: boolean;
   isTaxInvoice: boolean;
-
+  isIGST: boolean;
   docLabel: string;
-
   customers: Customer[];
   settings?: InvoiceSettings | null;
-
   customerId: string;
   customerText: string;
   custCompany: string;
@@ -78,6 +81,7 @@ export function DocumentDetails({
   isChallan,
   isEdit,
   isTaxInvoice,
+  isIGST,
   docLabel,
   customers,
   settings,
@@ -389,6 +393,78 @@ export function DocumentDetails({
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Customer Info</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-1 text-sm">
+          {(() => {
+            const customer = customers.find((c) => c.id === customerId);
+
+            return customer ? (
+              <>
+                <div className="font-medium">
+                  {customer.company_name || customer.customer_name}
+                </div>
+
+                <div className="text-xs text-muted-foreground whitespace-pre-line">
+                  {customer.billing_address}
+                </div>
+
+                <div className="pt-2 text-xs">
+                  <span className="text-muted-foreground">GST:</span>{" "}
+                  <span className="font-mono">
+                    {customer.gst_number ?? "—"}
+                  </span>
+                </div>
+
+                <div className="text-xs">
+                  <span className="text-muted-foreground">State:</span>{" "}
+                  {customer.state} ({customer.state_code})
+                </div>
+
+                <div className="mt-2 rounded bg-secondary px-2 py-1 text-xs font-medium">
+                  {isIGST
+                    ? "Inter-state → IGST"
+                    : "Intra-state → SGST + CGST"}
+                </div>
+              </>
+            ) : customerText.trim() ? (
+              <>
+                <div className="font-medium">
+                  {custCompany || customerText}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  New customer — saved when you save this invoice.
+                </div>
+
+                <div className="pt-2 text-xs">
+                  <span className="text-muted-foreground">GST:</span>{" "}
+                  <span className="font-mono">
+                    {custGst || "—"}
+                  </span>
+                </div>
+
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Mobile:</span>{" "}
+                  {custMobile || "—"}
+                </div>
+
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Email:</span>{" "}
+                  {custEmail || "—"}
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                Type a customer name to begin.
+              </p>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>

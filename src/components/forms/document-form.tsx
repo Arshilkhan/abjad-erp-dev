@@ -476,6 +476,7 @@ export function DocumentForm({
           isChallan={isChallan}
           isEdit={isEdit}
           isTaxInvoice={isTaxInvoice}
+          isIGST={isIGST}
           docLabel={docCfg.label}
           customers={customers}
           settings={settings}
