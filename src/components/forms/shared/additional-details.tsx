@@ -4,9 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 interface AdditionalDetailsProps {
-  isChallan: boolean;
   isEdit: boolean;
   showDelivery?: boolean | null;
+  showPaymentTerms: boolean;
+  showTransportDetails: boolean;
   deliveryMode: string;
   paymentTerms: string;
   transporterName: string;
@@ -22,9 +23,10 @@ interface AdditionalDetailsProps {
 }
 
 export function AdditionalDetails({
-  isChallan,
   isEdit,
   showDelivery,
+  showPaymentTerms,
+  showTransportDetails,
   deliveryMode,
   paymentTerms,
   transporterName,
@@ -56,7 +58,7 @@ export function AdditionalDetails({
           </div>
         )}
 
-        {!isChallan && (
+        {showPaymentTerms && (
           <div className="space-y-1">
             <Label>Payment Terms</Label>
             <Input
@@ -67,7 +69,7 @@ export function AdditionalDetails({
           </div>
         )}
 
-        {isChallan && (
+        {showTransportDetails && (
           <>
             <div className="space-y-1">
               <Label>Transporter Name</Label>
