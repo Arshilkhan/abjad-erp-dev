@@ -384,12 +384,23 @@ export function DocumentForm({
         try {
           const res: any = await sendEmail({ data: { invoiceId: inv.id, kind: documentType } });
           if (res?.sent) {
-            toast.success(`Invoice emailed to ${res.email}`);
-            if (isTaxInvoice) await logInvoiceEvent(inv.id, "sent", `Invoice emailed to ${res.email}`);
+            toast.success(`${docCfg.label} emailed to ${res.email}`);
+
+            if (isTaxInvoice) {
+              await logInvoiceEvent(
+                inv.id,
+                "sent",
+                `${docCfg.label} emailed to ${res.email}`,
+              );
+            }
           } else if (res?.reason === "no_email") {
-            toast.info("Saved. No customer email on file, so nothing was sent.");
+            toast.info(
+              `Saved. No customer email on file, so the ${docCfg.label.toLowerCase()} was not sent.`,
+            );
           } else if (res?.reason === "recipient_suppressed") {
-            toast.warning("Saved. The customer has unsubscribed from emails.");
+            toast.warning(
+              `Saved. The customer has unsubscribed from emails.`,
+            );
           }
         } catch (err: any) {
           toast.error(`Invoice saved, but the email could not be sent: ${err?.message ?? "unknown error"}`);
@@ -465,7 +476,7 @@ export function DocumentForm({
                 Save Draft
               </Button>
               <Button onClick={() => save.mutate("sent")} disabled={save.isPending}>
-                {save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save & Send"}
+                {save.isPending ? "Saving…" : "Save & Send"}
               </Button>
             </div>
           }
