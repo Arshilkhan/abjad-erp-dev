@@ -45,7 +45,26 @@ async function handle(request: Request): Promise<Response> {
 
   try {
     const { runBackup } = await import('@/lib/backup.server')
-    const result = await runBackup({ trigger: 'scheduled' })
+    const { data: organizations, error: orgError } = await supabaseAdmin
+      .from('organizations')
+      .select('id')
+
+    if (orgError) {
+      throw new Error(orgError.message)
+    }
+
+    const results = []
+
+    for (const organization of organizations ?? []) {
+      results.push(
+        await runBackup({
+          trigger: 'scheduled',
+          organizationId: organization.id,
+        }),
+      )
+    }
+
+    const result = results
     return Response.json({ ok: true, ...result })
   } catch (e) {
     console.error('[backup-cron]', e)

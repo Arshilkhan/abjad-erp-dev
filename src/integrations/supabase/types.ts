@@ -7,10 +7,33 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -25,6 +48,7 @@ export type Database = {
           finished_at: string | null
           id: string
           invoice_count: number | null
+          organization_id: string
           started_at: string
           status: string
           trigger_source: string
@@ -39,6 +63,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           invoice_count?: number | null
+          organization_id: string
           started_at?: string
           status?: string
           trigger_source?: string
@@ -53,11 +78,20 @@ export type Database = {
           finished_at?: string | null
           id?: string
           invoice_count?: number | null
+          organization_id?: string
           started_at?: string
           status?: string
           trigger_source?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "backup_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       backup_settings: {
         Row: {
@@ -66,6 +100,7 @@ export type Database = {
           hour_utc: number
           id: string
           last_run_at: string | null
+          organization_id: string
           updated_at: string
         }
         Insert: {
@@ -74,6 +109,7 @@ export type Database = {
           hour_utc?: number
           id?: string
           last_run_at?: string | null
+          organization_id: string
           updated_at?: string
         }
         Update: {
@@ -82,18 +118,24 @@ export type Database = {
           hour_utc?: number
           id?: string
           last_run_at?: string | null
+          organization_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "backup_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       challan: {
         Row: {
-          amount_in_words: string | null
-          amount_paid: number | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
-          cgst_amount: number | null
           challan_date: string | null
           challan_dates: string[]
           challan_number: string | null
@@ -105,47 +147,27 @@ export type Database = {
           customer_gst_snapshot: string | null
           customer_id: string | null
           customer_name_snapshot: string | null
-          delivery_charges: number
           delivery_mode: string | null
-          discount_amount: number | null
-          freight: number | null
-          grand_total: number | null
-          gst_arn: string | null
           id: string
-          igst_amount: number | null
-          import_source: string | null
           invoice_date: string
           invoice_number: string
           invoice_type: Database["public"]["Enums"]["invoice_type"]
-          is_igst: boolean | null
-          is_imported: boolean
           movement_reason: string | null
-          net_value: number | null
           notes: string | null
-          other_charges: number | null
-          packing_charges: number | null
+          organization_id: string
           payment_terms: string | null
           place_of_delivery: string | null
           place_of_dispatch: string | null
           place_of_supply: string | null
-          po_date: string | null
-          po_number: string | null
-          round_off: number | null
-          sgst_amount: number | null
           status: Database["public"]["Enums"]["invoice_status"]
-          subtotal: number | null
-          transportation_charges: number
           transporter_name: string | null
           updated_at: string
           work_order_number: string | null
         }
         Insert: {
-          amount_in_words?: string | null
-          amount_paid?: number | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
-          cgst_amount?: number | null
           challan_date?: string | null
           challan_dates?: string[]
           challan_number?: string | null
@@ -157,47 +179,27 @@ export type Database = {
           customer_gst_snapshot?: string | null
           customer_id?: string | null
           customer_name_snapshot?: string | null
-          delivery_charges?: number
           delivery_mode?: string | null
-          discount_amount?: number | null
-          freight?: number | null
-          grand_total?: number | null
-          gst_arn?: string | null
           id?: string
-          igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
-          is_igst?: boolean | null
-          is_imported?: boolean
           movement_reason?: string | null
-          net_value?: number | null
           notes?: string | null
-          other_charges?: number | null
-          packing_charges?: number | null
+          organization_id: string
           payment_terms?: string | null
           place_of_delivery?: string | null
           place_of_dispatch?: string | null
           place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
-          round_off?: number | null
-          sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
-          subtotal?: number | null
-          transportation_charges?: number
           transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
         Update: {
-          amount_in_words?: string | null
-          amount_paid?: number | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
-          cgst_amount?: number | null
           challan_date?: string | null
           challan_dates?: string[]
           challan_number?: string | null
@@ -209,36 +211,19 @@ export type Database = {
           customer_gst_snapshot?: string | null
           customer_id?: string | null
           customer_name_snapshot?: string | null
-          delivery_charges?: number
           delivery_mode?: string | null
-          discount_amount?: number | null
-          freight?: number | null
-          grand_total?: number | null
-          gst_arn?: string | null
           id?: string
-          igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number?: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
-          is_igst?: boolean | null
-          is_imported?: boolean
           movement_reason?: string | null
-          net_value?: number | null
           notes?: string | null
-          other_charges?: number | null
-          packing_charges?: number | null
+          organization_id?: string
           payment_terms?: string | null
           place_of_delivery?: string | null
           place_of_dispatch?: string | null
           place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
-          round_off?: number | null
-          sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
-          subtotal?: number | null
-          transportation_charges?: number
           transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
@@ -251,67 +236,60 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "challan_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       challan_items: {
         Row: {
-          accepted_quantity: number | null
           description: string
-          discount_amount: number | null
-          discount_pct: number | null
           hsn_code: string | null
           id: string
           invoice_id: string
+          organization_id: string
           product_id: string | null
           quantity: number
-          rejected_quantity: number
           serial_batch_number: string | null
           sr_no: number
-          tax_amount: number | null
-          tax_pct: number | null
-          total_amount: number
-          unit_rate: number
           uom: string | null
         }
         Insert: {
-          accepted_quantity?: number | null
           description: string
-          discount_amount?: number | null
-          discount_pct?: number | null
           hsn_code?: string | null
           id?: string
           invoice_id: string
+          organization_id: string
           product_id?: string | null
           quantity?: number
-          rejected_quantity?: number
           serial_batch_number?: string | null
           sr_no: number
-          tax_amount?: number | null
-          tax_pct?: number | null
-          total_amount?: number
-          unit_rate?: number
           uom?: string | null
         }
         Update: {
-          accepted_quantity?: number | null
           description?: string
-          discount_amount?: number | null
-          discount_pct?: number | null
           hsn_code?: string | null
           id?: string
           invoice_id?: string
+          organization_id?: string
           product_id?: string | null
           quantity?: number
-          rejected_quantity?: number
           serial_batch_number?: string | null
           sr_no?: number
-          tax_amount?: number | null
-          tax_pct?: number | null
-          total_amount?: number
-          unit_rate?: number
           uom?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "challan_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "challan_items_parent_fkey"
             columns: ["invoice_id"]
@@ -349,6 +327,7 @@ export type Database = {
           logo_url: string | null
           mobile: string | null
           name: string
+          organization_id: string
           pan_number: string | null
           pincode: string | null
           po_prefix: string | null
@@ -378,6 +357,7 @@ export type Database = {
           logo_url?: string | null
           mobile?: string | null
           name?: string
+          organization_id: string
           pan_number?: string | null
           pincode?: string | null
           po_prefix?: string | null
@@ -407,6 +387,7 @@ export type Database = {
           logo_url?: string | null
           mobile?: string | null
           name?: string
+          organization_id?: string
           pan_number?: string | null
           pincode?: string | null
           po_prefix?: string | null
@@ -416,7 +397,15 @@ export type Database = {
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "company_profile_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_credits: {
         Row: {
@@ -425,6 +414,7 @@ export type Database = {
           customer_id: string | null
           id: string
           notes: string | null
+          organization_id: string
           source_invoice_id: string | null
           source_rejection_id: string | null
           status: string
@@ -437,6 +427,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           notes?: string | null
+          organization_id: string
           source_invoice_id?: string | null
           source_rejection_id?: string | null
           status?: string
@@ -449,6 +440,7 @@ export type Database = {
           customer_id?: string | null
           id?: string
           notes?: string | null
+          organization_id?: string
           source_invoice_id?: string | null
           source_rejection_id?: string | null
           status?: string
@@ -461,6 +453,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_credits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -493,6 +492,7 @@ export type Database = {
           id: string
           mobile: string | null
           notes: string | null
+          organization_id: string
           pan_number: string | null
           payment_terms: string | null
           place_of_supply: string | null
@@ -514,6 +514,7 @@ export type Database = {
           id?: string
           mobile?: string | null
           notes?: string | null
+          organization_id: string
           pan_number?: string | null
           payment_terms?: string | null
           place_of_supply?: string | null
@@ -535,6 +536,7 @@ export type Database = {
           id?: string
           mobile?: string | null
           notes?: string | null
+          organization_id?: string
           pan_number?: string | null
           payment_terms?: string | null
           place_of_supply?: string | null
@@ -543,7 +545,15 @@ export type Database = {
           state_code?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_drive_credentials: {
         Row: {
@@ -554,6 +564,7 @@ export type Database = {
           created_at: string
           folder_id: string | null
           id: string
+          organization_id: string
           refresh_token: string
           updated_at: string
         }
@@ -565,6 +576,7 @@ export type Database = {
           created_at?: string
           folder_id?: string | null
           id?: string
+          organization_id: string
           refresh_token: string
           updated_at?: string
         }
@@ -576,10 +588,19 @@ export type Database = {
           created_at?: string
           folder_id?: string | null
           id?: string
+          organization_id?: string
           refresh_token?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "google_drive_credentials_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_configuration: {
         Row: {
@@ -592,6 +613,7 @@ export type Database = {
           is_read_only: boolean
           is_visible: boolean
           label: string
+          organization_id: string
           sort_order: number
           updated_at: string
         }
@@ -605,6 +627,7 @@ export type Database = {
           is_read_only?: boolean
           is_visible?: boolean
           label: string
+          organization_id: string
           sort_order?: number
           updated_at?: string
         }
@@ -618,10 +641,19 @@ export type Database = {
           is_read_only?: boolean
           is_visible?: boolean
           label?: string
+          organization_id?: string
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoice_configuration_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_history: {
         Row: {
@@ -633,6 +665,7 @@ export type Database = {
           id: string
           invoice_id: string
           metadata: Json | null
+          organization_id: string
         }
         Insert: {
           actor_email?: string | null
@@ -643,6 +676,7 @@ export type Database = {
           id?: string
           invoice_id: string
           metadata?: Json | null
+          organization_id: string
         }
         Update: {
           actor_email?: string | null
@@ -653,6 +687,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           metadata?: Json | null
+          organization_id?: string
         }
         Relationships: [
           {
@@ -660,6 +695,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -673,6 +715,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           invoice_id: string
+          organization_id: string
           product_id: string | null
           quantity: number
           rejected_quantity: number
@@ -692,6 +735,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id: string
+          organization_id: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -711,6 +755,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id?: string
+          organization_id?: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -731,6 +776,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoice_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -748,6 +800,7 @@ export type Database = {
           id: string
           invoice_id: string
           invoice_item_id: string
+          organization_id: string
           reason_notes: string | null
           rejected_quantity: number
           rejected_value: number
@@ -764,6 +817,7 @@ export type Database = {
           id?: string
           invoice_id: string
           invoice_item_id: string
+          organization_id: string
           reason_notes?: string | null
           rejected_quantity: number
           rejected_value?: number
@@ -780,6 +834,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           invoice_item_id?: string
+          organization_id?: string
           reason_notes?: string | null
           rejected_quantity?: number
           rejected_value?: number
@@ -803,6 +858,13 @@ export type Database = {
             referencedRelation: "invoice_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_rejections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       invoice_settings: {
@@ -817,6 +879,7 @@ export type Database = {
           mandatory_packing_charges: boolean | null
           mandatory_pan_number: boolean | null
           mandatory_po_number: boolean | null
+          organization_id: string
           show_bank_details: boolean | null
           show_challan_number: boolean | null
           show_company_seal: boolean | null
@@ -845,6 +908,7 @@ export type Database = {
           mandatory_packing_charges?: boolean | null
           mandatory_pan_number?: boolean | null
           mandatory_po_number?: boolean | null
+          organization_id: string
           show_bank_details?: boolean | null
           show_challan_number?: boolean | null
           show_company_seal?: boolean | null
@@ -873,6 +937,7 @@ export type Database = {
           mandatory_packing_charges?: boolean | null
           mandatory_pan_number?: boolean | null
           mandatory_po_number?: boolean | null
+          organization_id?: string
           show_bank_details?: boolean | null
           show_challan_number?: boolean | null
           show_company_seal?: boolean | null
@@ -890,7 +955,15 @@ export type Database = {
           show_work_order?: boolean | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoice_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {
@@ -900,9 +973,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           cgst_amount: number | null
-          challan_date: string | null
           challan_dates: string[]
-          challan_number: string | null
           contact_mobile: string | null
           contact_person: string | null
           created_at: string
@@ -916,7 +987,6 @@ export type Database = {
           discount_amount: number | null
           freight: number | null
           grand_total: number | null
-          gst_arn: string | null
           id: string
           igst_amount: number | null
           import_source: string | null
@@ -928,14 +998,12 @@ export type Database = {
           movement_reason: string | null
           net_value: number | null
           notes: string | null
+          organization_id: string
           other_charges: number | null
           packing_charges: number | null
           payment_terms: string | null
           place_of_delivery: string | null
           place_of_dispatch: string | null
-          place_of_supply: string | null
-          po_date: string | null
-          po_number: string | null
           round_off: number | null
           sgst_amount: number | null
           status: Database["public"]["Enums"]["invoice_status"]
@@ -952,9 +1020,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
           challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -968,7 +1034,6 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
           import_source?: string | null
@@ -980,14 +1045,12 @@ export type Database = {
           movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
           place_of_delivery?: string | null
           place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -1004,9 +1067,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
           challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -1020,7 +1081,6 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
           import_source?: string | null
@@ -1032,14 +1092,12 @@ export type Database = {
           movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id?: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
           place_of_delivery?: string | null
           place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -1057,7 +1115,105 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      organization_features: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_features_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -1068,6 +1224,7 @@ export type Database = {
           invoice_id: string
           mode: string
           notes: string | null
+          organization_id: string
           payment_date: string
           reference: string | null
           updated_at: string
@@ -1080,6 +1237,7 @@ export type Database = {
           invoice_id: string
           mode?: string
           notes?: string | null
+          organization_id: string
           payment_date?: string
           reference?: string | null
           updated_at?: string
@@ -1092,6 +1250,7 @@ export type Database = {
           invoice_id?: string
           mode?: string
           notes?: string | null
+          organization_id?: string
           payment_date?: string
           reference?: string | null
           updated_at?: string
@@ -1104,6 +1263,13 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       performa: {
@@ -1114,9 +1280,6 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           cgst_amount: number | null
-          challan_date: string | null
-          challan_dates: string[]
-          challan_number: string | null
           contact_mobile: string | null
           contact_person: string | null
           created_at: string
@@ -1130,32 +1293,23 @@ export type Database = {
           discount_amount: number | null
           freight: number | null
           grand_total: number | null
-          gst_arn: string | null
           id: string
           igst_amount: number | null
-          import_source: string | null
           invoice_date: string
           invoice_number: string
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           is_igst: boolean | null
-          is_imported: boolean
-          movement_reason: string | null
           net_value: number | null
           notes: string | null
+          organization_id: string
           other_charges: number | null
           packing_charges: number | null
           payment_terms: string | null
-          place_of_delivery: string | null
-          place_of_dispatch: string | null
-          place_of_supply: string | null
-          po_date: string | null
-          po_number: string | null
           round_off: number | null
           sgst_amount: number | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number | null
           transportation_charges: number
-          transporter_name: string | null
           updated_at: string
           work_order_number: string | null
         }
@@ -1166,9 +1320,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
-          challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -1182,32 +1333,23 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
-          is_imported?: boolean
-          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
-          place_of_delivery?: string | null
-          place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
-          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
@@ -1218,9 +1360,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
-          challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -1234,32 +1373,23 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number?: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
-          is_imported?: boolean
-          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id?: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
-          place_of_delivery?: string | null
-          place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
-          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
@@ -1269,6 +1399,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performa_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1282,6 +1419,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           invoice_id: string
+          organization_id: string
           product_id: string | null
           quantity: number
           rejected_quantity: number
@@ -1301,6 +1439,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id: string
+          organization_id: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -1320,6 +1459,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id?: string
+          organization_id?: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -1332,6 +1472,13 @@ export type Database = {
           uom?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "performa_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "performa_items_parent_fkey"
             columns: ["invoice_id"]
@@ -1353,18 +1500,29 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          organization_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          organization_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          organization_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -1380,6 +1538,7 @@ export type Database = {
           material: string | null
           maximum_stock: number | null
           minimum_stock: number | null
+          organization_id: string
           product_code: string | null
           product_name: string
           purchase_price: number | null
@@ -1402,6 +1561,7 @@ export type Database = {
           material?: string | null
           maximum_stock?: number | null
           minimum_stock?: number | null
+          organization_id: string
           product_code?: string | null
           product_name: string
           purchase_price?: number | null
@@ -1424,6 +1584,7 @@ export type Database = {
           material?: string | null
           maximum_stock?: number | null
           minimum_stock?: number | null
+          organization_id?: string
           product_code?: string | null
           product_name?: string
           purchase_price?: number | null
@@ -1439,6 +1600,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1473,6 +1641,7 @@ export type Database = {
           description: string
           hsn_code: string | null
           id: string
+          organization_id: string
           product_id: string | null
           purchase_order_id: string
           quantity: number
@@ -1488,6 +1657,7 @@ export type Database = {
           description: string
           hsn_code?: string | null
           id?: string
+          organization_id: string
           product_id?: string | null
           purchase_order_id: string
           quantity?: number
@@ -1503,6 +1673,7 @@ export type Database = {
           description?: string
           hsn_code?: string | null
           id?: string
+          organization_id?: string
           product_id?: string | null
           purchase_order_id?: string
           quantity?: number
@@ -1514,6 +1685,13 @@ export type Database = {
           uom?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_order_items_product_id_fkey"
             columns: ["product_id"]
@@ -1535,16 +1713,14 @@ export type Database = {
           cgst_amount: number
           created_at: string
           created_by: string | null
-          discount_amount: number
           expected_date: string | null
-          freight: number
           grand_total: number
           id: string
           igst_amount: number
           is_igst: boolean
           net_value: number
           notes: string | null
-          packing_charges: number
+          organization_id: string
           po_date: string
           po_number: string
           round_off: number
@@ -1561,16 +1737,14 @@ export type Database = {
           cgst_amount?: number
           created_at?: string
           created_by?: string | null
-          discount_amount?: number
           expected_date?: string | null
-          freight?: number
           grand_total?: number
           id?: string
           igst_amount?: number
           is_igst?: boolean
           net_value?: number
           notes?: string | null
-          packing_charges?: number
+          organization_id: string
           po_date?: string
           po_number: string
           round_off?: number
@@ -1587,16 +1761,14 @@ export type Database = {
           cgst_amount?: number
           created_at?: string
           created_by?: string | null
-          discount_amount?: number
           expected_date?: string | null
-          freight?: number
           grand_total?: number
           id?: string
           igst_amount?: number
           is_igst?: boolean
           net_value?: number
           notes?: string | null
-          packing_charges?: number
+          organization_id?: string
           po_date?: string
           po_number?: string
           round_off?: number
@@ -1610,6 +1782,13 @@ export type Database = {
           vendor_name_snapshot?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1627,9 +1806,6 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           cgst_amount: number | null
-          challan_date: string | null
-          challan_dates: string[]
-          challan_number: string | null
           contact_mobile: string | null
           contact_person: string | null
           created_at: string
@@ -1643,32 +1819,23 @@ export type Database = {
           discount_amount: number | null
           freight: number | null
           grand_total: number | null
-          gst_arn: string | null
           id: string
           igst_amount: number | null
-          import_source: string | null
           invoice_date: string
           invoice_number: string
           invoice_type: Database["public"]["Enums"]["invoice_type"]
           is_igst: boolean | null
-          is_imported: boolean
-          movement_reason: string | null
           net_value: number | null
           notes: string | null
+          organization_id: string
           other_charges: number | null
           packing_charges: number | null
           payment_terms: string | null
-          place_of_delivery: string | null
-          place_of_dispatch: string | null
-          place_of_supply: string | null
-          po_date: string | null
-          po_number: string | null
           round_off: number | null
           sgst_amount: number | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number | null
           transportation_charges: number
-          transporter_name: string | null
           updated_at: string
           work_order_number: string | null
         }
@@ -1679,9 +1846,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
-          challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -1695,32 +1859,23 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
-          is_imported?: boolean
-          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
-          place_of_delivery?: string | null
-          place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
-          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
@@ -1731,9 +1886,6 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cgst_amount?: number | null
-          challan_date?: string | null
-          challan_dates?: string[]
-          challan_number?: string | null
           contact_mobile?: string | null
           contact_person?: string | null
           created_at?: string
@@ -1747,32 +1899,23 @@ export type Database = {
           discount_amount?: number | null
           freight?: number | null
           grand_total?: number | null
-          gst_arn?: string | null
           id?: string
           igst_amount?: number | null
-          import_source?: string | null
           invoice_date?: string
           invoice_number?: string
           invoice_type?: Database["public"]["Enums"]["invoice_type"]
           is_igst?: boolean | null
-          is_imported?: boolean
-          movement_reason?: string | null
           net_value?: number | null
           notes?: string | null
+          organization_id?: string
           other_charges?: number | null
           packing_charges?: number | null
           payment_terms?: string | null
-          place_of_delivery?: string | null
-          place_of_dispatch?: string | null
-          place_of_supply?: string | null
-          po_date?: string | null
-          po_number?: string | null
           round_off?: number | null
           sgst_amount?: number | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           transportation_charges?: number
-          transporter_name?: string | null
           updated_at?: string
           work_order_number?: string | null
         }
@@ -1782,6 +1925,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1795,6 +1945,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           invoice_id: string
+          organization_id: string
           product_id: string | null
           quantity: number
           rejected_quantity: number
@@ -1814,6 +1965,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id: string
+          organization_id: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -1833,6 +1985,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           invoice_id?: string
+          organization_id?: string
           product_id?: string | null
           quantity?: number
           rejected_quantity?: number
@@ -1845,6 +1998,13 @@ export type Database = {
           uom?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotation_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotation_items_parent_fkey"
             columns: ["invoice_id"]
@@ -1889,6 +2049,7 @@ export type Database = {
           disposition: string
           id: string
           invoice_id: string | null
+          organization_id: string
           product_id: string | null
           quantity: number
           reason: string | null
@@ -1901,6 +2062,7 @@ export type Database = {
           disposition?: string
           id?: string
           invoice_id?: string | null
+          organization_id: string
           product_id?: string | null
           quantity?: number
           reason?: string | null
@@ -1913,6 +2075,7 @@ export type Database = {
           disposition?: string
           id?: string
           invoice_id?: string | null
+          organization_id?: string
           product_id?: string | null
           quantity?: number
           reason?: string | null
@@ -1925,6 +2088,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejected_inventory_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -1950,6 +2120,7 @@ export type Database = {
           id: string
           movement_type: Database["public"]["Enums"]["stock_movement_type"]
           notes: string | null
+          organization_id: string
           product_id: string
           quantity: number
           reference: string | null
@@ -1960,6 +2131,7 @@ export type Database = {
           id?: string
           movement_type: Database["public"]["Enums"]["stock_movement_type"]
           notes?: string | null
+          organization_id: string
           product_id: string
           quantity: number
           reference?: string | null
@@ -1970,11 +2142,19 @@ export type Database = {
           id?: string
           movement_type?: Database["public"]["Enums"]["stock_movement_type"]
           notes?: string | null
+          organization_id?: string
           product_id?: string
           quantity?: number
           reference?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stock_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stock_movements_product_id_fkey"
             columns: ["product_id"]
@@ -1988,22 +2168,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          organization_id: string
           panel: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          organization_id: string
           panel: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          organization_id?: string
           panel?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_panel_permissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -2042,6 +2233,7 @@ export type Database = {
           id: string
           mobile: string | null
           notes: string | null
+          organization_id: string
           pan_number: string | null
           payment_terms: string | null
           pincode: string | null
@@ -2065,6 +2257,7 @@ export type Database = {
           id?: string
           mobile?: string | null
           notes?: string | null
+          organization_id: string
           pan_number?: string | null
           payment_terms?: string | null
           pincode?: string | null
@@ -2088,6 +2281,7 @@ export type Database = {
           id?: string
           mobile?: string | null
           notes?: string | null
+          organization_id?: string
           pan_number?: string | null
           payment_terms?: string | null
           pincode?: string | null
@@ -2096,7 +2290,15 @@ export type Database = {
           updated_at?: string
           vendor_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -2104,8 +2306,25 @@ export type Database = {
     }
     Functions: {
       amount_in_words: { Args: { amount: number }; Returns: string }
+      can_access_org: { Args: { _organization_id: string }; Returns: boolean }
+      can_edit_org_panel: {
+        Args: { _organization_id: string; _panel: string; _user_id?: string }
+        Returns: boolean
+      }
       can_edit_panel: { Args: { _panel: string }; Returns: boolean }
       can_write: { Args: { _user_id?: string }; Returns: boolean }
+      has_org_panel: {
+        Args: { _organization_id: string; _panel: string; _user_id?: string }
+        Returns: boolean
+      }
+      has_org_role: {
+        Args: {
+          _organization_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id?: string
+        }
+        Returns: boolean
+      }
       has_panel: {
         Args: { _panel: string; _user_id?: string }
         Returns: boolean
@@ -2118,6 +2337,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_org_admin: {
+        Args: { _organization_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _organization_id: string; _user_id?: string }
+        Returns: boolean
+      }
       num_words_below_hundred: { Args: { n: number }; Returns: string }
       recalc_invoice_totals: {
         Args: { _invoice_id: string }
@@ -2271,6 +2498,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: [

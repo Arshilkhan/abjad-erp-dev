@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { supabaseAdmin } from '@/integrations/supabase/client.server'
 
 export const Route = createFileRoute('/api/google-drive/callback')({
   server: {
@@ -21,7 +22,23 @@ export const Route = createFileRoute('/api/google-drive/callback')({
         if (!userId) return back('invalid_state')
 
         try {
-          await exchangeCodeAndStore(code, origin, userId)
+          const { data: membership, error: membershipError } = await supabaseAdmin
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', userId)
+            .limit(1)
+            .maybeSingle()
+
+          if (membershipError || !membership) {
+            throw new Error('No organization membership found for this user')
+          }
+
+          await exchangeCodeAndStore(
+            code,
+            origin,
+            userId,
+            membership.organization_id,
+          )
           return back('connected')
         } catch (e) {
           console.error('[google-drive callback]', e)

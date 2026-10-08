@@ -59,7 +59,7 @@ export async function verifyState(state: string): Promise<string | null> {
   return userId
 }
 
-export async function buildConsentUrl(origin: string, userId: string) {
+export async function buildConsentUrl(origin: string, userId: string, organizationId: string) {
   const { clientId } = googleClient()
   const params = new URLSearchParams({
     client_id: clientId,
@@ -101,7 +101,7 @@ function emailFromIdToken(idToken?: string): string | null {
   }
 }
 
-export async function exchangeCodeAndStore(code: string, origin: string, userId: string) {
+export async function exchangeCodeAndStore(code: string, origin: string, userId: string, organizationId: string) {
   const { clientId, clientSecret } = googleClient()
   const tokens = await tokenRequest({
     code,
@@ -114,8 +114,12 @@ export async function exchangeCodeAndStore(code: string, origin: string, userId:
     throw new Error('Google did not return a refresh token. Remove the app from your Google account permissions and connect again.')
   }
 
-  await supabaseAdmin.from('google_drive_credentials').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  await supabaseAdmin
+    .from('google_drive_credentials')
+    .delete()
+    .eq('organization_id', organizationId)
   const { error } = await supabaseAdmin.from('google_drive_credentials').insert({
+    organization_id: organizationId,
     refresh_token: tokens.refresh_token,
     access_token: tokens.access_token,
     access_token_expires_at: new Date(Date.now() + (tokens.expires_in - 60) * 1000).toISOString(),
@@ -134,17 +138,21 @@ type CredRow = {
   account_email: string | null
 }
 
-export async function getCredentials(): Promise<CredRow | null> {
+export async function getCredentials(organizationId: string): Promise<CredRow | null> {
   const { data } = await supabaseAdmin
     .from('google_drive_credentials')
     .select('id, refresh_token, access_token, access_token_expires_at, folder_id, account_email')
+    .eq('organization_id', organizationId)
     .limit(1)
     .maybeSingle()
   return (data as CredRow | null) ?? null
 }
 
-export async function disconnectDrive() {
-  await supabaseAdmin.from('google_drive_credentials').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+export async function disconnectDrive(organizationId: string) {
+  await supabaseAdmin
+    .from('google_drive_credentials')
+    .delete()
+    .eq('organization_id', organizationId)
 }
 
 async function accessToken(cred: CredRow): Promise<string> {
@@ -183,8 +191,8 @@ async function ensureFolder(cred: CredRow, token: string): Promise<string> {
 }
 
 /** Uploads a ZIP to the backup folder and returns the Drive file id + link. */
-export async function uploadZip(fileName: string, bytes: Uint8Array) {
-  const cred = await getCredentials()
+export async function uploadZip(fileName: string, bytes: Uint8Array, organizationId: string) {
+  const cred = await getCredentials(organizationId)
   if (!cred) throw new Error('Google Drive is not connected.')
   const token = await accessToken(cred)
   const folderId = await ensureFolder(cred, token)

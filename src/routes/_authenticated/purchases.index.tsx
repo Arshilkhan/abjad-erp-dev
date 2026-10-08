@@ -48,6 +48,7 @@ import { buildPOHtml, printPOHtml } from "@/lib/po-print";
 import { useServerFn } from "@tanstack/react-start";
 import { sendPoEmail } from "@/lib/po-email.functions";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import { PurchaseOrderTable } from "@/components/documents/purchase-order-table";
 
 export const Route = createFileRoute("/_authenticated/purchases/")({
@@ -85,6 +86,7 @@ function PurchasesPage() {
 
 function VendorsTab() {
   const qc = useQueryClient();
+  const { organizationId } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
 
@@ -207,6 +209,7 @@ function VendorDialog({
   vendor: any;
   onSaved: () => void;
 }) {
+  const { organizationId } = useAuth();
   const isEdit = !!vendor;
   const [form, setForm] = useState<any>(vendor ?? {});
 
@@ -545,6 +548,7 @@ export function NewPODialog({
   onSaved: () => void;
 }) {
   const qc = useQueryClient();
+  const { organizationId } = useAuth();
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-select"],
@@ -702,6 +706,7 @@ export function NewPODialog({
           } = await supabase
             .from("vendors")
             .insert({
+              organization_id: organizationId!,
               vendor_name: name,
               company_name:
                 vendor.company_name || null,
@@ -755,6 +760,7 @@ export function NewPODialog({
       } = await supabase
         .from("purchase_orders")
         .insert({
+          organization_id: organizationId!,
           po_number: poNumber.trim(),
           po_date: poDate,
           expected_date:
@@ -792,6 +798,7 @@ export function NewPODialog({
       }
 
       const items = lines.map((l, i) => ({
+        organization_id: organizationId!,
         purchase_order_id: po.id,
         sr_no: i + 1,
         product_id: l.product_id,

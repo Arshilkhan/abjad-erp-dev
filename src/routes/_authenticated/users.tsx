@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/users")({
 });
 
 function UsersPanel() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, organizationId } = useAuth();
   const qc = useQueryClient();
   const fetchUsers = useServerFn(listAppUsers);
   const createFn = useServerFn(createAppUser);
@@ -45,12 +45,21 @@ function UsersPanel() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["app-users"],
-    queryFn: () => fetchUsers(),
-    enabled: isAdmin,
+    queryFn: () => fetchUsers({ data: { organizationId: organizationId! } }),
+    enabled: isAdmin && !!organizationId,
   });
 
   const create = useMutation({
-    mutationFn: () => createFn({ data: { email, password, fullName, panels: newPanels } }),
+    mutationFn: () =>
+      createFn({
+        data: {
+          organizationId: organizationId!,
+          email,
+          password,
+          fullName,
+          panels: newPanels,
+        },
+      }),
     onSuccess: () => {
       toast.success("User created");
       setEmail(""); setPassword(""); setFullName(""); setNewPanels([]);
@@ -60,13 +69,25 @@ function UsersPanel() {
   });
 
   const save = useMutation({
-    mutationFn: (v: { userId: string; panels: string[] }) => saveFn({ data: v }),
+    mutationFn: (v: { userId: string; panels: string[] }) =>
+      saveFn({
+        data: {
+          organizationId: organizationId!,
+          ...v,
+        },
+      }),
     onSuccess: () => { toast.success("Permissions updated"); qc.invalidateQueries({ queryKey: ["app-users"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Could not save permissions"),
   });
 
   const remove = useMutation({
-    mutationFn: (userId: string) => delFn({ data: { userId } }),
+    mutationFn: (userId: string) =>
+      delFn({
+        data: {
+          organizationId: organizationId!,
+          userId,
+        },
+      }),
     onSuccess: () => { toast.success("User deleted"); qc.invalidateQueries({ queryKey: ["app-users"] }); },
     onError: (e: any) => toast.error(e?.message ?? "Could not delete user"),
   });

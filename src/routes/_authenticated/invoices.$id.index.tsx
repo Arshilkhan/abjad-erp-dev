@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useServerFn } from "@tanstack/react-start";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf-download.functions";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { isSalesDocumentKind, salesDocumentConfig, type SalesDocumentKind } from "@/lib/sales-documents";
 
 export const Route = createFileRoute("/_authenticated/invoices/$id/")({
@@ -47,6 +48,7 @@ function InvoiceDetail() {
   const qc = useQueryClient();
   const getPdf = useServerFn(downloadInvoicePdf);
   const [downloading, setDownloading] = useState(false);
+  const { organizationId } = useAuth();
 
   const downloadPdf = async () => {
     setDownloading(true);
@@ -140,6 +142,7 @@ function InvoiceDetail() {
 
   const duplicate = async () => {
     const duplicatePayload: any = {
+      organization_id: organizationId!,
       invoice_number: `${invoice.invoice_number}-COPY-${Date.now().toString().slice(-4)}`,
       invoice_type: invoice.invoice_type,
       invoice_date: new Date().toISOString().slice(0, 10),
@@ -189,6 +192,7 @@ function InvoiceDetail() {
     if (items.length && newInv) {
       await supabase.from(itemsTable).insert(items.map((it: any) => {
         const base = {
+          organization_id: organizationId!,
           invoice_id: newInv.id,
           sr_no: it.sr_no,
           product_id: it.product_id,

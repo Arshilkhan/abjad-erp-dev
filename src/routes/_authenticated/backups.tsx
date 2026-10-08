@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
+import { useAuth } from "@/lib/auth-context";
 import { CloudUpload, HardDriveDownload, Link2, RefreshCw, Unplug } from "lucide-react";
 import {
   getBackupStatus, runBackupNow, saveBackupSettings, disconnectGoogleDrive, getGoogleDriveAuthUrl,
@@ -41,6 +42,7 @@ const fmtWhen = (s: string | null | undefined) =>
 
 function BackupsPage() {
   const qc = useQueryClient();
+  const { organizationId } = useAuth();
   const status = useServerFn(getBackupStatus);
   const runNow = useServerFn(runBackupNow);
   const saveSettings = useServerFn(saveBackupSettings);
@@ -49,7 +51,7 @@ function BackupsPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["backup-status"],
-    queryFn: () => status({ data: undefined as never }),
+    queryFn: () => status({ data: { organizationId: organizationId! } }),
   });
 
   const [frequency, setFrequency] = useState("off");
@@ -71,13 +73,13 @@ function BackupsPage() {
   }, [qc]);
 
   const connect = useMutation({
-    mutationFn: async () => await authUrl({ data: undefined as never }),
+    mutationFn: async () => await authUrl({ data: { organizationId: organizationId! } }),
     onSuccess: (r: any) => { window.location.href = r.url; },
     onError: (e: any) => toast.error(e.message),
   });
 
   const backup = useMutation({
-    mutationFn: async () => await runNow({ data: undefined as never }),
+    mutationFn: async () => await runNow({ data: { organizationId: organizationId! } }),
     onSuccess: (r: any) => {
       toast.success(`Backup uploaded: ${r.fileName} (${r.invoiceCount} invoices)`);
       qc.invalidateQueries({ queryKey: ["backup-status"] });
@@ -86,13 +88,13 @@ function BackupsPage() {
   });
 
   const save = useMutation({
-    mutationFn: async () => await saveSettings({ data: { frequency, hour_utc: Number(hour) } }),
+    mutationFn: async () => await saveSettings({ data: { organizationId: organizationId!, frequency, hour_utc: Number(hour) } }),
     onSuccess: () => { toast.success("Backup schedule saved"); qc.invalidateQueries({ queryKey: ["backup-status"] }); },
     onError: (e: any) => toast.error(e.message),
   });
 
   const unlink = useMutation({
-    mutationFn: async () => await disconnect({ data: undefined as never }),
+    mutationFn: async () => await disconnect({ data: { organizationId: organizationId! } }),
     onSuccess: () => { toast.success("Google Drive disconnected"); qc.invalidateQueries({ queryKey: ["backup-status"] }); },
     onError: (e: any) => toast.error(e.message),
   });

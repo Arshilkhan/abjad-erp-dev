@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatINR, formatDate, billNo } from "@/lib/format";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/_authenticated/payments")({
   head: () => ({ meta: [{ title: "Payments — ABJAD ERP" }] }),
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/payments")({
 
 function PaymentsPage() {
   const qc = useQueryClient();
+  const { organizationId } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
@@ -151,6 +153,7 @@ function PaymentsPage() {
 }
 
 function RecordPaymentDialog({ open, onClose, invoice, onSaved }: { open: boolean; onClose: () => void; invoice: any; onSaved: () => void }) {
+  const { organizationId } = useAuth();
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState("bank_transfer");
   const [reference, setReference] = useState("");
@@ -167,6 +170,7 @@ function RecordPaymentDialog({ open, onClose, invoice, onSaved }: { open: boolea
     if (amt > due + 0.01) return toast.error(`Amount cannot exceed due (${formatINR(due)})`);
     setSaving(true);
     const { error } = await supabase.from("payments").insert({
+      organization_id: organizationId!,
       invoice_id: invoice.id,
       payment_date: date,
       amount: amt,

@@ -26,11 +26,15 @@ function toCsv(rows: Row[]): string {
   return [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\n')
 }
 
-async function fetchAll(table: string): Promise<Row[]> {
+async function fetchAll(table: string, organizationId: string): Promise<Row[]> {
   const out: Row[] = []
   const page = 1000
   for (let from = 0; ; from += page) {
-    const { data, error } = await supabaseAdmin.from(table as any).select('*').range(from, from + page - 1)
+    const { data, error } = await supabaseAdmin
+      .from(table as any)
+      .select('*')
+      .eq('organization_id', organizationId)
+      .range(from, from + page - 1)
     if (error) throw new Error(`${table}: ${error.message}`)
     out.push(...((data as Row[]) ?? []))
     if (!data || data.length < page) break
@@ -55,11 +59,16 @@ const CSV_TABLES = [
   'vendors',
 ]
 
-export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?: string }) {
+export async function runBackup(opts: {
+  trigger: 'manual' | 'scheduled'
+  userId?: string
+  organizationId: string
+}) {
   const startedAt = new Date()
   const { data: historyRow } = await supabaseAdmin
     .from('backup_history')
     .insert({
+      organization_id: opts.organizationId,
       status: 'running',
       trigger_source: opts.trigger,
       created_by: opts.userId ?? null,
@@ -75,6 +84,7 @@ export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?
         .from('backup_history')
         .update({ status: 'failed', finished_at: new Date().toISOString(), error: message.slice(0, 2000) })
         .eq('id', historyId)
+        .eq('organization_id', opts.organizationId)
     }
     throw new Error(message)
   }
@@ -86,13 +96,18 @@ export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?
     // CSV exports
     const tableData: Record<string, Row[]> = {}
     for (const t of CSV_TABLES) {
-      const rows = await fetchAll(t)
+      const rows = await fetchAll(t, opts.organizationId)
       tableData[t] = rows
       files[`data/${t}.csv`] = enc.encode(toCsv(rows))
     }
 
     // Invoice PDFs
-    const { data: company } = await supabaseAdmin.from('company_profile').select('*').limit(1).maybeSingle()
+    const { data: company } = await supabaseAdmin
+      .from('company_profile')
+      .select('*')
+      .eq('organization_id', opts.organizationId)
+      .limit(1)
+      .maybeSingle()
     let pdfCount = 0
     const docSets = [
       ['invoices', 'invoice_items', 'invoices'],
@@ -143,7 +158,7 @@ export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?
       .slice(0, 16)
     const fileName = `abjad-erp-backup-${stamp}.zip`
 
-    const uploaded = await uploadZip(fileName, zipped)
+    const uploaded = await uploadZip(fileName, zipped, opts.organizationId)
 
     if (historyId) {
       await supabaseAdmin
@@ -158,6 +173,7 @@ export async function runBackup(opts: { trigger: 'manual' | 'scheduled'; userId?
           drive_link: uploaded.link,
         })
         .eq('id', historyId)
+        .eq('organization_id', opts.organizationId)
     }
 
     return { fileName, size: zipped.length, invoiceCount: pdfCount, link: uploaded.link }
