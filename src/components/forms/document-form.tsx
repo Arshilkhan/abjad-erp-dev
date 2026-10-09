@@ -49,7 +49,7 @@ export function DocumentForm({
   const isTaxInvoice = formConfig.isTaxInvoice;
   const nav = useNavigate();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, organizationId } = useAuth();
   const isEdit = !!editId;
   const qc = useQueryClient();
 
@@ -297,6 +297,7 @@ export function DocumentForm({
         custEmail,
         custGst,
         createdBy: user?.id,
+        organizationId: organizationId!,
       });
 
       // Create any products that were typed in but don't exist yet.
@@ -305,9 +306,11 @@ export function DocumentForm({
         items,
         productTexts,
         products,
+        organizationId: organizationId!,
       });
 
       const payload = buildDocumentPayload({
+        organizationId: organizationId!,
         invoiceType,
         invoiceDate,
         customerId: cust.id,
@@ -348,6 +351,7 @@ export function DocumentForm({
         docItemsTable,
         payload,
         items: resolvedItems,
+        organizationId: organizationId!,
         isChallan,
         isEdit,
         editId,

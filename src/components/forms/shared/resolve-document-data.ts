@@ -12,6 +12,7 @@ interface ResolveCustomerArgs {
   custEmail: string;
   custGst: string;
   createdBy?: string;
+  organizationId: string;
 }
 
 export async function resolveCustomer({
@@ -25,6 +26,7 @@ export async function resolveCustomer({
   custEmail,
   custGst,
   createdBy,
+  organizationId,
 }: ResolveCustomerArgs) {
   const nameTyped = customerText.trim();
 
@@ -79,6 +81,7 @@ export async function resolveCustomer({
     const { data, error } = await supabase
       .from("customers")
       .insert({
+        organization_id: organizationId,
         customer_name: nameTyped,
         company_name: custCompany.trim() || null,
         contact_person: nameTyped || null,
@@ -104,6 +107,7 @@ interface ResolveProductsArgs {
   items: LineItem[];
   productTexts: string[];
   products: any[];
+  organizationId: string;
 }
 
 export async function resolveProducts({
@@ -111,6 +115,7 @@ export async function resolveProducts({
   items,
   productTexts,
   products,
+  organizationId,
 }: ResolveProductsArgs): Promise<LineItem[]> {
   const resolvedItems: LineItem[] = [];
 
@@ -143,6 +148,7 @@ export async function resolveProducts({
     const { data: newProd, error: pErr } = await supabase
       .from("products")
       .insert({
+        organization_id: organizationId,
         product_name: typed,
         hsn_code: it.hsn_code || null,
         description: it.description || null,

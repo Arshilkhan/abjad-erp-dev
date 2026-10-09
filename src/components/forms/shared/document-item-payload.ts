@@ -3,12 +3,14 @@ import { computeItem, type LineItem } from "./types";
 export function buildDocumentItemRows(
   items: LineItem[],
   invoiceId: string,
+  organizationId: string,
   isChallan: boolean,
 ) {
   return items.map((it) => {
     const c = computeItem(it);
 
     const base = {
+      organization_id: organizationId,
       invoice_id: invoiceId,
       sr_no: it.sr_no,
       product_id: it.product_id,

@@ -8,6 +8,7 @@ interface SaveDocumentArgs {
   docItemsTable: string;
   payload: any;
   items: LineItem[];
+  organizationId: string;
   isChallan: boolean;
   isEdit: boolean;
   editId?: string;
@@ -25,6 +26,7 @@ export async function saveDocument({
   docItemsTable,
   payload,
   items,
+  organizationId,
   isChallan,
   isEdit,
   editId,
@@ -126,6 +128,7 @@ export async function saveDocument({
   const rows = buildDocumentItemRows(
     items,
     invId,
+    organizationId,
     isChallan,
   );
 

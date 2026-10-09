@@ -1,6 +1,7 @@
 import { amountInWords } from "@/lib/format";
 
 interface BuildDocumentPayloadArgs {
+    organizationId: string;
     invoiceType: string;
     invoiceDate: string;
     customerId: string;
@@ -43,6 +44,7 @@ interface BuildDocumentPayloadArgs {
 }
 
 export function buildDocumentPayload({
+    organizationId,
     invoiceType,
     invoiceDate,
     customerId,
@@ -77,6 +79,7 @@ export function buildDocumentPayload({
     const igst_amount = isIGST ? totals.tax : 0;
 
     const payload: any = {
+        organization_id: organizationId,
         invoice_type: invoiceType,
         invoice_date: invoiceDate,
         customer_id: customerId,
