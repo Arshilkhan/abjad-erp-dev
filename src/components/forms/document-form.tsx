@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
+import { logDocumentSaveHistory } from "./shared/document-save-history";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
 import { computeItem, emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/components/forms/shared/types";
@@ -373,15 +374,14 @@ export function DocumentForm({
     onSuccess: async (inv, status) => {
       qc.invalidateQueries({ queryKey: ["customers-list"] });
       qc.invalidateQueries({ queryKey: ["products-list"] });
-      if (!isTaxInvoice) {
-        // History is a tax-invoice-only feature.
-      } else if (isEdit) {
-        await logInvoiceEvent(inv.id, "edited", "Invoice edited");
-      } else if (importMode || pdfImported) {
-        await logInvoiceEvent(inv.id, "imported", `Imported invoice ${inv.invoice_number}`);
-      } else {
-        await logInvoiceEvent(inv.id, "created", `Created invoice ${inv.invoice_number}`);
-      }
+      await logDocumentSaveHistory({
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoice_number,
+        isTaxInvoice,
+        isEdit,
+        importMode,
+        pdfImported,
+      });
       toast.success(`${docCfg.label} ${inv.invoice_number} ${isEdit ? "updated" : importMode ? "imported" : "created"}`);
 
       if (status === "sent") {
