@@ -19,6 +19,7 @@ import { ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
 import { logInvoiceEvent } from "@/lib/invoice-history";
 import { logDocumentSaveHistory } from "./shared/document-save-history";
+import { validateDocument } from "./shared/validate-document";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
 import { computeItem, emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/components/forms/shared/types";
@@ -267,25 +268,24 @@ export function DocumentForm({
   const save = useMutation({
     mutationFn: async (status: "draft" | "sent") => {
       const nameTyped = customerText.trim();
-      if (!custCompany.trim()) throw new Error("Please enter a company name");
-      if (settings?.mandatory_gst_number && !custGst.trim()) throw new Error("Customer GST Number is mandatory");
-      if (isChallan && settings?.mandatory_challan_number && !challanNumber)
-        throw new Error("Challan Number is mandatory");
 
-      const requireCharge = (key: string, val: number) => {
-        const c = cfg(key);
-        if (c.visible && c.mandatory && !Number(val)) throw new Error(`${c.label || key} is mandatory`);
-      };
-      if (formConfig.showPaymentTerms) {
-        requireCharge("freight_charges", freight);
-        requireCharge("packing_charges", packing);
-        requireCharge("other_charges", otherCharges);
-        if (isTaxInvoice) {
-          requireCharge("transportation_charges", transportCharges);
-          requireCharge("delivery_charges", deliveryCharges);
-        }
-      }
-      if (items.length === 0) throw new Error("Add at least one item");
+      validateDocument({
+        customerCompany: custCompany,
+        customerGst: custGst,
+        mandatoryGstNumber: settings?.mandatory_gst_number,
+        isChallan,
+        mandatoryChallanNumber: settings?.mandatory_challan_number,
+        challanNumber,
+        showPaymentTerms: formConfig.showPaymentTerms,
+        isTaxInvoice,
+        itemsCount: items.length,
+        cfg,
+        freight,
+        packing,
+        otherCharges,
+        transportCharges,
+        deliveryCharges,
+      });
 
       const cust = await resolveCustomer({
         supabase,
