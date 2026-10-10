@@ -17,9 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft, X, Upload, Loader2 } from "lucide-react";
 import { formatINR, amountInWords } from "@/lib/format";
-import { logInvoiceEvent } from "@/lib/invoice-history";
-import { logDocumentSaveHistory } from "./shared/document-save-history";
-import { validateDocument } from "./shared/validate-document";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
 import { emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/components/forms/shared/types";
@@ -29,12 +26,11 @@ import { DocumentDetails } from "@/components/forms/shared/document-details";
 import { AdditionalDetails } from "@/components/forms/shared/additional-details";
 import { DocumentFormCore } from "@/components/forms/shared/document-form-core";
 import { getDocumentFormConfig } from "./shared/document-config";
-import { buildDocumentPayload } from "./shared/document-payload";
-import { saveDocument } from "./shared/save-document";
-import { resolveCustomer, resolveProducts, } from "./shared/resolve-document-data";
 import { importInvoicePdf } from "./shared/pdf-import";
 import { hydrateDocument } from "./shared/hydrate-document";
 import { calculateDocumentTotals } from "./shared/calculate-document-totals";
+import { handleDocumentSaveSuccess } from "./shared/handle-document-save-success";
+import { submitDocumentForm } from "./shared/submit-document-form";
 
 export interface DocumentFormProps {
   editId?: string;
@@ -238,152 +234,73 @@ export function DocumentForm({
   const sendEmail = useServerFn(sendInvoiceEmail);
 
   const save = useMutation({
-    mutationFn: async (status: "draft" | "sent") => {
-      const nameTyped = customerText.trim();
-
-      validateDocument({
-        customerCompany: custCompany,
-        customerGst: custGst,
-        mandatoryGstNumber: settings?.mandatory_gst_number,
+    mutationFn: (status: "draft" | "sent") =>
+      submitDocumentForm({
+        status,
+        supabase,
+        settings,
         isChallan,
-        mandatoryChallanNumber: settings?.mandatory_challan_number,
-        challanNumber,
-        showPaymentTerms: formConfig.showPaymentTerms,
         isTaxInvoice,
-        itemsCount: items.length,
+        showPaymentTerms: formConfig.showPaymentTerms,
+        items,
         cfg,
+        customer,
+        customers,
+        products,
+        customerText,
+        customerCompany: custCompany,
+        customerAddress: custAddress,
+        customerMobile: custMobile,
+        customerEmail: custEmail,
+        customerGst: custGst,
+        productTexts,
+        organizationId: organizationId!,
+        createdBy: user?.id,
+        challanNumber,
         freight,
         packing,
         otherCharges,
         transportCharges,
         deliveryCharges,
-      });
-
-      const cust = await resolveCustomer({
-        supabase,
-        customer,
-        customers,
-        customerText,
-        custCompany,
-        custAddress,
-        custMobile,
-        custEmail,
-        custGst,
-        createdBy: user?.id,
-        organizationId: organizationId!,
-      });
-
-      // Create any products that were typed in but don't exist yet.
-      const resolvedItems = await resolveProducts({
-        supabase,
-        items,
-        productTexts,
-        products,
-        organizationId: organizationId!,
-      });
-
-      const payload = buildDocumentPayload({
-        organizationId: organizationId!,
         invoiceType,
         invoiceDate,
-        customerId: cust.id,
-        customerName: cust.company_name || cust.customer_name,
-        customerGst: cust.gst_number,
-        customerAddress: custAddress.trim() || cust.billing_address,
         workOrder,
         deliveryMode,
-        contactPerson: nameTyped,
-        contactMobile: custMobile,
         notes,
-        status,
-
-        isChallan,
-        isTaxInvoice,
         isIGST,
-
-        challanNumber,
         challanDates,
         movementReason,
         transporterName,
         placeOfDispatch,
         placeOfDelivery,
-
         totals,
-
-        freight,
-        packing,
-        otherCharges,
-        transportCharges,
-        deliveryCharges,
         paymentTerms,
-      });
-
-      const result = await saveDocument({
-        supabase,
         docTable,
         docItemsTable,
-        payload,
-        items: resolvedItems,
-        organizationId: organizationId!,
-        isChallan,
         isEdit,
         editId,
         docPrefix: docCfg.prefix,
-        customerName:
-          custCompany ||
-          cust.company_name ||
-          cust.customer_name ||
-          customerText ||
-          "customer",
-        createdBy: user?.id,
-        isTaxInvoice,
         importMode,
         pdfImported,
-      });
-
-      return result;
-    },
+      }),
     onSuccess: async (inv, status) => {
-      qc.invalidateQueries({ queryKey: ["customers-list"] });
-      qc.invalidateQueries({ queryKey: ["products-list"] });
-      await logDocumentSaveHistory({
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoice_number,
+      await handleDocumentSaveSuccess({
+        invoice: inv,
+        status,
+        documentType,
+        documentLabel: docCfg.label,
         isTaxInvoice,
         isEdit,
         importMode,
         pdfImported,
+        invalidateQueries: (queryKey) => {
+          void qc.invalidateQueries({ queryKey });
+        },
+        sendEmail,
+        notify: toast,
+        navigate: (invoiceId, kind) =>
+          nav({ to: "/invoices/$id", params: { id: invoiceId }, search: { kind } }),
       });
-      toast.success(`${docCfg.label} ${inv.invoice_number} ${isEdit ? "updated" : importMode ? "imported" : "created"}`);
-
-      if (status === "sent") {
-        try {
-          const res: any = await sendEmail({ data: { invoiceId: inv.id, kind: documentType } });
-          if (res?.sent) {
-            toast.success(`${docCfg.label} emailed to ${res.email}`);
-
-            if (isTaxInvoice) {
-              await logInvoiceEvent(
-                inv.id,
-                "sent",
-                `${docCfg.label} emailed to ${res.email}`,
-              );
-            }
-          } else if (res?.reason === "no_email") {
-            toast.info(
-              `Saved. No customer email on file, so the ${docCfg.label.toLowerCase()} was not sent.`,
-            );
-          } else if (res?.reason === "recipient_suppressed") {
-            toast.warning(
-              `Saved. The customer has unsubscribed from emails.`,
-            );
-          }
-        } catch (err: any) {
-          toast.error(`Invoice saved, but the email could not be sent: ${err?.message ?? "unknown error"}`);
-        }
-      }
-
-      nav({ to: "/invoices/$id", params: { id: inv.id }, search: { kind: documentType } });
     },
     onError: (e: any) => toast.error(e.message),
   });
