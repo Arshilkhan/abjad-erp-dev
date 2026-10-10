@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { ADMIN_ROLES } from "@/lib/panels";
@@ -8,6 +8,7 @@ interface AuthCtx {
   session: Session | null;
   loading: boolean;
   organizationId: string | null;
+  organizationSuspended: boolean;
   roles: string[];
   panels: string[];
   isAdmin: boolean;
@@ -20,6 +21,7 @@ const Ctx = createContext<AuthCtx>({
   session: null,
   loading: true,
   organizationId: null,
+  organizationSuspended: false,
   roles: [],
   panels: [],
   isAdmin: false,
@@ -31,20 +33,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [organizationSuspended, setOrganizationSuspended] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [panels, setPanels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadAccess = async (userId: string) => {
-    const { data: memberships } = await supabase
+  const loadAccess = useCallback(async (userId: string) => {
+    const { data: memberships, error: membershipError } = await supabase
       .from("organization_members")
-      .select("organization_id, role")
+      .select("organization_id, role, created_at, organizations!inner(status)")
       .eq("user_id", userId);
 
-    const membership = memberships?.[0] ?? null;
+    if (membershipError) return;
+
+    const membership = memberships?.find((row) => row.organizations.status === "active");
 
     if (!membership) {
-      setOrganizationId(null);
+      const suspendedMembership = memberships?.find(
+        (row) => row.organizations.status === "suspended",
+      );
+      setOrganizationId(suspendedMembership?.organization_id ?? null);
+      setOrganizationSuspended(!!suspendedMembership);
       setRoles([]);
       setPanels([]);
       return;
@@ -52,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const orgId = membership.organization_id;
 
+    setOrganizationSuspended(false);
     setOrganizationId(orgId);
     setRoles([membership.role as string]);
 
@@ -62,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("organization_id", orgId);
 
     setPanels((pd ?? []).map((p) => p.panel as string));
-  };
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -75,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }, 0);
       } else {
         setOrganizationId(null);
+        setOrganizationSuspended(false);
         setRoles([]);
         setPanels([]);
       }
@@ -94,6 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshAccess = () => void loadAccess(user.id);
+    const interval = window.setInterval(refreshAccess, 30_000);
+    window.addEventListener("focus", refreshAccess);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshAccess);
+    };
+  }, [user, loadAccess]);
+
   const isAdmin = roles.some((r) => ADMIN_ROLES.includes(r));
 
   return (
@@ -103,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         organizationId,
+        organizationSuspended,
         roles,
         panels,
         isAdmin,

@@ -40,6 +40,7 @@ import { Route as AuthenticatedPurchasesIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedPurchasesNewRouteImport } from './routes/_authenticated/purchases.new'
 import { Route as AuthenticatedQuotationsIndexRouteImport } from './routes/_authenticated/quotations.index'
 import { Route as AuthenticatedQuotationsNewRouteImport } from './routes/_authenticated/quotations.new'
+import { Route as ApiAdminOrganizationsRouteImport } from './routes/api/admin/organizations'
 import { Route as ApiGoogleDriveCallbackRouteImport } from './routes/api/google-drive/callback'
 import { Route as ApiPublicBackupCronRouteImport } from './routes/api/public/backup-cron'
 import { Route as AuthenticatedChallansFolderCompanyRouteImport } from './routes/_authenticated/challans.folder.$company'
@@ -48,6 +49,7 @@ import { Route as AuthenticatedInvoicesIdEditRouteImport } from './routes/_authe
 import { Route as AuthenticatedInvoicesFolderCompanyRouteImport } from './routes/_authenticated/invoices.folder.$company'
 import { Route as AuthenticatedProformasFolderCompanyRouteImport } from './routes/_authenticated/proformas.folder.$company'
 import { Route as AuthenticatedQuotationsFolderCompanyRouteImport } from './routes/_authenticated/quotations.folder.$company'
+import { Route as ApiAdminOrganizationsIdRouteImport } from './routes/api/admin/organizations.$id'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -219,6 +221,11 @@ const AuthenticatedQuotationsNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedQuotationsRoute,
   } as any)
+const ApiAdminOrganizationsRoute = ApiAdminOrganizationsRouteImport.update({
+  id: '/api/admin/organizations',
+  path: '/api/admin/organizations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoogleDriveCallbackRoute = ApiGoogleDriveCallbackRouteImport.update({
   id: '/api/google-drive/callback',
   path: '/api/google-drive/callback',
@@ -265,6 +272,11 @@ const AuthenticatedQuotationsFolderCompanyRoute =
     path: '/folder/$company',
     getParentRoute: () => AuthenticatedQuotationsRoute,
   } as any)
+const ApiAdminOrganizationsIdRoute = ApiAdminOrganizationsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiAdminOrganizationsRoute,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -309,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/proformas/new': typeof AuthenticatedProformasNewRoute
   '/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/api/admin/organizations': typeof ApiAdminOrganizationsRouteWithChildren
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/challans/': typeof AuthenticatedChallansIndexRoute
@@ -320,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -348,6 +362,7 @@ export interface FileRoutesByTo {
   '/proformas/new': typeof AuthenticatedProformasNewRoute
   '/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/api/admin/organizations': typeof ApiAdminOrganizationsRouteWithChildren
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/challans': typeof AuthenticatedChallansIndexRoute
@@ -359,6 +374,7 @@ export interface FileRoutesByTo {
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -393,6 +409,7 @@ export interface FileRoutesById {
   '/_authenticated/proformas/new': typeof AuthenticatedProformasNewRoute
   '/_authenticated/purchases/new': typeof AuthenticatedPurchasesNewRoute
   '/_authenticated/quotations/new': typeof AuthenticatedQuotationsNewRoute
+  '/api/admin/organizations': typeof ApiAdminOrganizationsRouteWithChildren
   '/api/google-drive/callback': typeof ApiGoogleDriveCallbackRoute
   '/api/public/backup-cron': typeof ApiPublicBackupCronRoute
   '/_authenticated/challans/': typeof AuthenticatedChallansIndexRoute
@@ -404,6 +421,7 @@ export interface FileRoutesById {
   '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/_authenticated/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/_authenticated/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -438,6 +456,7 @@ export interface FileRouteTypes {
     | '/proformas/new'
     | '/purchases/new'
     | '/quotations/new'
+    | '/api/admin/organizations'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/challans/'
@@ -449,6 +468,7 @@ export interface FileRouteTypes {
     | '/invoices/folder/$company'
     | '/proformas/folder/$company'
     | '/quotations/folder/$company'
+    | '/api/admin/organizations/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -477,6 +497,7 @@ export interface FileRouteTypes {
     | '/proformas/new'
     | '/purchases/new'
     | '/quotations/new'
+    | '/api/admin/organizations'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/challans'
@@ -488,6 +509,7 @@ export interface FileRouteTypes {
     | '/invoices/folder/$company'
     | '/proformas/folder/$company'
     | '/quotations/folder/$company'
+    | '/api/admin/organizations/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -521,6 +543,7 @@ export interface FileRouteTypes {
     | '/_authenticated/proformas/new'
     | '/_authenticated/purchases/new'
     | '/_authenticated/quotations/new'
+    | '/api/admin/organizations'
     | '/api/google-drive/callback'
     | '/api/public/backup-cron'
     | '/_authenticated/challans/'
@@ -532,6 +555,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoices/folder/$company'
     | '/_authenticated/proformas/folder/$company'
     | '/_authenticated/quotations/folder/$company'
+    | '/api/admin/organizations/$id'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -543,6 +567,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiAdminOrganizationsRoute: typeof ApiAdminOrganizationsRouteWithChildren
   ApiGoogleDriveCallbackRoute: typeof ApiGoogleDriveCallbackRoute
   ApiPublicBackupCronRoute: typeof ApiPublicBackupCronRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -769,6 +794,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuotationsNewRouteImport
       parentRoute: typeof AuthenticatedQuotationsRoute
     }
+    '/api/admin/organizations': {
+      id: '/api/admin/organizations'
+      path: '/api/admin/organizations'
+      fullPath: '/api/admin/organizations'
+      preLoaderRoute: typeof ApiAdminOrganizationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-drive/callback': {
       id: '/api/google-drive/callback'
       path: '/api/google-drive/callback'
@@ -824,6 +856,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/quotations/folder/$company'
       preLoaderRoute: typeof AuthenticatedQuotationsFolderCompanyRouteImport
       parentRoute: typeof AuthenticatedQuotationsRoute
+    }
+    '/api/admin/organizations/$id': {
+      id: '/api/admin/organizations/$id'
+      path: '/$id'
+      fullPath: '/api/admin/organizations/$id'
+      preLoaderRoute: typeof ApiAdminOrganizationsIdRouteImport
+      parentRoute: typeof ApiAdminOrganizationsRoute
     }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
@@ -987,11 +1026,25 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface ApiAdminOrganizationsRouteChildren {
+  ApiAdminOrganizationsIdRoute: typeof ApiAdminOrganizationsIdRoute
+}
+
+const ApiAdminOrganizationsRouteChildren: ApiAdminOrganizationsRouteChildren = {
+  ApiAdminOrganizationsIdRoute: ApiAdminOrganizationsIdRoute,
+}
+
+const ApiAdminOrganizationsRouteWithChildren =
+  ApiAdminOrganizationsRoute._addFileChildren(
+    ApiAdminOrganizationsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiAdminOrganizationsRoute: ApiAdminOrganizationsRouteWithChildren,
   ApiGoogleDriveCallbackRoute: ApiGoogleDriveCallbackRoute,
   ApiPublicBackupCronRoute: ApiPublicBackupCronRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,

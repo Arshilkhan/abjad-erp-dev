@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test:platform-admin-api": "node scripts/check-platform-admin-api.mjs",
+    "test:org-access-regression": "supabase db query --linked --file supabase/tests/organization_access_regression.sql",
     "format": "prettier --write ."
   },
   "dependencies": {

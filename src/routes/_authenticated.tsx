@@ -20,13 +20,29 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthedLayout() {
-  const { user, loading, isAdmin, canAccess } = useAuth();
+  const { user, loading, isAdmin, canAccess, organizationSuspended, signOut } = useAuth();
   const nav = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
   useEffect(() => { if (!loading && !user) nav({ to: "/auth" }); }, [user, loading, nav]);
 
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
+  }
+
+  if (organizationSuspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-xl font-semibold">Organization access suspended</h1>
+          <p className="text-sm text-muted-foreground">
+            Access to this organization’s ERP data is suspended. Contact your platform administrator for help.
+          </p>
+          <Button variant="outline" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const matched = [...PANELS]
