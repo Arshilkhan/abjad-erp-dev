@@ -22,7 +22,7 @@ import { logDocumentSaveHistory } from "./shared/document-save-history";
 import { validateDocument } from "./shared/validate-document";
 import { TypeaheadInput } from "@/components/typeahead-input";
 import { useInvoiceConfig } from "@/lib/invoice-config";
-import { computeItem, emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/components/forms/shared/types";
+import { emptyItem, MOVEMENT_REASONS, type LineItem, } from "@/components/forms/shared/types";
 import { Row, ChargeRow, } from "@/components/forms/shared/totals-section";
 import { ProductLineItems } from "@/components/forms/shared/product-line-items";
 import { DocumentDetails } from "@/components/forms/shared/document-details";
@@ -33,6 +33,8 @@ import { buildDocumentPayload } from "./shared/document-payload";
 import { saveDocument } from "./shared/save-document";
 import { resolveCustomer, resolveProducts, } from "./shared/resolve-document-data";
 import { importInvoicePdf } from "./shared/pdf-import";
+import { hydrateDocument } from "./shared/hydrate-document";
+import { calculateDocumentTotals } from "./shared/calculate-document-totals";
 
 export interface DocumentFormProps {
   editId?: string;
@@ -140,54 +142,34 @@ export function DocumentForm({
 
   useEffect(() => {
     if (!existing || hydrated) return;
-    const inv = existing.invoice;
-    setCustomerId(inv.customer_id ?? "");
-    setCustomerText(inv.customer_name_snapshot ?? "");
-    setInvoiceType(documentType);
-    setInvoiceDate(inv.invoice_date);
-    if (isChallan) {
-      setChallanNumber((inv as any).challan_number ?? "");
-      setChallanDates(
-        ((inv as any).challan_dates as string[] | null) ??
-        ((inv as any).challan_date ? [(inv as any).challan_date] : []),
-      );
-    }
-
-    setWorkOrder(inv.work_order_number ?? "");
-    if (formConfig.showPaymentTerms) {
-      setFreight(Number((inv as any).freight ?? 0));
-      setPacking(Number((inv as any).packing_charges ?? 0));
-      setOtherCharges(Number((inv as any).other_charges ?? 0));
-      if (isTaxInvoice) {
-        setTransportCharges(Number((inv as any).transportation_charges ?? 0));
-        setDeliveryCharges(Number((inv as any).delivery_charges ?? 0));
-      }
-    }
-    setDeliveryMode(inv.delivery_mode ?? "");
-    setPaymentTerms(inv.payment_terms ?? "");
-    setNotes(inv.notes ?? "");
-    setMovementReason((inv as any).movement_reason ?? "Delivery / Supply");
-    setTransporterName((inv as any).transporter_name ?? "");
-    setPlaceOfDispatch((inv as any).place_of_dispatch ?? "");
-    setPlaceOfDelivery((inv as any).place_of_delivery ?? "");
-    setItems(
-      existing.items.length
-        ? existing.items.map((it: any, i: number) => ({
-          sr_no: it.sr_no ?? i + 1,
-          product_id: it.product_id,
-          hsn_code: it.hsn_code ?? "",
-          description: it.description ?? "",
-          quantity: Number(it.quantity ?? 1),
-          uom: it.uom ?? "NOS",
-          unit_rate: isChallan ? 0 : Number(it.unit_rate ?? 0),
-          discount_mode: "pct" as const,
-          discount_value: isChallan ? 0 : Number(it.discount_pct ?? 0),
-          tax_pct: isChallan ? 0 : Number(it.tax_pct ?? 18),
-          serial_batch_number: (it as any).serial_batch_number ?? "",
-        }))
-        : [emptyItem(1)],
-    );
-    setProductTexts(existing.items.length ? existing.items.map((it: any) => it.description ?? "") : [""]);
+    hydrateDocument({
+      existing,
+      documentType,
+      isChallan,
+      isTaxInvoice,
+      showPaymentTerms: formConfig.showPaymentTerms,
+      setCustomerId,
+      setCustomerText,
+      setInvoiceType,
+      setInvoiceDate,
+      setChallanNumber,
+      setChallanDates,
+      setWorkOrder,
+      setFreight,
+      setPacking,
+      setOtherCharges,
+      setTransportCharges,
+      setDeliveryCharges,
+      setDeliveryMode,
+      setPaymentTerms,
+      setNotes,
+      setMovementReason,
+      setTransporterName,
+      setPlaceOfDispatch,
+      setPlaceOfDelivery,
+      setItems,
+      setProductTexts,
+    });
     setHydrated(true);
   }, [existing, hydrated]);
 
@@ -207,28 +189,18 @@ export function DocumentForm({
     setCustGst(customer.gst_number ?? "");
   }, [customerId, customer]);
 
-  const totals = useMemo(() => {
-    let net = 0,
-      tax = 0,
-      disc = 0;
-    for (const it of items) {
-      const c = computeItem(it);
-      net += c.net;
-      tax += c.tax_amount;
-      disc += c.discount_amount;
-    }
-    const subtotal =
-      net +
-      Number(freight || 0) +
-      Number(packing || 0) +
-      Number(otherCharges || 0) +
-      Number(transportCharges || 0) +
-      Number(deliveryCharges || 0);
-    const preRound = subtotal + tax;
-    const grand = Math.round(preRound);
-    const round_off = grand - preRound;
-    return { net, tax, disc, subtotal, grand, round_off };
-  }, [items, freight, packing, otherCharges, transportCharges, deliveryCharges]);
+  const totals = useMemo(
+    () =>
+      calculateDocumentTotals({
+        items,
+        freight,
+        packing,
+        otherCharges,
+        transportCharges,
+        deliveryCharges,
+      }),
+    [items, freight, packing, otherCharges, transportCharges, deliveryCharges],
+  );
 
   const setItem = (idx: number, patch: Partial<LineItem>) => {
     setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
