@@ -1,0 +1,2966 @@
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
+
+
+COMMENT ON SCHEMA "public" IS 'standard public schema';
+
+
+
+CREATE TYPE "public"."app_role" AS ENUM (
+    'super_admin',
+    'admin',
+    'accountant',
+    'sales_executive',
+    'viewer'
+);
+
+
+ALTER TYPE "public"."app_role" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."invoice_status" AS ENUM (
+    'draft',
+    'sent',
+    'paid',
+    'partial',
+    'cancelled'
+);
+
+
+ALTER TYPE "public"."invoice_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."invoice_type" AS ENUM (
+    'tax_invoice',
+    'proforma',
+    'quotation',
+    'purchase_order',
+    'delivery_challan',
+    'credit_note',
+    'debit_note'
+);
+
+
+ALTER TYPE "public"."invoice_type" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."stock_movement_type" AS ENUM (
+    'stock_in',
+    'stock_out',
+    'consumption',
+    'manufacturing',
+    'adjustment'
+);
+
+
+ALTER TYPE "public"."stock_movement_type" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."amount_in_words"("amount" numeric) RETURNS "text"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  ones text[] := ARRAY['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine'];
+  rupees bigint := floor(amount);
+  paise int := round((amount - floor(amount)) * 100);
+  n bigint; crore bigint; lakh bigint; thousand bigint; hundred int; h int; r int;
+  parts text[] := ARRAY[]::text[];
+  out_text text;
+BEGIN
+  IF rupees = 0 AND paise = 0 THEN RETURN 'Zero Rupees Only'; END IF;
+  n := rupees;
+  crore := n / 10000000; n := n % 10000000;
+  lakh := n / 100000; n := n % 100000;
+  thousand := n / 1000; n := n % 1000;
+  hundred := n;
+  IF crore > 0 THEN parts := parts || (public.num_words_below_hundred(crore::int) || ' Crore'); END IF;
+  IF lakh > 0 THEN parts := parts || (public.num_words_below_hundred(lakh::int) || ' Lakh'); END IF;
+  IF thousand > 0 THEN parts := parts || (public.num_words_below_hundred(thousand::int) || ' Thousand'); END IF;
+  IF hundred > 0 THEN
+    h := hundred / 100; r := hundred % 100;
+    parts := parts || (
+      CASE WHEN h > 0 THEN ones[h + 1] || ' Hundred' || CASE WHEN r > 0 THEN ' ' ELSE '' END ELSE '' END
+      || CASE WHEN r > 0 THEN public.num_words_below_hundred(r) ELSE '' END
+    );
+  END IF;
+  out_text := array_to_string(parts, ' ') || ' Rupees';
+  IF paise > 0 THEN out_text := out_text || ' and ' || public.num_words_below_hundred(paise) || ' Paise'; END IF;
+  RETURN out_text || ' Only';
+END; $$;
+
+
+ALTER FUNCTION "public"."amount_in_words"("amount" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_access_org"("_organization_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.organization_members
+    WHERE organization_id = _organization_id
+      AND user_id = auth.uid()
+  );
+$$;
+
+
+ALTER FUNCTION "public"."can_access_org"("_organization_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_edit_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+    SELECT
+        public.has_org_panel(
+            _organization_id,
+            _panel,
+            _user_id
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM public.organization_members om
+            WHERE om.organization_id = _organization_id
+              AND om.user_id = _user_id
+              AND om.role IN (
+                  'super_admin'::public.app_role,
+                  'admin'::public.app_role,
+                  'accountant'::public.app_role,
+                  'sales_executive'::public.app_role
+              )
+        );
+$$;
+
+
+ALTER FUNCTION "public"."can_edit_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_edit_panel"("_panel" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT public.has_panel(_panel) AND public.can_write();
+$$;
+
+
+ALTER FUNCTION "public"."can_edit_panel"("_panel" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_write"("_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role IN ('super_admin','admin','accountant','sales_executive')
+  );
+$$;
+
+
+ALTER FUNCTION "public"."can_write"("_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  user_count INT;
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), NEW.email)
+  ON CONFLICT (id) DO NOTHING;
+  SELECT COUNT(*) INTO user_count FROM auth.users;
+  IF user_count = 1 THEN
+    INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'super_admin') ON CONFLICT DO NOTHING;
+  ELSE
+    INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'viewer') ON CONFLICT DO NOTHING;
+  END IF;
+  RETURN NEW;
+END; $$;
+
+
+ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."has_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+    SELECT
+        EXISTS (
+            SELECT 1
+            FROM public.organization_members om
+            WHERE om.organization_id = _organization_id
+              AND om.user_id = _user_id
+        )
+        AND (
+            public.has_org_role(
+                _organization_id,
+                'super_admin'::public.app_role,
+                _user_id
+            )
+            OR
+            public.has_org_role(
+                _organization_id,
+                'admin'::public.app_role,
+                _user_id
+            )
+            OR
+            EXISTS (
+                SELECT 1
+                FROM public.user_panel_permissions upp
+                WHERE upp.organization_id = _organization_id
+                  AND upp.user_id = _user_id
+                  AND upp.panel = _panel
+            )
+        );
+$$;
+
+
+ALTER FUNCTION "public"."has_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."has_org_role"("_organization_id" "uuid", "_role" "public"."app_role", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.organization_members
+    WHERE organization_id = _organization_id
+      AND user_id = _user_id
+      AND role = _role
+  );
+$$;
+
+
+ALTER FUNCTION "public"."has_org_role"("_organization_id" "uuid", "_role" "public"."app_role", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."has_panel"("_panel" "text", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT public.is_admin(_user_id)
+     OR EXISTS (SELECT 1 FROM public.user_panel_permissions WHERE user_id = _user_id AND panel = _panel);
+$$;
+
+
+ALTER FUNCTION "public"."has_panel"("_panel" "text", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."has_role"("_user_id" "uuid", "_role" "public"."app_role") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role);
+$$;
+
+
+ALTER FUNCTION "public"."has_role"("_user_id" "uuid", "_role" "public"."app_role") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_admin"("_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role IN ('super_admin','admin'));
+$$;
+
+
+ALTER FUNCTION "public"."is_admin"("_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_org_admin"("_organization_id" "uuid", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.organization_members
+    WHERE organization_id = _organization_id
+      AND user_id = _user_id
+      AND role IN ('admin', 'super_admin')
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_org_admin"("_organization_id" "uuid", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_org_member"("_organization_id" "uuid", "_user_id" "uuid" DEFAULT "auth"."uid"()) RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.organization_members
+    WHERE organization_id = _organization_id
+      AND user_id = _user_id
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_org_member"("_organization_id" "uuid", "_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."num_words_below_hundred"("n" integer) RETURNS "text"
+    LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  ones text[] := ARRAY['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  tens text[] := ARRAY['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+BEGIN
+  IF n < 20 THEN RETURN ones[n + 1]; END IF;
+  RETURN tens[(n / 10) + 1] || CASE WHEN n % 10 > 0 THEN ' ' || ones[(n % 10) + 1] ELSE '' END;
+END; $$;
+
+
+ALTER FUNCTION "public"."num_words_below_hundred"("n" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."recalc_invoice_paid"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_invoice_id UUID;
+  v_paid NUMERIC;
+  v_total NUMERIC;
+BEGIN
+  v_invoice_id := COALESCE(NEW.invoice_id, OLD.invoice_id);
+  SELECT COALESCE(SUM(amount),0) INTO v_paid FROM public.payments WHERE invoice_id = v_invoice_id;
+  SELECT grand_total INTO v_total FROM public.invoices WHERE id = v_invoice_id;
+  UPDATE public.invoices SET
+    amount_paid = v_paid,
+    status = CASE
+      WHEN v_paid >= COALESCE(v_total,0) AND COALESCE(v_total,0) > 0 THEN 'paid'
+      WHEN v_paid > 0 THEN 'partial'
+      ELSE COALESCE((SELECT status FROM public.invoices WHERE id = v_invoice_id), 'sent')
+    END
+  WHERE id = v_invoice_id;
+  RETURN NULL;
+END; $$;
+
+
+ALTER FUNCTION "public"."recalc_invoice_paid"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."recalc_invoice_totals"("_invoice_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  inv public.invoices%ROWTYPE;
+  item_net numeric := 0; item_tax numeric := 0; item_disc numeric := 0;
+  extra numeric := 0; charges numeric := 0; sub numeric; pre numeric; grand numeric;
+BEGIN
+  SELECT * INTO inv FROM public.invoices WHERE id = _invoice_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  SELECT COALESCE(SUM((GREATEST(quantity - COALESCE(rejected_quantity,0),0) * unit_rate)
+                      * (1 - COALESCE(discount_pct,0)/100)), 0),
+         COALESCE(SUM(COALESCE(tax_amount,0)), 0),
+         COALESCE(SUM(COALESCE(discount_amount,0)), 0)
+    INTO item_net, item_tax, item_disc
+    FROM public.invoice_items WHERE invoice_id = _invoice_id;
+
+  IF NOT EXISTS (SELECT 1 FROM public.invoice_items WHERE invoice_id = _invoice_id) THEN
+    RETURN; -- nothing to derive from yet
+  END IF;
+
+  extra := GREATEST(COALESCE(inv.discount_amount,0) - item_disc, 0);
+  charges := COALESCE(inv.freight,0) + COALESCE(inv.packing_charges,0) + COALESCE(inv.other_charges,0)
+           + COALESCE(inv.transportation_charges,0) + COALESCE(inv.delivery_charges,0);
+  sub := item_net + charges - extra;
+  pre := sub + item_tax;
+  grand := round(pre);
+
+  UPDATE public.invoices SET
+    net_value = item_net,
+    discount_amount = item_disc + extra,
+    subtotal = sub,
+    sgst_amount = CASE WHEN COALESCE(is_igst,false) THEN 0 ELSE item_tax / 2 END,
+    cgst_amount = CASE WHEN COALESCE(is_igst,false) THEN 0 ELSE item_tax / 2 END,
+    igst_amount = CASE WHEN COALESCE(is_igst,false) THEN item_tax ELSE 0 END,
+    round_off = grand - pre,
+    grand_total = grand,
+    amount_in_words = public.amount_in_words(grand)
+  WHERE id = _invoice_id;
+END; $$;
+
+
+ALTER FUNCTION "public"."recalc_invoice_totals"("_invoice_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."recalc_sales_document_totals"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $_$
+DECLARE
+  parent_id uuid; parent_table text := TG_ARGV[0];
+  item_net numeric := 0; item_tax numeric := 0; item_disc numeric := 0;
+  parent_row record; charges numeric := 0; sub numeric; pre numeric; grand numeric;
+BEGIN
+  parent_id := COALESCE(NEW.invoice_id, OLD.invoice_id);
+  EXECUTE format('SELECT * FROM public.%I WHERE id = $1', parent_table) INTO parent_row USING parent_id;
+  IF parent_row IS NULL THEN RETURN NULL; END IF;
+  EXECUTE format('SELECT COALESCE(SUM((GREATEST(quantity - COALESCE(rejected_quantity,0),0) * unit_rate) * (1 - COALESCE(discount_pct,0)/100)),0), COALESCE(SUM(discount_amount),0), COALESCE(SUM(tax_amount),0) FROM public.%I WHERE invoice_id = $1', TG_TABLE_NAME)
+    INTO item_net, item_disc, item_tax USING parent_id;
+  charges := COALESCE(parent_row.freight,0) + COALESCE(parent_row.packing_charges,0) + COALESCE(parent_row.other_charges,0) + COALESCE(parent_row.transportation_charges,0) + COALESCE(parent_row.delivery_charges,0);
+  sub := item_net + charges; pre := sub + item_tax; grand := round(pre);
+  EXECUTE format('UPDATE public.%I SET net_value=$1, discount_amount=$2, subtotal=$3, sgst_amount=$4, cgst_amount=$5, igst_amount=$6, round_off=$7, grand_total=$8, amount_in_words=public.amount_in_words($8) WHERE id=$9', parent_table)
+    USING item_net, item_disc, sub,
+      CASE WHEN COALESCE(parent_row.is_igst,false) THEN 0 ELSE item_tax/2 END,
+      CASE WHEN COALESCE(parent_row.is_igst,false) THEN 0 ELSE item_tax/2 END,
+      CASE WHEN COALESCE(parent_row.is_igst,false) THEN item_tax ELSE 0 END,
+      grand-pre, grand, parent_id;
+  RETURN NULL;
+END; $_$;
+
+
+ALTER FUNCTION "public"."recalc_sales_document_totals"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."tg_invoice_item_amounts"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  qty numeric; gross numeric; disc numeric; net numeric; tax numeric;
+BEGIN
+  qty := GREATEST(COALESCE(NEW.quantity,0) - COALESCE(NEW.rejected_quantity,0), 0);
+  NEW.accepted_quantity := qty;
+  gross := qty * COALESCE(NEW.unit_rate,0);
+  disc := gross * COALESCE(NEW.discount_pct,0) / 100;
+  net := gross - disc;
+  tax := net * COALESCE(NEW.tax_pct,0) / 100;
+  NEW.discount_amount := disc;
+  NEW.tax_amount := tax;
+  NEW.total_amount := net + tax;
+  RETURN NEW;
+END; $$;
+
+
+ALTER FUNCTION "public"."tg_invoice_item_amounts"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."tg_organizations_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."tg_organizations_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."tg_recalc_from_items"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  PERFORM public.recalc_invoice_totals(COALESCE(NEW.invoice_id, OLD.invoice_id));
+  RETURN NULL;
+END; $$;
+
+
+ALTER FUNCTION "public"."tg_recalc_from_items"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."tg_recalc_on_invoice_change"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF NEW.freight IS DISTINCT FROM OLD.freight
+     OR NEW.packing_charges IS DISTINCT FROM OLD.packing_charges
+     OR NEW.other_charges IS DISTINCT FROM OLD.other_charges
+     OR NEW.transportation_charges IS DISTINCT FROM OLD.transportation_charges
+     OR NEW.delivery_charges IS DISTINCT FROM OLD.delivery_charges
+     OR NEW.is_igst IS DISTINCT FROM OLD.is_igst
+     OR NEW.discount_amount IS DISTINCT FROM OLD.discount_amount THEN
+    PERFORM public.recalc_invoice_totals(NEW.id);
+  END IF;
+  RETURN NULL;
+END; $$;
+
+
+ALTER FUNCTION "public"."tg_recalc_on_invoice_change"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."tg_set_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+
+
+ALTER FUNCTION "public"."tg_set_updated_at"() OWNER TO "postgres";
+
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."backup_history" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "finished_at" timestamp with time zone,
+    "status" "text" DEFAULT 'running'::"text" NOT NULL,
+    "trigger_source" "text" DEFAULT 'manual'::"text" NOT NULL,
+    "invoice_count" integer,
+    "file_name" "text",
+    "file_size" bigint,
+    "drive_file_id" "text",
+    "drive_link" "text",
+    "error" "text",
+    "created_by" "uuid",
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "backup_history_status_check" CHECK (("status" = ANY (ARRAY['running'::"text", 'success'::"text", 'failed'::"text"])))
+);
+
+
+ALTER TABLE "public"."backup_history" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."backup_settings" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "frequency" "text" DEFAULT 'off'::"text" NOT NULL,
+    "hour_utc" integer DEFAULT 20 NOT NULL,
+    "last_run_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "backup_settings_frequency_check" CHECK (("frequency" = ANY (ARRAY['off'::"text", 'daily'::"text", 'weekly'::"text", 'monthly'::"text"]))),
+    CONSTRAINT "backup_settings_hour_utc_check" CHECK ((("hour_utc" >= 0) AND ("hour_utc" <= 23)))
+);
+
+
+ALTER TABLE "public"."backup_settings" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."challan" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_number" "text" NOT NULL,
+    "invoice_type" "public"."invoice_type" DEFAULT 'delivery_challan'::"public"."invoice_type" NOT NULL,
+    "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "customer_id" "uuid",
+    "customer_name_snapshot" "text",
+    "customer_gst_snapshot" "text",
+    "customer_address_snapshot" "text",
+    "challan_number" "text",
+    "challan_date" "date",
+    "work_order_number" "text",
+    "place_of_supply" "text",
+    "delivery_mode" "text",
+    "payment_terms" "text",
+    "contact_person" "text",
+    "contact_mobile" "text",
+    "notes" "text",
+    "status" "public"."invoice_status" DEFAULT 'draft'::"public"."invoice_status" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cancellation_reason" "text",
+    "challan_dates" "date"[] DEFAULT '{}'::"date"[] NOT NULL,
+    "movement_reason" "text",
+    "transporter_name" "text",
+    "place_of_dispatch" "text",
+    "place_of_delivery" "text",
+    "cancelled_at" timestamp with time zone,
+    "cancelled_by" "uuid",
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "challan_type_check" CHECK (("invoice_type" = 'delivery_challan'::"public"."invoice_type"))
+);
+
+
+ALTER TABLE "public"."challan" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."challan_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "sr_no" integer NOT NULL,
+    "product_id" "uuid",
+    "hsn_code" "text",
+    "description" "text" NOT NULL,
+    "quantity" numeric(14,3) DEFAULT 1 NOT NULL,
+    "uom" "text" DEFAULT 'NOS'::"text",
+    "serial_batch_number" "text",
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."challan_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."company_profile" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" DEFAULT 'ABJAD Engineering Works'::"text" NOT NULL,
+    "logo_url" "text",
+    "address" "text",
+    "city" "text",
+    "state" "text",
+    "state_code" "text",
+    "pincode" "text",
+    "gst_number" "text",
+    "pan_number" "text",
+    "mobile" "text",
+    "alt_mobile" "text",
+    "email" "text",
+    "website" "text",
+    "bank_name" "text",
+    "bank_account" "text",
+    "bank_ifsc" "text",
+    "bank_branch" "text",
+    "bank_branch_code" "text",
+    "declaration" "text" DEFAULT 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.'::"text",
+    "invoice_prefix" "text" DEFAULT 'INV'::"text",
+    "quotation_prefix" "text" DEFAULT 'QTN'::"text",
+    "po_prefix" "text" DEFAULT 'PO'::"text",
+    "financial_year" "text" DEFAULT '2025-26'::"text",
+    "currency" "text" DEFAULT 'INR'::"text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."company_profile" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."customer_credits" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "customer_id" "uuid",
+    "source_invoice_id" "uuid",
+    "source_rejection_id" "uuid",
+    "credit_amount" numeric DEFAULT 0 NOT NULL,
+    "used_amount" numeric DEFAULT 0 NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "notes" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."customer_credits" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."customers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "customer_name" "text" NOT NULL,
+    "company_name" "text",
+    "billing_address" "text",
+    "shipping_address" "text",
+    "contact_person" "text",
+    "mobile" "text",
+    "email" "text",
+    "gst_number" "text",
+    "pan_number" "text",
+    "state" "text",
+    "state_code" "text",
+    "place_of_supply" "text",
+    "credit_limit" numeric(14,2) DEFAULT 0,
+    "payment_terms" "text",
+    "notes" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."customers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."google_drive_credentials" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "account_email" "text",
+    "refresh_token" "text" NOT NULL,
+    "access_token" "text",
+    "access_token_expires_at" timestamp with time zone,
+    "folder_id" "text",
+    "connected_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."google_drive_credentials" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_configuration" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "feature_key" "text" NOT NULL,
+    "label" "text" NOT NULL,
+    "enabled" boolean DEFAULT true NOT NULL,
+    "is_mandatory" boolean DEFAULT false NOT NULL,
+    "is_visible" boolean DEFAULT true NOT NULL,
+    "is_editable" boolean DEFAULT true NOT NULL,
+    "is_read_only" boolean DEFAULT false NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_configuration" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_history" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "event_type" "text" NOT NULL,
+    "description" "text",
+    "metadata" "jsonb",
+    "actor_id" "uuid",
+    "actor_email" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_history" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "sr_no" integer NOT NULL,
+    "product_id" "uuid",
+    "hsn_code" "text",
+    "description" "text" NOT NULL,
+    "quantity" numeric(14,3) DEFAULT 1 NOT NULL,
+    "uom" "text" DEFAULT 'NOS'::"text",
+    "unit_rate" numeric(14,2) DEFAULT 0 NOT NULL,
+    "discount_pct" numeric(5,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "tax_pct" numeric(5,2) DEFAULT 18,
+    "tax_amount" numeric(14,2) DEFAULT 0,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "rejected_quantity" numeric DEFAULT 0 NOT NULL,
+    "accepted_quantity" numeric,
+    "serial_batch_number" "text",
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_rejections" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "invoice_item_id" "uuid" NOT NULL,
+    "rejected_quantity" numeric NOT NULL,
+    "rejection_reason" "text" NOT NULL,
+    "reason_notes" "text",
+    "unit_rate" numeric DEFAULT 0 NOT NULL,
+    "tax_pct" numeric DEFAULT 0 NOT NULL,
+    "rejected_value" numeric DEFAULT 0 NOT NULL,
+    "gst_deduction" numeric DEFAULT 0 NOT NULL,
+    "total_deduction" numeric DEFAULT 0 NOT NULL,
+    "disposition" "text" DEFAULT 'restock'::"text" NOT NULL,
+    "actor_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "invoice_rejections_rejected_quantity_check" CHECK (("rejected_quantity" > (0)::numeric))
+);
+
+
+ALTER TABLE "public"."invoice_rejections" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoice_settings" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "show_gst_number" boolean DEFAULT true,
+    "mandatory_gst_number" boolean DEFAULT true,
+    "show_pan_number" boolean DEFAULT true,
+    "mandatory_pan_number" boolean DEFAULT true,
+    "show_po_number" boolean DEFAULT true,
+    "mandatory_po_number" boolean DEFAULT false,
+    "show_challan_number" boolean DEFAULT true,
+    "mandatory_challan_number" boolean DEFAULT false,
+    "show_freight" boolean DEFAULT true,
+    "mandatory_freight" boolean DEFAULT true,
+    "show_packing_charges" boolean DEFAULT true,
+    "mandatory_packing_charges" boolean DEFAULT false,
+    "show_discount" boolean DEFAULT true,
+    "mandatory_discount" boolean DEFAULT false,
+    "show_contact_person" boolean DEFAULT true,
+    "mandatory_contact_person" boolean DEFAULT false,
+    "show_delivery" boolean DEFAULT true,
+    "mandatory_delivery" boolean DEFAULT false,
+    "show_declaration" boolean DEFAULT true,
+    "show_bank_details" boolean DEFAULT true,
+    "show_signature" boolean DEFAULT true,
+    "show_company_seal" boolean DEFAULT true,
+    "show_work_order" boolean DEFAULT true,
+    "show_gst_arn" boolean DEFAULT false,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_settings" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."invoices" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_number" "text" NOT NULL,
+    "invoice_type" "public"."invoice_type" DEFAULT 'tax_invoice'::"public"."invoice_type" NOT NULL,
+    "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "customer_id" "uuid",
+    "customer_name_snapshot" "text",
+    "customer_gst_snapshot" "text",
+    "customer_address_snapshot" "text",
+    "work_order_number" "text",
+    "is_igst" boolean DEFAULT false,
+    "net_value" numeric(14,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "freight" numeric(14,2) DEFAULT 0,
+    "packing_charges" numeric(14,2) DEFAULT 0,
+    "other_charges" numeric(14,2) DEFAULT 0,
+    "subtotal" numeric(14,2) DEFAULT 0,
+    "sgst_amount" numeric(14,2) DEFAULT 0,
+    "cgst_amount" numeric(14,2) DEFAULT 0,
+    "igst_amount" numeric(14,2) DEFAULT 0,
+    "round_off" numeric(14,2) DEFAULT 0,
+    "grand_total" numeric(14,2) DEFAULT 0,
+    "amount_paid" numeric(14,2) DEFAULT 0,
+    "amount_in_words" "text",
+    "delivery_mode" "text",
+    "payment_terms" "text",
+    "contact_person" "text",
+    "contact_mobile" "text",
+    "notes" "text",
+    "status" "public"."invoice_status" DEFAULT 'draft'::"public"."invoice_status" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cancelled_at" timestamp with time zone,
+    "cancelled_by" "uuid",
+    "cancellation_reason" "text",
+    "is_imported" boolean DEFAULT false NOT NULL,
+    "import_source" "text",
+    "transportation_charges" numeric DEFAULT 0 NOT NULL,
+    "delivery_charges" numeric DEFAULT 0 NOT NULL,
+    "movement_reason" "text",
+    "transporter_name" "text",
+    "place_of_dispatch" "text",
+    "place_of_delivery" "text",
+    "challan_dates" "date"[] DEFAULT '{}'::"date"[] NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."invoices" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."organization_features" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    "feature" "text" NOT NULL,
+    "enabled" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."organization_features" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."organization_members" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "role" "public"."app_role" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."organization_members" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."organizations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "slug" "text" NOT NULL,
+    "status" "text" DEFAULT 'active'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "organizations_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'suspended'::"text"])))
+);
+
+
+ALTER TABLE "public"."organizations" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."payments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "payment_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "amount" numeric(14,2) NOT NULL,
+    "mode" "text" DEFAULT 'cash'::"text" NOT NULL,
+    "reference" "text",
+    "notes" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "payments_amount_check" CHECK (("amount" > (0)::numeric))
+);
+
+
+ALTER TABLE "public"."payments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."performa" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_number" "text" NOT NULL,
+    "invoice_type" "public"."invoice_type" DEFAULT 'proforma'::"public"."invoice_type" NOT NULL,
+    "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "customer_id" "uuid",
+    "customer_name_snapshot" "text",
+    "customer_gst_snapshot" "text",
+    "customer_address_snapshot" "text",
+    "work_order_number" "text",
+    "is_igst" boolean DEFAULT false,
+    "net_value" numeric(14,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "freight" numeric(14,2) DEFAULT 0,
+    "packing_charges" numeric(14,2) DEFAULT 0,
+    "other_charges" numeric(14,2) DEFAULT 0,
+    "subtotal" numeric(14,2) DEFAULT 0,
+    "sgst_amount" numeric(14,2) DEFAULT 0,
+    "cgst_amount" numeric(14,2) DEFAULT 0,
+    "igst_amount" numeric(14,2) DEFAULT 0,
+    "round_off" numeric(14,2) DEFAULT 0,
+    "grand_total" numeric(14,2) DEFAULT 0,
+    "amount_paid" numeric(14,2) DEFAULT 0,
+    "amount_in_words" "text",
+    "delivery_mode" "text",
+    "payment_terms" "text",
+    "contact_person" "text",
+    "contact_mobile" "text",
+    "notes" "text",
+    "status" "public"."invoice_status" DEFAULT 'draft'::"public"."invoice_status" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cancelled_at" timestamp with time zone,
+    "cancelled_by" "uuid",
+    "cancellation_reason" "text",
+    "transportation_charges" numeric DEFAULT 0 NOT NULL,
+    "delivery_charges" numeric DEFAULT 0 NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "performa_type_check" CHECK (("invoice_type" = 'proforma'::"public"."invoice_type"))
+);
+
+
+ALTER TABLE "public"."performa" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."performa_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "sr_no" integer NOT NULL,
+    "product_id" "uuid",
+    "hsn_code" "text",
+    "description" "text" NOT NULL,
+    "quantity" numeric(14,3) DEFAULT 1 NOT NULL,
+    "uom" "text" DEFAULT 'NOS'::"text",
+    "unit_rate" numeric(14,2) DEFAULT 0 NOT NULL,
+    "discount_pct" numeric(5,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "tax_pct" numeric(5,2) DEFAULT 18,
+    "tax_amount" numeric(14,2) DEFAULT 0,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "rejected_quantity" numeric DEFAULT 0 NOT NULL,
+    "accepted_quantity" numeric,
+    "serial_batch_number" "text",
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."performa_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."product_categories" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."product_categories" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."products" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_name" "text" NOT NULL,
+    "product_code" "text",
+    "hsn_code" "text",
+    "description" "text",
+    "unit" "text" DEFAULT 'NOS'::"text",
+    "gst_percentage" numeric(5,2) DEFAULT 18,
+    "selling_price" numeric(14,2) DEFAULT 0,
+    "purchase_price" numeric(14,2) DEFAULT 0,
+    "stock_quantity" numeric(14,3) DEFAULT 0,
+    "minimum_stock" numeric(14,3) DEFAULT 0,
+    "maximum_stock" numeric(14,3) DEFAULT 0,
+    "category_id" "uuid",
+    "drawing_number" "text",
+    "material" "text",
+    "weight" numeric(10,3),
+    "dimensions" "text",
+    "image_url" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."products" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."profiles" (
+    "id" "uuid" NOT NULL,
+    "full_name" "text",
+    "email" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."profiles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."purchase_order_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "purchase_order_id" "uuid" NOT NULL,
+    "sr_no" integer DEFAULT 1 NOT NULL,
+    "product_id" "uuid",
+    "hsn_code" "text",
+    "description" "text" NOT NULL,
+    "quantity" numeric(14,3) DEFAULT 0 NOT NULL,
+    "uom" "text" DEFAULT 'NOS'::"text",
+    "unit_rate" numeric(14,4) DEFAULT 0 NOT NULL,
+    "tax_pct" numeric(6,2) DEFAULT 0 NOT NULL,
+    "tax_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."purchase_order_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."purchase_orders" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "po_number" "text" NOT NULL,
+    "po_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "vendor_id" "uuid",
+    "vendor_name_snapshot" "text",
+    "vendor_gst_snapshot" "text",
+    "vendor_address_snapshot" "text",
+    "is_igst" boolean DEFAULT false NOT NULL,
+    "net_value" numeric(14,2) DEFAULT 0 NOT NULL,
+    "sub_total" numeric(14,2) DEFAULT 0 NOT NULL,
+    "sgst_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "cgst_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "igst_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "round_off" numeric(14,2) DEFAULT 0 NOT NULL,
+    "grand_total" numeric(14,2) DEFAULT 0 NOT NULL,
+    "status" "text" DEFAULT 'draft'::"text" NOT NULL,
+    "expected_date" "date",
+    "notes" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."purchase_orders" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."quotation" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_number" "text" NOT NULL,
+    "invoice_type" "public"."invoice_type" DEFAULT 'quotation'::"public"."invoice_type" NOT NULL,
+    "invoice_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "customer_id" "uuid",
+    "customer_name_snapshot" "text",
+    "customer_gst_snapshot" "text",
+    "customer_address_snapshot" "text",
+    "work_order_number" "text",
+    "is_igst" boolean DEFAULT false,
+    "net_value" numeric(14,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "freight" numeric(14,2) DEFAULT 0,
+    "packing_charges" numeric(14,2) DEFAULT 0,
+    "other_charges" numeric(14,2) DEFAULT 0,
+    "subtotal" numeric(14,2) DEFAULT 0,
+    "sgst_amount" numeric(14,2) DEFAULT 0,
+    "cgst_amount" numeric(14,2) DEFAULT 0,
+    "igst_amount" numeric(14,2) DEFAULT 0,
+    "round_off" numeric(14,2) DEFAULT 0,
+    "grand_total" numeric(14,2) DEFAULT 0,
+    "amount_paid" numeric(14,2) DEFAULT 0,
+    "amount_in_words" "text",
+    "delivery_mode" "text",
+    "payment_terms" "text",
+    "contact_person" "text",
+    "contact_mobile" "text",
+    "notes" "text",
+    "status" "public"."invoice_status" DEFAULT 'draft'::"public"."invoice_status" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cancelled_at" timestamp with time zone,
+    "cancelled_by" "uuid",
+    "cancellation_reason" "text",
+    "transportation_charges" numeric DEFAULT 0 NOT NULL,
+    "delivery_charges" numeric DEFAULT 0 NOT NULL,
+    "organization_id" "uuid" NOT NULL,
+    CONSTRAINT "quotation_type_check" CHECK (("invoice_type" = 'quotation'::"public"."invoice_type"))
+);
+
+
+ALTER TABLE "public"."quotation" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."quotation_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" "uuid" NOT NULL,
+    "sr_no" integer NOT NULL,
+    "product_id" "uuid",
+    "hsn_code" "text",
+    "description" "text" NOT NULL,
+    "quantity" numeric(14,3) DEFAULT 1 NOT NULL,
+    "uom" "text" DEFAULT 'NOS'::"text",
+    "unit_rate" numeric(14,2) DEFAULT 0 NOT NULL,
+    "discount_pct" numeric(5,2) DEFAULT 0,
+    "discount_amount" numeric(14,2) DEFAULT 0,
+    "tax_pct" numeric(5,2) DEFAULT 18,
+    "tax_amount" numeric(14,2) DEFAULT 0,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "rejected_quantity" numeric DEFAULT 0 NOT NULL,
+    "accepted_quantity" numeric,
+    "serial_batch_number" "text",
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."quotation_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."rate_limits" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "bucket" "text" NOT NULL,
+    "identifier" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."rate_limits" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."rejected_inventory" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid",
+    "invoice_id" "uuid",
+    "rejection_id" "uuid",
+    "description" "text",
+    "quantity" numeric DEFAULT 0 NOT NULL,
+    "uom" "text",
+    "reason" "text",
+    "disposition" "text" DEFAULT 'hold'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."rejected_inventory" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."stock_movements" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "movement_type" "public"."stock_movement_type" NOT NULL,
+    "quantity" numeric(14,3) NOT NULL,
+    "reference" "text",
+    "notes" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."stock_movements" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_panel_permissions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "panel" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."user_panel_permissions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_roles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "role" "public"."app_role" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."user_roles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."vendors" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "vendor_name" "text" NOT NULL,
+    "company_name" "text",
+    "address" "text",
+    "city" "text",
+    "state" "text",
+    "state_code" "text",
+    "pincode" "text",
+    "gst_number" "text",
+    "pan_number" "text",
+    "mobile" "text",
+    "email" "text",
+    "contact_person" "text",
+    "bank_name" "text",
+    "bank_account" "text",
+    "bank_ifsc" "text",
+    "payment_terms" "text",
+    "notes" "text",
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "organization_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."vendors" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."backup_history"
+    ADD CONSTRAINT "backup_history_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."backup_settings"
+    ADD CONSTRAINT "backup_settings_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."challan"
+    ADD CONSTRAINT "challan_invoice_number_key" UNIQUE ("invoice_number");
+
+
+
+ALTER TABLE ONLY "public"."challan_items"
+    ADD CONSTRAINT "challan_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."challan"
+    ADD CONSTRAINT "challan_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."company_profile"
+    ADD CONSTRAINT "company_profile_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."customer_credits"
+    ADD CONSTRAINT "customer_credits_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."customers"
+    ADD CONSTRAINT "customers_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."google_drive_credentials"
+    ADD CONSTRAINT "google_drive_credentials_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_configuration"
+    ADD CONSTRAINT "invoice_configuration_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_history"
+    ADD CONSTRAINT "invoice_history_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_items"
+    ADD CONSTRAINT "invoice_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_rejections"
+    ADD CONSTRAINT "invoice_rejections_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_settings"
+    ADD CONSTRAINT "invoice_settings_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organization_features"
+    ADD CONSTRAINT "organization_features_org_feature_key" UNIQUE ("organization_id", "feature");
+
+
+
+ALTER TABLE ONLY "public"."organization_features"
+    ADD CONSTRAINT "organization_features_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_user_org_key" UNIQUE ("user_id", "organization_id");
+
+
+
+ALTER TABLE ONLY "public"."organizations"
+    ADD CONSTRAINT "organizations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."organizations"
+    ADD CONSTRAINT "organizations_slug_key" UNIQUE ("slug");
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."performa"
+    ADD CONSTRAINT "performa_invoice_number_key" UNIQUE ("invoice_number");
+
+
+
+ALTER TABLE ONLY "public"."performa_items"
+    ADD CONSTRAINT "performa_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."performa"
+    ADD CONSTRAINT "performa_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."product_categories"
+    ADD CONSTRAINT "product_categories_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_order_items"
+    ADD CONSTRAINT "purchase_order_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."quotation"
+    ADD CONSTRAINT "quotation_invoice_number_key" UNIQUE ("invoice_number");
+
+
+
+ALTER TABLE ONLY "public"."quotation_items"
+    ADD CONSTRAINT "quotation_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."quotation"
+    ADD CONSTRAINT "quotation_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."rate_limits"
+    ADD CONSTRAINT "rate_limits_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."rejected_inventory"
+    ADD CONSTRAINT "rejected_inventory_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."stock_movements"
+    ADD CONSTRAINT "stock_movements_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_panel_permissions"
+    ADD CONSTRAINT "user_panel_permissions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_panel_permissions"
+    ADD CONSTRAINT "user_panel_permissions_user_id_panel_key" UNIQUE ("user_id", "panel");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_user_id_role_key" UNIQUE ("user_id", "role");
+
+
+
+ALTER TABLE ONLY "public"."vendors"
+    ADD CONSTRAINT "vendors_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "backup_history_organization_id_idx" ON "public"."backup_history" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "backup_settings_organization_id_idx" ON "public"."backup_settings" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "challan_items_organization_id_idx" ON "public"."challan_items" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "challan_organization_id_idx" ON "public"."challan" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "company_profile_organization_id_idx" ON "public"."company_profile" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "company_profile_organization_id_key" ON "public"."company_profile" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "customer_credits_organization_id_idx" ON "public"."customer_credits" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "customers_organization_id_idx" ON "public"."customers" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "google_drive_credentials_organization_id_idx" ON "public"."google_drive_credentials" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "idx_backup_history_started" ON "public"."backup_history" USING "btree" ("started_at" DESC);
+
+
+
+CREATE INDEX "idx_challan_customer" ON "public"."challan" USING "btree" ("customer_id");
+
+
+
+CREATE INDEX "idx_challan_date" ON "public"."challan" USING "btree" ("invoice_date" DESC);
+
+
+
+CREATE INDEX "idx_challan_items_parent" ON "public"."challan_items" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_challan_status" ON "public"."challan" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_credits_customer" ON "public"."customer_credits" USING "btree" ("customer_id");
+
+
+
+CREATE INDEX "idx_customers_gst" ON "public"."customers" USING "btree" ("gst_number");
+
+
+
+CREATE INDEX "idx_customers_name" ON "public"."customers" USING "btree" ("customer_name");
+
+
+
+CREATE INDEX "idx_invoice_history_invoice" ON "public"."invoice_history" USING "btree" ("invoice_id", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_invoice_items_invoice" ON "public"."invoice_items" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_invoices_customer" ON "public"."invoices" USING "btree" ("customer_id");
+
+
+
+CREATE INDEX "idx_invoices_date" ON "public"."invoices" USING "btree" ("invoice_date" DESC);
+
+
+
+CREATE INDEX "idx_invoices_status" ON "public"."invoices" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_payments_invoice" ON "public"."payments" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_performa_customer" ON "public"."performa" USING "btree" ("customer_id");
+
+
+
+CREATE INDEX "idx_performa_date" ON "public"."performa" USING "btree" ("invoice_date" DESC);
+
+
+
+CREATE INDEX "idx_performa_items_parent" ON "public"."performa_items" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_performa_status" ON "public"."performa" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_po_items_po" ON "public"."purchase_order_items" USING "btree" ("purchase_order_id");
+
+
+
+CREATE INDEX "idx_products_code" ON "public"."products" USING "btree" ("product_code");
+
+
+
+CREATE INDEX "idx_products_name" ON "public"."products" USING "btree" ("product_name");
+
+
+
+CREATE INDEX "idx_quotation_customer" ON "public"."quotation" USING "btree" ("customer_id");
+
+
+
+CREATE INDEX "idx_quotation_date" ON "public"."quotation" USING "btree" ("invoice_date" DESC);
+
+
+
+CREATE INDEX "idx_quotation_items_parent" ON "public"."quotation_items" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_quotation_status" ON "public"."quotation" USING "btree" ("status");
+
+
+
+CREATE INDEX "idx_rejections_invoice" ON "public"."invoice_rejections" USING "btree" ("invoice_id");
+
+
+
+CREATE INDEX "idx_stock_product" ON "public"."stock_movements" USING "btree" ("product_id");
+
+
+
+CREATE UNIQUE INDEX "invoice_configuration_org_feature_key" ON "public"."invoice_configuration" USING "btree" ("organization_id", "feature_key");
+
+
+
+CREATE INDEX "invoice_configuration_organization_id_idx" ON "public"."invoice_configuration" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "invoice_history_organization_id_idx" ON "public"."invoice_history" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "invoice_items_organization_id_idx" ON "public"."invoice_items" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "invoice_rejections_organization_id_idx" ON "public"."invoice_rejections" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "invoice_settings_organization_id_idx" ON "public"."invoice_settings" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "invoice_settings_organization_id_key" ON "public"."invoice_settings" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "invoices_org_invoice_number_key" ON "public"."invoices" USING "btree" ("organization_id", "invoice_number");
+
+
+
+CREATE INDEX "invoices_organization_id_idx" ON "public"."invoices" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "organization_features_organization_id_idx" ON "public"."organization_features" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "organization_members_organization_id_idx" ON "public"."organization_members" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "organization_members_user_id_idx" ON "public"."organization_members" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "payments_organization_id_idx" ON "public"."payments" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "performa_items_organization_id_idx" ON "public"."performa_items" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "performa_organization_id_idx" ON "public"."performa" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "product_categories_org_name_key" ON "public"."product_categories" USING "btree" ("organization_id", "name");
+
+
+
+CREATE INDEX "product_categories_organization_id_idx" ON "public"."product_categories" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "products_org_product_code_key" ON "public"."products" USING "btree" ("organization_id", "product_code");
+
+
+
+CREATE INDEX "products_organization_id_idx" ON "public"."products" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "purchase_order_items_organization_id_idx" ON "public"."purchase_order_items" USING "btree" ("organization_id");
+
+
+
+CREATE UNIQUE INDEX "purchase_orders_org_po_number_key" ON "public"."purchase_orders" USING "btree" ("organization_id", "po_number");
+
+
+
+CREATE INDEX "purchase_orders_organization_id_idx" ON "public"."purchase_orders" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "quotation_items_organization_id_idx" ON "public"."quotation_items" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "quotation_organization_id_idx" ON "public"."quotation" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "rate_limits_lookup" ON "public"."rate_limits" USING "btree" ("bucket", "identifier", "created_at" DESC);
+
+
+
+CREATE INDEX "rejected_inventory_organization_id_idx" ON "public"."rejected_inventory" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "stock_movements_organization_id_idx" ON "public"."stock_movements" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "user_panel_permissions_organization_id_idx" ON "public"."user_panel_permissions" USING "btree" ("organization_id");
+
+
+
+CREATE INDEX "vendors_organization_id_idx" ON "public"."vendors" USING "btree" ("organization_id");
+
+
+
+CREATE OR REPLACE TRIGGER "challan_updated" BEFORE UPDATE ON "public"."challan" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "company_profile_updated" BEFORE UPDATE ON "public"."company_profile" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "customers_updated" BEFORE UPDATE ON "public"."customers" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "invoice_settings_updated" BEFORE UPDATE ON "public"."invoice_settings" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "invoices_updated" BEFORE UPDATE ON "public"."invoices" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "performa_item_amounts" BEFORE INSERT OR UPDATE ON "public"."performa_items" FOR EACH ROW EXECUTE FUNCTION "public"."tg_invoice_item_amounts"();
+
+
+
+CREATE OR REPLACE TRIGGER "performa_recalc" AFTER INSERT OR DELETE OR UPDATE ON "public"."performa_items" FOR EACH ROW EXECUTE FUNCTION "public"."recalc_sales_document_totals"('performa');
+
+
+
+CREATE OR REPLACE TRIGGER "performa_updated" BEFORE UPDATE ON "public"."performa" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "products_updated" BEFORE UPDATE ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "quotation_item_amounts" BEFORE INSERT OR UPDATE ON "public"."quotation_items" FOR EACH ROW EXECUTE FUNCTION "public"."tg_invoice_item_amounts"();
+
+
+
+CREATE OR REPLACE TRIGGER "quotation_recalc" AFTER INSERT OR DELETE OR UPDATE ON "public"."quotation_items" FOR EACH ROW EXECUTE FUNCTION "public"."recalc_sales_document_totals"('quotation');
+
+
+
+CREATE OR REPLACE TRIGGER "quotation_updated" BEFORE UPDATE ON "public"."quotation" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_invoice_charges_recalc" AFTER UPDATE ON "public"."invoices" FOR EACH ROW EXECUTE FUNCTION "public"."tg_recalc_on_invoice_change"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_invoice_item_amounts" BEFORE INSERT OR UPDATE ON "public"."invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."tg_invoice_item_amounts"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_items_recalc_invoice" AFTER INSERT OR DELETE OR UPDATE ON "public"."invoice_items" FOR EACH ROW EXECUTE FUNCTION "public"."tg_recalc_from_items"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_organizations_updated_at" BEFORE UPDATE ON "public"."organizations" FOR EACH ROW EXECUTE FUNCTION "public"."tg_organizations_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_payments_recalc" AFTER INSERT OR DELETE OR UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."recalc_invoice_paid"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_po_updated_at" BEFORE UPDATE ON "public"."purchase_orders" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "tg_vendors_updated_at" BEFORE UPDATE ON "public"."vendors" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_backup_settings_updated" BEFORE UPDATE ON "public"."backup_settings" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_credits_updated" BEFORE UPDATE ON "public"."customer_credits" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_gdrive_updated" BEFORE UPDATE ON "public"."google_drive_credentials" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_invcfg_updated" BEFORE UPDATE ON "public"."invoice_configuration" FOR EACH ROW EXECUTE FUNCTION "public"."tg_set_updated_at"();
+
+
+
+ALTER TABLE ONLY "public"."backup_history"
+    ADD CONSTRAINT "backup_history_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."backup_history"
+    ADD CONSTRAINT "backup_history_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."backup_settings"
+    ADD CONSTRAINT "backup_settings_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."challan"
+    ADD CONSTRAINT "challan_customer_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."challan_items"
+    ADD CONSTRAINT "challan_items_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."challan_items"
+    ADD CONSTRAINT "challan_items_parent_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."challan"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."challan_items"
+    ADD CONSTRAINT "challan_items_product_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."challan"
+    ADD CONSTRAINT "challan_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."company_profile"
+    ADD CONSTRAINT "company_profile_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."customer_credits"
+    ADD CONSTRAINT "customer_credits_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customer_credits"
+    ADD CONSTRAINT "customer_credits_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."customer_credits"
+    ADD CONSTRAINT "customer_credits_source_invoice_id_fkey" FOREIGN KEY ("source_invoice_id") REFERENCES "public"."invoices"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customer_credits"
+    ADD CONSTRAINT "customer_credits_source_rejection_id_fkey" FOREIGN KEY ("source_rejection_id") REFERENCES "public"."invoice_rejections"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customers"
+    ADD CONSTRAINT "customers_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."customers"
+    ADD CONSTRAINT "customers_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."google_drive_credentials"
+    ADD CONSTRAINT "google_drive_credentials_connected_by_fkey" FOREIGN KEY ("connected_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."google_drive_credentials"
+    ADD CONSTRAINT "google_drive_credentials_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_configuration"
+    ADD CONSTRAINT "invoice_configuration_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_history"
+    ADD CONSTRAINT "invoice_history_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invoice_history"
+    ADD CONSTRAINT "invoice_history_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_history"
+    ADD CONSTRAINT "invoice_history_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_items"
+    ADD CONSTRAINT "invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_items"
+    ADD CONSTRAINT "invoice_items_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_items"
+    ADD CONSTRAINT "invoice_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invoice_rejections"
+    ADD CONSTRAINT "invoice_rejections_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invoice_rejections"
+    ADD CONSTRAINT "invoice_rejections_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_rejections"
+    ADD CONSTRAINT "invoice_rejections_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."invoice_items"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_rejections"
+    ADD CONSTRAINT "invoice_rejections_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_settings"
+    ADD CONSTRAINT "invoice_settings_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_cancelled_by_fkey" FOREIGN KEY ("cancelled_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."organization_features"
+    ADD CONSTRAINT "organization_features_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."organization_members"
+    ADD CONSTRAINT "organization_members_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."performa"
+    ADD CONSTRAINT "performa_customer_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."performa_items"
+    ADD CONSTRAINT "performa_items_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."performa_items"
+    ADD CONSTRAINT "performa_items_parent_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."performa"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."performa_items"
+    ADD CONSTRAINT "performa_items_product_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."performa"
+    ADD CONSTRAINT "performa_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."product_categories"
+    ADD CONSTRAINT "product_categories_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."product_categories"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."profiles"
+    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."purchase_order_items"
+    ADD CONSTRAINT "purchase_order_items_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_order_items"
+    ADD CONSTRAINT "purchase_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."purchase_order_items"
+    ADD CONSTRAINT "purchase_order_items_purchase_order_id_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."quotation"
+    ADD CONSTRAINT "quotation_customer_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."quotation_items"
+    ADD CONSTRAINT "quotation_items_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."quotation_items"
+    ADD CONSTRAINT "quotation_items_parent_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."quotation"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."quotation_items"
+    ADD CONSTRAINT "quotation_items_product_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."quotation"
+    ADD CONSTRAINT "quotation_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."rejected_inventory"
+    ADD CONSTRAINT "rejected_inventory_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."rejected_inventory"
+    ADD CONSTRAINT "rejected_inventory_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."rejected_inventory"
+    ADD CONSTRAINT "rejected_inventory_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."rejected_inventory"
+    ADD CONSTRAINT "rejected_inventory_rejection_id_fkey" FOREIGN KEY ("rejection_id") REFERENCES "public"."invoice_rejections"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."stock_movements"
+    ADD CONSTRAINT "stock_movements_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."stock_movements"
+    ADD CONSTRAINT "stock_movements_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."stock_movements"
+    ADD CONSTRAINT "stock_movements_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_panel_permissions"
+    ADD CONSTRAINT "user_panel_permissions_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_panel_permissions"
+    ADD CONSTRAINT "user_panel_permissions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."vendors"
+    ADD CONSTRAINT "vendors_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."vendors"
+    ADD CONSTRAINT "vendors_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id");
+
+
+
+CREATE POLICY "Admins read all profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("public"."has_role"("auth"."uid"(), 'admin'::"public"."app_role") OR "public"."has_role"("auth"."uid"(), 'super_admin'::"public"."app_role")));
+
+
+
+CREATE POLICY "admins manage roles" ON "public"."user_roles" TO "authenticated" USING (("public"."has_role"("auth"."uid"(), 'super_admin'::"public"."app_role") OR "public"."has_role"("auth"."uid"(), 'admin'::"public"."app_role"))) WITH CHECK (("public"."has_role"("auth"."uid"(), 'super_admin'::"public"."app_role") OR "public"."has_role"("auth"."uid"(), 'admin'::"public"."app_role")));
+
+
+
+CREATE POLICY "backup history organization read" ON "public"."backup_history" FOR SELECT TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "backup settings organization read" ON "public"."backup_settings" FOR SELECT TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "backup settings organization write" ON "public"."backup_settings" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+ALTER TABLE "public"."backup_history" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."backup_settings" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "categories read organization" ON "public"."product_categories" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'products'::"text")));
+
+
+
+CREATE POLICY "categories write organization" ON "public"."product_categories" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'products'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'products'::"text"));
+
+
+
+ALTER TABLE "public"."challan" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "challan delete organization" ON "public"."challan" FOR DELETE TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "challan insert organization" ON "public"."challan" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'challans'::"text"));
+
+
+
+CREATE POLICY "challan items read organization" ON "public"."challan_items" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "challan items write organization" ON "public"."challan_items" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'challans'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'challans'::"text"));
+
+
+
+CREATE POLICY "challan read organization" ON "public"."challan" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "challan update organization" ON "public"."challan" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'challans'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'challans'::"text"));
+
+
+
+ALTER TABLE "public"."challan_items" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "company read organization" ON "public"."company_profile" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "company write organization admin" ON "public"."company_profile" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+ALTER TABLE "public"."company_profile" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "credits read organization" ON "public"."customer_credits" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "credits write organization" ON "public"."customer_credits" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'customers'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'customers'::"text"));
+
+
+
+ALTER TABLE "public"."customer_credits" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."customers" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "customers read organization" ON "public"."customers" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND ("public"."has_org_panel"("organization_id", 'customers'::"text") OR "public"."has_org_panel"("organization_id", 'invoices'::"text") OR "public"."has_org_panel"("organization_id", 'payments'::"text") OR "public"."has_org_panel"("organization_id", 'quotations'::"text"))));
+
+
+
+CREATE POLICY "customers write organization" ON "public"."customers" TO "authenticated" USING (("public"."can_edit_org_panel"("organization_id", 'customers'::"text") OR "public"."can_edit_org_panel"("organization_id", 'invoices'::"text"))) WITH CHECK (("public"."can_edit_org_panel"("organization_id", 'customers'::"text") OR "public"."can_edit_org_panel"("organization_id", 'invoices'::"text")));
+
+
+
+CREATE POLICY "gdrive credentials organization" ON "public"."google_drive_credentials" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+ALTER TABLE "public"."google_drive_credentials" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "history insert organization" ON "public"."invoice_history" FOR INSERT TO "authenticated" WITH CHECK (("public"."can_access_org"("organization_id") AND ("actor_id" = "auth"."uid"())));
+
+
+
+CREATE POLICY "history read organization" ON "public"."invoice_history" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "invoice configuration read organization" ON "public"."invoice_configuration" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "invoice configuration write organization admin" ON "public"."invoice_configuration" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "invoice items delete organization" ON "public"."invoice_items" FOR DELETE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "invoice items insert organization" ON "public"."invoice_items" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "invoice items read organization" ON "public"."invoice_items" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "invoice items update organization" ON "public"."invoice_items" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+ALTER TABLE "public"."invoice_configuration" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_history" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_rejections" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_settings" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoices" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "invoices delete organization" ON "public"."invoices" FOR DELETE TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "invoices insert organization" ON "public"."invoices" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "invoices read organization" ON "public"."invoices" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "invoices update organization" ON "public"."invoices" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "organization features read" ON "public"."organization_features" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "organization_features"."organization_id") AND ("om"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "organization members read" ON "public"."organization_members" FOR SELECT TO "authenticated" USING ((("user_id" = "auth"."uid"()) OR "public"."is_org_member"("organization_id", "auth"."uid"())));
+
+
+
+ALTER TABLE "public"."organization_features" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."organization_members" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."organizations" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "organizations read" ON "public"."organizations" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."organization_members" "om"
+  WHERE (("om"."organization_id" = "organizations"."id") AND ("om"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "own profile insert" ON "public"."profiles" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "own profile read" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "own profile update" ON "public"."profiles" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "panel permissions manage organization" ON "public"."user_panel_permissions" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "panel permissions read organization" ON "public"."user_panel_permissions" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND (("user_id" = "auth"."uid"()) OR "public"."is_org_admin"("organization_id"))));
+
+
+
+ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "payments delete organization" ON "public"."payments" FOR DELETE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'payments'::"text"));
+
+
+
+CREATE POLICY "payments insert organization" ON "public"."payments" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'payments'::"text"));
+
+
+
+CREATE POLICY "payments read organization" ON "public"."payments" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'payments'::"text")));
+
+
+
+CREATE POLICY "payments update organization" ON "public"."payments" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'payments'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'payments'::"text"));
+
+
+
+ALTER TABLE "public"."performa" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "performa delete organization" ON "public"."performa" FOR DELETE TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "performa insert organization" ON "public"."performa" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "performa items read organization" ON "public"."performa_items" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "performa items write organization" ON "public"."performa_items" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "performa read organization" ON "public"."performa" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "performa update organization" ON "public"."performa" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+ALTER TABLE "public"."performa_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."product_categories" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "products read organization" ON "public"."products" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'products'::"text")));
+
+
+
+CREATE POLICY "products write organization" ON "public"."products" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'products'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'products'::"text"));
+
+
+
+ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "purchase order items read organization" ON "public"."purchase_order_items" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'purchases'::"text")));
+
+
+
+CREATE POLICY "purchase order items write organization" ON "public"."purchase_order_items" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'purchases'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'purchases'::"text"));
+
+
+
+CREATE POLICY "purchase orders read organization" ON "public"."purchase_orders" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'purchases'::"text")));
+
+
+
+CREATE POLICY "purchase orders write organization" ON "public"."purchase_orders" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'purchases'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'purchases'::"text"));
+
+
+
+ALTER TABLE "public"."purchase_order_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."purchase_orders" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."quotation" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "quotation delete organization" ON "public"."quotation" FOR DELETE TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "quotation insert organization" ON "public"."quotation" FOR INSERT TO "authenticated" WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'quotations'::"text"));
+
+
+
+CREATE POLICY "quotation items read organization" ON "public"."quotation_items" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "quotation items write organization" ON "public"."quotation_items" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'quotations'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'quotations'::"text"));
+
+
+
+CREATE POLICY "quotation read organization" ON "public"."quotation" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "quotation update organization" ON "public"."quotation" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'quotations'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'quotations'::"text"));
+
+
+
+ALTER TABLE "public"."quotation_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."rate_limits" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "read own roles" ON "public"."user_roles" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "rejected inventory read organization" ON "public"."rejected_inventory" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "rejected inventory write organization" ON "public"."rejected_inventory" TO "authenticated" USING (("public"."can_edit_org_panel"("organization_id", 'rejected-items'::"text") OR "public"."can_edit_org_panel"("organization_id", 'invoices'::"text"))) WITH CHECK (("public"."can_edit_org_panel"("organization_id", 'rejected-items'::"text") OR "public"."can_edit_org_panel"("organization_id", 'invoices'::"text")));
+
+
+
+ALTER TABLE "public"."rejected_inventory" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "rejections delete organization" ON "public"."invoice_rejections" FOR DELETE TO "authenticated" USING ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "rejections insert organization" ON "public"."invoice_rejections" FOR INSERT TO "authenticated" WITH CHECK (("public"."can_edit_org_panel"("organization_id", 'invoices'::"text") AND (("actor_id" IS NULL) OR ("actor_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "rejections read organization" ON "public"."invoice_rejections" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "rejections update organization" ON "public"."invoice_rejections" FOR UPDATE TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'invoices'::"text"));
+
+
+
+CREATE POLICY "settings read organization" ON "public"."invoice_settings" FOR SELECT TO "authenticated" USING ("public"."can_access_org"("organization_id"));
+
+
+
+CREATE POLICY "settings write organization admin" ON "public"."invoice_settings" TO "authenticated" USING ("public"."is_org_admin"("organization_id")) WITH CHECK ("public"."is_org_admin"("organization_id"));
+
+
+
+CREATE POLICY "stock movements read organization" ON "public"."stock_movements" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND ("public"."has_org_panel"("organization_id", 'inventory'::"text") OR "public"."has_org_panel"("organization_id", 'products'::"text"))));
+
+
+
+CREATE POLICY "stock movements write organization" ON "public"."stock_movements" TO "authenticated" USING (("public"."can_edit_org_panel"("organization_id", 'inventory'::"text") OR "public"."can_edit_org_panel"("organization_id", 'products'::"text"))) WITH CHECK (("public"."can_edit_org_panel"("organization_id", 'inventory'::"text") OR "public"."can_edit_org_panel"("organization_id", 'products'::"text")));
+
+
+
+ALTER TABLE "public"."stock_movements" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_panel_permissions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."vendors" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "vendors read organization" ON "public"."vendors" FOR SELECT TO "authenticated" USING (("public"."can_access_org"("organization_id") AND "public"."has_org_panel"("organization_id", 'vendors'::"text")));
+
+
+
+CREATE POLICY "vendors write organization" ON "public"."vendors" TO "authenticated" USING ("public"."can_edit_org_panel"("organization_id", 'vendors'::"text")) WITH CHECK ("public"."can_edit_org_panel"("organization_id", 'vendors'::"text"));
+
+
+
+GRANT USAGE ON SCHEMA "public" TO "postgres";
+GRANT USAGE ON SCHEMA "public" TO "anon";
+GRANT USAGE ON SCHEMA "public" TO "authenticated";
+GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."amount_in_words"("amount" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."amount_in_words"("amount" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."amount_in_words"("amount" numeric) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."can_access_org"("_organization_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_access_org"("_organization_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_access_org"("_organization_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."can_edit_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_edit_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_edit_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."can_edit_panel"("_panel" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_edit_panel"("_panel" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_edit_panel"("_panel" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."can_write"("_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."can_write"("_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_write"("_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."has_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."has_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."has_org_panel"("_organization_id" "uuid", "_panel" "text", "_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."has_org_role"("_organization_id" "uuid", "_role" "public"."app_role", "_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."has_org_role"("_organization_id" "uuid", "_role" "public"."app_role", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."has_org_role"("_organization_id" "uuid", "_role" "public"."app_role", "_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."has_panel"("_panel" "text", "_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."has_panel"("_panel" "text", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."has_panel"("_panel" "text", "_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."has_role"("_user_id" "uuid", "_role" "public"."app_role") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."has_role"("_user_id" "uuid", "_role" "public"."app_role") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."has_role"("_user_id" "uuid", "_role" "public"."app_role") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_admin"("_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_admin"("_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_admin"("_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_org_admin"("_organization_id" "uuid", "_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_org_admin"("_organization_id" "uuid", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_org_admin"("_organization_id" "uuid", "_user_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."is_org_member"("_organization_id" "uuid", "_user_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."is_org_member"("_organization_id" "uuid", "_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_org_member"("_organization_id" "uuid", "_user_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."num_words_below_hundred"("n" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."num_words_below_hundred"("n" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."num_words_below_hundred"("n" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."recalc_invoice_paid"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."recalc_invoice_paid"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."recalc_invoice_totals"("_invoice_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."recalc_invoice_totals"("_invoice_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."recalc_invoice_totals"("_invoice_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."recalc_sales_document_totals"() TO "anon";
+GRANT ALL ON FUNCTION "public"."recalc_sales_document_totals"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."recalc_sales_document_totals"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."tg_invoice_item_amounts"() TO "anon";
+GRANT ALL ON FUNCTION "public"."tg_invoice_item_amounts"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."tg_invoice_item_amounts"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."tg_organizations_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."tg_organizations_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."tg_organizations_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."tg_recalc_from_items"() TO "anon";
+GRANT ALL ON FUNCTION "public"."tg_recalc_from_items"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."tg_recalc_from_items"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."tg_recalc_on_invoice_change"() TO "anon";
+GRANT ALL ON FUNCTION "public"."tg_recalc_on_invoice_change"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."tg_recalc_on_invoice_change"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."tg_set_updated_at"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."tg_set_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."backup_history" TO "anon";
+GRANT ALL ON TABLE "public"."backup_history" TO "authenticated";
+GRANT ALL ON TABLE "public"."backup_history" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."backup_settings" TO "anon";
+GRANT ALL ON TABLE "public"."backup_settings" TO "authenticated";
+GRANT ALL ON TABLE "public"."backup_settings" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."challan" TO "anon";
+GRANT ALL ON TABLE "public"."challan" TO "authenticated";
+GRANT ALL ON TABLE "public"."challan" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."challan_items" TO "anon";
+GRANT ALL ON TABLE "public"."challan_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."challan_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."company_profile" TO "anon";
+GRANT ALL ON TABLE "public"."company_profile" TO "authenticated";
+GRANT ALL ON TABLE "public"."company_profile" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."customer_credits" TO "anon";
+GRANT ALL ON TABLE "public"."customer_credits" TO "authenticated";
+GRANT ALL ON TABLE "public"."customer_credits" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."customers" TO "anon";
+GRANT ALL ON TABLE "public"."customers" TO "authenticated";
+GRANT ALL ON TABLE "public"."customers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."google_drive_credentials" TO "anon";
+GRANT ALL ON TABLE "public"."google_drive_credentials" TO "authenticated";
+GRANT ALL ON TABLE "public"."google_drive_credentials" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_configuration" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_configuration" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_configuration" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_history" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_history" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_history" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_items" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_rejections" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_rejections" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_rejections" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_settings" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_settings" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_settings" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoices" TO "anon";
+GRANT ALL ON TABLE "public"."invoices" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoices" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."organization_features" TO "anon";
+GRANT ALL ON TABLE "public"."organization_features" TO "authenticated";
+GRANT ALL ON TABLE "public"."organization_features" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."organization_members" TO "anon";
+GRANT ALL ON TABLE "public"."organization_members" TO "authenticated";
+GRANT ALL ON TABLE "public"."organization_members" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."organizations" TO "anon";
+GRANT ALL ON TABLE "public"."organizations" TO "authenticated";
+GRANT ALL ON TABLE "public"."organizations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payments" TO "anon";
+GRANT ALL ON TABLE "public"."payments" TO "authenticated";
+GRANT ALL ON TABLE "public"."payments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."performa" TO "anon";
+GRANT ALL ON TABLE "public"."performa" TO "authenticated";
+GRANT ALL ON TABLE "public"."performa" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."performa_items" TO "anon";
+GRANT ALL ON TABLE "public"."performa_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."performa_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."product_categories" TO "anon";
+GRANT ALL ON TABLE "public"."product_categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."product_categories" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."products" TO "anon";
+GRANT ALL ON TABLE "public"."products" TO "authenticated";
+GRANT ALL ON TABLE "public"."products" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."profiles" TO "anon";
+GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
+GRANT ALL ON TABLE "public"."profiles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."purchase_order_items" TO "anon";
+GRANT ALL ON TABLE "public"."purchase_order_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."purchase_order_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."purchase_orders" TO "anon";
+GRANT ALL ON TABLE "public"."purchase_orders" TO "authenticated";
+GRANT ALL ON TABLE "public"."purchase_orders" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."quotation" TO "anon";
+GRANT ALL ON TABLE "public"."quotation" TO "authenticated";
+GRANT ALL ON TABLE "public"."quotation" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."quotation_items" TO "anon";
+GRANT ALL ON TABLE "public"."quotation_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."quotation_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."rate_limits" TO "anon";
+GRANT ALL ON TABLE "public"."rate_limits" TO "authenticated";
+GRANT ALL ON TABLE "public"."rate_limits" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."rejected_inventory" TO "anon";
+GRANT ALL ON TABLE "public"."rejected_inventory" TO "authenticated";
+GRANT ALL ON TABLE "public"."rejected_inventory" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."stock_movements" TO "anon";
+GRANT ALL ON TABLE "public"."stock_movements" TO "authenticated";
+GRANT ALL ON TABLE "public"."stock_movements" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_panel_permissions" TO "anon";
+GRANT ALL ON TABLE "public"."user_panel_permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_panel_permissions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_roles" TO "anon";
+GRANT ALL ON TABLE "public"."user_roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_roles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."vendors" TO "anon";
+GRANT ALL ON TABLE "public"."vendors" TO "authenticated";
+GRANT ALL ON TABLE "public"."vendors" TO "service_role";
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
+
+
+
+
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
+
+
+
+
+
+
+
