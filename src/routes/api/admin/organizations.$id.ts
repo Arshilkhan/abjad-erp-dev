@@ -42,6 +42,7 @@ export const Route = createFileRoute('/api/admin/organizations/$id')({
           return apiErrorResponse(request, error)
         }
       },
+
       PATCH: async ({ request, params }) => {
         try {
           const headers = getAdminApiHeaders(request)
@@ -58,41 +59,80 @@ export const Route = createFileRoute('/api/admin/organizations/$id')({
             throw new PlatformAdminApiError('Invalid request body', 400)
           }
 
-
           if (
             !body ||
             typeof body !== 'object' ||
             Array.isArray(body) ||
-            Object.keys(body).length !== 1 ||
-            !('status' in body) ||
-            typeof body.status !== 'string' ||
-            !['active', 'suspended', 'cancelled'].includes(body.status)
+            Object.keys(body).length !== 1
           ) {
             throw new PlatformAdminApiError(
-              'Status must be active, suspended, or cancelled',
+              'Provide exactly one supported field: status or name',
               400,
             )
           }
 
-          const newStatus = body.status as 'active' | 'suspended' | 'cancelled'
+          const input = body as Record<string, unknown>
+          const { supabaseAdmin } = await import(
+            '@/integrations/supabase/client.server'
+          )
 
+          let update: { status?: 'active' | 'suspended' | 'cancelled'; name?: string }
 
-          const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+          if ('status' in input) {
+            if (
+              typeof input.status !== 'string' ||
+              !['active', 'suspended', 'cancelled'].includes(input.status)
+            ) {
+              throw new PlatformAdminApiError(
+                'Status must be active, suspended, or cancelled',
+                400,
+              )
+            }
+
+            update = {
+              status: input.status as 'active' | 'suspended' | 'cancelled',
+            }
+          } else if ('name' in input) {
+            if (
+              typeof input.name !== 'string' ||
+              !input.name.trim() ||
+              input.name.trim().length > 150
+            ) {
+              throw new PlatformAdminApiError(
+                'Organization name must be between 1 and 150 characters',
+                400,
+              )
+            }
+
+            update = { name: input.name.trim() }
+          } else {
+            throw new PlatformAdminApiError(
+              'Only status or name updates are supported',
+              400,
+            )
+          }
+
           const { data, error } = await supabaseAdmin
             .from('organizations')
-            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .update({ ...update, updated_at: new Date().toISOString() })
             .eq('id', params.id)
             .select('id, name, slug, status, created_at, updated_at')
             .maybeSingle()
 
-          if (error) throw new Error('Could not update organization status')
-          if (!data) throw new PlatformAdminApiError('Organization not found', 404)
+          if (error) {
+            throw new Error('Could not update organization')
+          }
+
+          if (!data) {
+            throw new PlatformAdminApiError('Organization not found', 404)
+          }
 
           return Response.json({ organization: data }, { headers })
         } catch (error) {
           return apiErrorResponse(request, error)
         }
       },
+
     },
   },
 })
