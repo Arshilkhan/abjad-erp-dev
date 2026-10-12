@@ -58,24 +58,29 @@ export const Route = createFileRoute('/api/admin/organizations/$id')({
             throw new PlatformAdminApiError('Invalid request body', 400)
           }
 
+
           if (
             !body ||
             typeof body !== 'object' ||
             Array.isArray(body) ||
             Object.keys(body).length !== 1 ||
             !('status' in body) ||
-            (body.status !== 'active' && body.status !== 'suspended')
+            typeof body.status !== 'string' ||
+            !['active', 'suspended', 'cancelled'].includes(body.status)
           ) {
             throw new PlatformAdminApiError(
-              'Status must be either active or suspended',
+              'Status must be active, suspended, or cancelled',
               400,
             )
           }
 
+          const newStatus = body.status as 'active' | 'suspended' | 'cancelled'
+
+
           const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
           const { data, error } = await supabaseAdmin
             .from('organizations')
-            .update({ status: body.status, updated_at: new Date().toISOString() })
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
             .eq('id', params.id)
             .select('id, name, slug, status, created_at, updated_at')
             .maybeSingle()
