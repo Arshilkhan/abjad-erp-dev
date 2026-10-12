@@ -42,6 +42,52 @@ export const Route = createFileRoute('/api/admin/organizations/$id')({
           return apiErrorResponse(request, error)
         }
       },
+      PATCH: async ({ request, params }) => {
+        try {
+          const headers = getAdminApiHeaders(request)
+          await requirePlatformSuperAdmin(request)
+
+          if (!UUID_PATTERN.test(params.id)) {
+            throw new PlatformAdminApiError('Invalid organization ID', 400)
+          }
+
+          let body: unknown
+          try {
+            body = await request.json()
+          } catch {
+            throw new PlatformAdminApiError('Invalid request body', 400)
+          }
+
+          if (
+            !body ||
+            typeof body !== 'object' ||
+            Array.isArray(body) ||
+            Object.keys(body).length !== 1 ||
+            !('status' in body) ||
+            (body.status !== 'active' && body.status !== 'suspended')
+          ) {
+            throw new PlatformAdminApiError(
+              'Status must be either active or suspended',
+              400,
+            )
+          }
+
+          const { supabaseAdmin } = await import('@/integrations/supabase/client.server')
+          const { data, error } = await supabaseAdmin
+            .from('organizations')
+            .update({ status: body.status, updated_at: new Date().toISOString() })
+            .eq('id', params.id)
+            .select('id, name, slug, status, created_at, updated_at')
+            .maybeSingle()
+
+          if (error) throw new Error('Could not update organization status')
+          if (!data) throw new PlatformAdminApiError('Organization not found', 404)
+
+          return Response.json({ organization: data }, { headers })
+        } catch (error) {
+          return apiErrorResponse(request, error)
+        }
+      },
     },
   },
 })
