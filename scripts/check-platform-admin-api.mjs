@@ -110,7 +110,7 @@ async function main() {
       token: superAdminToken,
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled' }),
+      body: JSON.stringify({ status: 'deleted' }),
     }), 400)
 
   let statusChangeAttempted = false
