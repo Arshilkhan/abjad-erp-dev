@@ -53,6 +53,7 @@ import { Route as ApiAdminOrganizationsIdRouteImport } from './routes/api/admin/
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as ApiAdminOrganizationsIdOnboardingRouteImport } from './routes/api/admin/organizations.$id.onboarding'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -293,6 +294,12 @@ const LovableEmailTransactionalPreviewRoute =
     path: '/lovable/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminOrganizationsIdOnboardingRoute =
+  ApiAdminOrganizationsIdOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => ApiAdminOrganizationsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -333,11 +340,12 @@ export interface FileRoutesByFullPath {
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
-  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/invoices/$id/': typeof AuthenticatedInvoicesIdIndexRoute
+  '/api/admin/organizations/$id/onboarding': typeof ApiAdminOrganizationsIdOnboardingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -374,11 +382,12 @@ export interface FileRoutesByTo {
   '/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
-  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/invoices/$id': typeof AuthenticatedInvoicesIdIndexRoute
+  '/api/admin/organizations/$id/onboarding': typeof ApiAdminOrganizationsIdOnboardingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -421,11 +430,12 @@ export interface FileRoutesById {
   '/_authenticated/invoices/folder/$company': typeof AuthenticatedInvoicesFolderCompanyRoute
   '/_authenticated/proformas/folder/$company': typeof AuthenticatedProformasFolderCompanyRoute
   '/_authenticated/quotations/folder/$company': typeof AuthenticatedQuotationsFolderCompanyRoute
-  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRoute
+  '/api/admin/organizations/$id': typeof ApiAdminOrganizationsIdRouteWithChildren
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/_authenticated/invoices/$id/': typeof AuthenticatedInvoicesIdIndexRoute
+  '/api/admin/organizations/$id/onboarding': typeof ApiAdminOrganizationsIdOnboardingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/invoices/$id/'
+    | '/api/admin/organizations/$id/onboarding'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -514,6 +525,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/invoices/$id'
+    | '/api/admin/organizations/$id/onboarding'
   id:
     | '__root__'
     | '/'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/_authenticated/invoices/$id/'
+    | '/api/admin/organizations/$id/onboarding'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -885,6 +898,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/organizations/$id/onboarding': {
+      id: '/api/admin/organizations/$id/onboarding'
+      path: '/onboarding'
+      fullPath: '/api/admin/organizations/$id/onboarding'
+      preLoaderRoute: typeof ApiAdminOrganizationsIdOnboardingRouteImport
+      parentRoute: typeof ApiAdminOrganizationsIdRoute
+    }
   }
 }
 
@@ -1026,12 +1046,27 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface ApiAdminOrganizationsIdRouteChildren {
+  ApiAdminOrganizationsIdOnboardingRoute: typeof ApiAdminOrganizationsIdOnboardingRoute
+}
+
+const ApiAdminOrganizationsIdRouteChildren: ApiAdminOrganizationsIdRouteChildren =
+  {
+    ApiAdminOrganizationsIdOnboardingRoute:
+      ApiAdminOrganizationsIdOnboardingRoute,
+  }
+
+const ApiAdminOrganizationsIdRouteWithChildren =
+  ApiAdminOrganizationsIdRoute._addFileChildren(
+    ApiAdminOrganizationsIdRouteChildren,
+  )
+
 interface ApiAdminOrganizationsRouteChildren {
-  ApiAdminOrganizationsIdRoute: typeof ApiAdminOrganizationsIdRoute
+  ApiAdminOrganizationsIdRoute: typeof ApiAdminOrganizationsIdRouteWithChildren
 }
 
 const ApiAdminOrganizationsRouteChildren: ApiAdminOrganizationsRouteChildren = {
-  ApiAdminOrganizationsIdRoute: ApiAdminOrganizationsIdRoute,
+  ApiAdminOrganizationsIdRoute: ApiAdminOrganizationsIdRouteWithChildren,
 }
 
 const ApiAdminOrganizationsRouteWithChildren =
